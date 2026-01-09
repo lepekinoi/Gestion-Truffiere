@@ -1,0 +1,285 @@
+_____________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________
+
+A faire
+
+Reindex le projet  dans ta mémoire
+
+et
+
+Recoltes.js
+	- Je veux pouvoir modifier des elements de la sélection (comme arbres.js mais avec les éléments de recoltes)
+	- corrige l'encodage en UTF8 car je veux conserver les images et emoji
+
+Paramètres.js	
+	- Reli le fichier Paramètres.js a jour
+	-Ensuite pour lesq onglets "Colonnes Globales" et "Mes parametres" au lieu de colonnes Affichées et ensuite Colonnes exportées, je veux 2 onglets "Colonnes affichées" et a droite "Colonnes exportées"
+		en même temps rétudie le projet car des colonnes ont été rajoutées et d'autres supprimées
+		Attention à l'encodage UTF et rappel toi que je conserve les emoji images
+	- Onlget "mes préférences" ne se sauvegarde pas, est-ce réellement relié à l'utilisateur en cours ? si non corrige cela.
+	- Supprime dans l'onglet Configuration ("Colonnes export" + "Colonnes affichées" + "Entreprise")
+	
+
+Commercial.js
+	Exporter PDF
+		Exporter selon le type sélectionné, le résultat n'est pas bon
+		Clients
+			- N'exporte pas le bon contenu des colonnes, exemple toujours professionnel pour le type
+			- 
+		Ventes
+			- N'exporte pas le bon contenu des colonnes ni aucune ligne
+			-
+		- attention a corriger l'encodage en UTF8 car je veux conserver les images
+
+	Commandes
+		- Control du lien entre la commande et la vente ? ne pas cré deux ventes associé à la meme commande
+		- Gestion du numéro des commandes comme la gestion desnuméro des ventes
+	Ventes
+		- Retirer l'indication de la récolte, cette inforamtion n'a pas besoin d'être présente
+
+Parametres.js
+	préférences utilisateur
+		correspondre à l'utilisateur connecté à l'application, bien resepcté les changements relatifs a cet utilisateur
+		possibilité de reset des réglages
+	paramètre global
+		parametre par défaut si l'utilisateur n'a jamais défini
+____________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________
+
++ tard
+
+5.1 Court terme (1-3 mois)
+Priorité HAUTE - Impact fort, complexité faible
+1.	PWA basique (installable sur mobile)
+
+5.2 Moyen terme (3-6 mois)
+Priorité MOYENNE - Valeur ajoutée significative
+5.	2FA (authentification à deux facteurs)
+6.	Mode hors-ligne avec synchronisation
+7.	Traçabilité complète des lots
+8.	Alertes météo automatiques
+9.	Dashboard personnalisable
+10.	Notifications push
+
+5.3 Long terme (6-12 mois)
+Priorité BASSE - Innovation et différenciation
+11.	Machine Learning pour prédictions avancées
+12.	Intégration capteurs IoT
+13.	SSO entreprise
+14.	Application native iOS/Android
+
+
+Dashboard.js
+	- Peux tu ajouter une météo plus agricoles, exemple plein champs (https://www.pleinchamp.com/meteo/36-heures)
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- Qui est connecté + visiteurs
+
+Statistiques et Analyses
+	- Ajout la possibilité de recherche avec plusieurs critere combiné (inclure parcelle, arbre, récoltes
+	- Afficher le temps passé des interventions pour les éléments recherchés
+
+récoltes.js
+	- L'import des récoltes, il manque des champs dans le CSV template et comment identifier l'arbre de la récolte ? (id ou nom)
+
+Interventions.js
+	- voir avec Marc ce qu'il manque
+		Romain propose: quelques remarques à la volée : discutes avec Marc mais je pense que tu pourras préciser les choses dans l'onglet interventions.
+						Pour le moment tu as surtout indiqué la durée
+						mais je pense qu'il y a d'autres infos qu'il voudra rentrernotamment pour ce qui est des traitements/irrigation/amendements:
+							- les doses
+							- les molécules
+							- ...
+	- L'import des interventions
+		il manque des champs dans le CSV template et comment identifier l'arbre de la récolte ? (id ou nom)
+		Si compliqué pas de précision lors de l'import sera fait ensuite
+
+Prévisions
+	- A voir quand il y aura des données
+	- demander a developper le model de prévision avec plus de données existantes dans le projet depuis tout mes MAJ
+
+Corriger le nom "récolte" par "production"
+
+Cartes.js et parcelles.js
+	- possibilité de mettre l'objet carte en pleine ecran, ne rien changer d'autre
+	
+Cartes.js
+	- quand je clique sur "Redess." une parcelles, la carte affiche la parcelle et la taille + zoom est ajuster à la parcelle et l'objet cartes. (comme dans parcelles.js et la liste des parcelles)
+	- quand je clique sur "placer" un arbre, la carte affiche la parcelle et la taille + zoom est ajuster à la parcelle et l'objet cartes. (comme dans parcelles.js et la liste des parcelles)
+
+Navigation du site
+	- Chaque page (parcelles, Arbres, Interventions, récoltes, clients, ventes, Statistiques, prévisions a sa prorpre URL
+	- faire un bandeau mieux organiser et plus logique, sous forme de me nu déroulant avec un visuel moderne
+	- Revoir la vue sur mobile avec quelques d'necore plus responsive.
+	
+proposer un lien vers ce site en footer => https://fft-truffes.fr/
+proposer un flux rss sur la truffe en france
+étudier le site https://rnm.franceagrimer.fr/prix?TRUFFE, et proposer un dashboard simple de ce site
+
+_____________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________
+
+
+OK
+
+
+Historique.js
+	- erreur d'encodage pour le form detail
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- améliorer la colonne détail, évitez les id, préféré les libellés
+	- Qui affiche l'historisation des autres actions de chacune des autres pages, l'enregsitrer se fera en base de données
+	- purge possible sur une période sélectionné, une année, un mois, ...
+
+Prévisions.js
+	- Comment obtenir et travailler les prévisions avec la fourniture des données exterieurs a l'application
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+
+Arbres.js
+	- petits défaut d'encodage UTF8 a coté du "filtre"
+	- aussi re propose des emoji car il y a eu des choix etonnants
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- Ajouter une espece d'arbres = Chênes Cerris (Cé)
+	- modifie le libellé des arbres
+		"Chênes vert" => "Chênes vert (V)"
+		"Chêne pubescent" => "Chêne pubescent (P)"
+		"Charme" => "Charmes (C)"
+	- possibilité de sélectionner les arbres, et avec cette sélection faire quelques modifications, comme son espece, la date de plantation, sa circonférence, sa hauteur, son état, la variété de truffe
+	- Attention a l'encodage UTF8, corrige si nécéssaire
+	- Ajouter quelques filtres logique pour rechercher les arbres
+	- Attention a l'encodage UTF8, corrige si nécéssaire
+	- faire une pagination  de la liste des arbres affichés (par 10, 20, 30 ,50 tous)
+	- Sur modifications d'un arbre, la geolocalisation ne propose pas plusieurs choix de type de carte comme sur la page carte.js
+	- Quand ok, je souhaite la vue satellite par défaut
+	- comme d'habitude attention à l'encodage utf8
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js
+	- Modification, le formulaire s'ouvre mais pas possible d'enregsitrer (erreur dans console F12)
+	- Suppression, rien ne se passe (pas d'erreur dans console F12)
+	- Afficher si des interventions sont en cours ou prévu quand ma souris passe sur un arbres	
+
+Recoltes.js
+	- changer le champs "Qualité" => la valeure "tout venant" sera changé par "pourrie" partout ou il apparait
+	- adapter le dashboard de recoltes.js, je veux pouvoir distinguer dans 2 zones proches la qualité Extra,1ere, 2e des pourrie, le filtre de la page agira sur cette ces valeurs.
+	- Ajouter quelques filtres logique pour rechercher les recoltes
+	- reproduire la possibilité de sélection des recoltes et une pagination comme arbres.js et dans le bas retravail le contenu du tableau avec des données plus logiques
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- Pour une nouvelle et une modification de récolte, prévoir une recherche avec filtre des arbres existante, attention a l'encodage UTF8 et aux à la conservation des images. Les autres fonctions ne doivent pas évoluer, Attention a l'encodage UTF8, corrige si nécéssaire je veux conserve les images
+	- Pour une nouvelle et une modification de récolte, prévoir une recherche avec filtre des récoltes existante, attention a l'encodage UTF8 et aux à la conservation des images. Les autres fonctions ne doivent pas évoluer, Attention a l'encodage UTF8, corrige si nécéssaire je veux conserve les images
+	- ajout information exposition de la recoltes lié a l'arbre de la récolte (exemple, une turffe de 30 coté Est de l'arbre.)
+	- Attention a l'encodage UTF8, corrige si nécéssaire
+	- retire du tableau la colonne Prix/kg, et check si cette colonne existe ailleur dans le projet.
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js ou arbres.js parcelles.js
+	- Modification
+		le formulaire s'ouvre mais pas possible d'enregistrer
+		n'ajoute pas tous les champs (equipe et conditions) (pas d'erreur dans console F12)
+	- Suppression
+		rien ne se passe (pas d'erreur dans console F12)
+	- L'ajout
+		n'ajoute pas tous les champs (equipe et conditions)
+	- A la récolte supprimer dans le formulaire tarif prix/kg (pense à la base de données), valeur a supprimer (c'est à la vente de choisir la récolte et indiquer un tarif
+	- indiquer l'arbre est obligatoire
+	- sélection du caveur via une liste déroulante, la liste déroulante des caveurs est en base de donnée
+	- sélection du chien via une liste déroulante, la liste déroulante des chiens est en base de donnée
+	- corriger l'encodage car je veux conserver les images	
+
+Parcelles.js
+	- pas d'historisation
+	- ajoute quelques filtre supplémentaire et logique
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- Supprimer la donnée Exposition du formulaire, vérifier dans la base de données s'il faut mettre la table parcelles a jour, la colonne exposition existe peut etre, le csvimport et exportpdf ne sera pas bon non plus sans doute
+	- supprimer la donnée Exposition a droite de la carte
+	- Afficher par Parcelles le nombre d'arbres et par espece
+	- Attention a l'encodage UTF8, corrige si nécéssaire
+	- pouvoir dessiner les parcelles à partir de parcelles.js avec la carte visible en mode dessin
+	- afficher les arbres affecté aux parcelles et ne pas montrer ceux qui ne sont pas affecté car impossible	
+	- Attention à la suppression des parcelles
+	- Appartenance des arbres, des récoltes, des Interventions
+	- proposer une réaffactation des arbres
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js
+
+Ventes.js
+	- Saisie récolte obligatoire
+	- Génération auto des numéros factures (avec saisie manuel possible)
+	- Pouvoir afficher le fomrulaire ajout de client à partir d'un formulaire ajout vente
+	- historiser chaque action
+	- corriger l'encodage car je veux conserver les images
+	- Quand une commande passe en statut livrée, faire un enregsitrment de vente avec un lien entre la commande et la vente
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js		
+	- rechercher récolte par arbres ou date
+	- Pourquoi sur nouvelle vente, le choix par date arbre indiqué "Arbre - Non spécifié"
+	- l'enncodage n'est pas bon	
+
+Commandes.js
+	- corriger l'encodage car je veux conserver les images
+	- Faire une code couleur pour les statuts de commandes
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js
+	- Quand une commande passe en statut livrée, faire un enregsitrment de vente avec un lien entre la commande et la vente
+	- historiser chaque action
+
+Commercial.js
+	Commandes
+		- lorsque une commande est livré, une vente est créé, ajout l'information que la nouvelle vente est issue d'une commande avec le numéro de la commande.
+		- Afficher le numéro de la commande, comme le numéro des ventes
+
+unifier Commandes.js et ventes.js
+	- dans la même page
+	- trouve un nom logique pour ces deux usage "Commandes et ventes" => Commercial.js
+
+Interventions.js
+	- reproduire la possibilité de sélection des interventions et une pagination comme arbres.js et dans le bas retravail le contenu du tableau avec des données plus logiques
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- je pense qu'il y a d'autres infos qu'il voudra rentrernotamment pour ce qui est des traitements/irrigation/amendements:
+							- les doses
+							- les molécules
+	- Pour une nouvelle et une modification d'interventions, prévoir (comme pour récoltes.js) une recherche avec filtre des arbres existante, attention a l'encodage UTF8 et aux à la conservation des images. Les autres fonctions ne doivent pas évoluer, Attention a l'encodage UTF8, corrige si nécéssaire je veux conserve les images
+	- ajouter un bouton supprimer sur le formulaire de modification
+	- corriger l'encodage car je veux conserver les images
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js
+	- Suppression, rien ne se passe
+	- Déclaration intervention
+		notifier si une meme intervention est prévu le même jour sur le meme arbre
+		Pouvoir sélectionner le personnel avec une personne par défaut	
+		pouvoir sélectionner plusieurs arbres
+		pouvoir modifier une intervention et changer les arbres
+	- Modification, le formulaire s'ouvre mais pas possible d'enregitrer
+	- sélection du caveur via une liste déroulante, la liste déroulante des caveurs est en base de donnée
+		
+Parametres.js
+	- Caveurs, afficher la quantité de récoltes et le nombre d'interventions lorsque la souris passe au dessus du nom du caveur
+		6 derniers mois
+	- Chiens, afficher la quantité de récoltes lorsque la souris passe au dessus du nom du chien
+		6 derniers mois
+	- j'ai perdu la gestion des caveurs et chiens, rajoute là
+	- Ajout de la gestion des caveurs, la liste déroulante des caveurs est en base de donnée (ajout, suppression, modification)
+	- Ajout de la gestion des chiens, la liste déroulante des chiens est en base de donnée (ajout, suppression, modification)
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js ou arbres.js parcelles.js
+
+clients.js
+	- le déplacer dans Commercial.js, a gauche de commandes
+	- Ajouter un récap chiffrer des montants des commandes et ventes par type de client
+	- corriger l'encodage car je veux conserver les images
+	- changer les pop-up de modification/suppression, S'insipirer de cartes.js
+	- sélectionner les clients un par un, et pouvoir rechercher les commandes ou ventes du client sélectionner
+
+csvImport.js
+	- Suite aux changement Arbres.js et Recoltes.js faut'il adapter le fichier pour réussir les importations de ARbres et recoltes MAJ
+	- Control de son fonctionnement par module
+	- CSVImportModal.js est transparent, a controler
+
+Dashboard.js
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- revoir l'organisation de la page, propose une logique pas rappport aux fichiers server.js et app.js
+	- le paragraphe "Bienvenue sur votre gestionnaire de truffière" n'est pas bien placé, peut etre l'afficher + tot dans la page.
+
+Fonctionnalité Authentification du site
+	- Avec création  d'un compte admin
+	- Gestion des users uniquement pour l'admin dans une pages Utilisateurs, cette n'est pas accessible pour les autres.
+	- Prévoir une gestion des roles et utilisateurs
+
+Statistiques.js
+	- propose une version d'affichage des statistiques plus logique par rapport aux reste du projets, complete les données
+	- attention a corriger l'encodage en UTF8 car je veux conserver les images
+	- il me faudra une statistique de ces expositions par arbres dans la vue Statistiques.js,+ un visuel vue dessue de l'arbre coloré  en rouge l'exposition la plus fréquente.
+	- Attention a l'encodage UTF8, corrige si nécéssaire
+
+1.	Calcul de stock automatique
+2.	Génération de factures PDF
+3.	Recherche globale
