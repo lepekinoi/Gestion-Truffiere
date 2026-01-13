@@ -12,15 +12,15 @@ Application web complète de gestion d'exploitation truffière, développée en 
 
 ## 📋 Table des matières
 
-- [✨ Fonctionnalités](#-fonctionnalités)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Démarrage rapide](#-démarrage-rapide)
-- [📦 Installation détaillée](#-installation-détaillée)
-- [🔑 Authentification](#-authentification)
-- [📚 Documentation](#-documentation)
-- [🛠️ Technologies utilisées](#️-technologies-utilisées)
-- [🗺️ Roadmap](#️-roadmap)
-- [🤝 Contribution](#-contribution)
+- [Fonctionnalités](#fonctionnalités)
+- [Architecture](#architecture)
+- [Démarrage rapide](#démarrage-rapide)
+- [Installation détaillée](#installation-détaillée)
+- [Authentification](#authentification)
+- [Documentation](#documentation)
+- [Technologies utilisées](#technologies-utilisées)
+- [Roadmap](#roadmap)
+- [Contribution](#contribution)
 
 ---
 
@@ -62,23 +62,23 @@ Gestion-Truffiere/
 │   ├── routes/                # Routes API (auth, parcelles, arbres, etc.)
 │   ├── controllers/           # Logique métier
 │   ├── middleware/            # Authentification, validation
-│   ├── models/               # Modèles de données
-│   ├── config/               # Configuration (DB, JWT, etc.)
-│   └── server.js             # Point d'entrée backend
+│   ├── models/                # Modèles de données
+│   ├── config/                # Configuration (DB, JWT, etc.)
+│   └── server.js              # Point d'entrée backend
 │
 ├── frontend/                   # Application React
 │   ├── src/
-│   │   ├── components/       # Composants réutilisables
-│   │   │   ├── auth/        # Authentification
-│   │   │   ├── dashboard/   # Tableaux de bord
-│   │   │   ├── parcelles/   # Gestion parcelles
-│   │   │   ├── arbres/      # Gestion arbres
-│   │   │   └── recoltes/    # Gestion récoltes
-│   │   ├── hooks/           # Hooks personnalisés
-│   │   ├── services/        # Appels API
-│   │   ├── context/         # Context API (Auth, Theme)
-│   │   ├── utils/           # Fonctions utilitaires
-│   │   └── App.js           # Application principale
+│   │   ├── components/        # Composants réutilisables
+│   │   │   ├── auth/         # Authentification
+│   │   │   ├── dashboard/    # Tableaux de bord
+│   │   │   ├── parcelles/    # Gestion parcelles
+│   │   │   ├── arbres/       # Gestion arbres
+│   │   │   └── recoltes/     # Gestion récoltes
+│   │   ├── hooks/            # Hooks personnalisés
+│   │   ├── services/         # Appels API
+│   │   ├── context/          # Context API (Auth, Theme)
+│   │   ├── utils/            # Fonctions utilitaires
+│   │   └── App.js            # Application principale
 │   └── public/
 │
 ├── DEMARRAGE_RAPIDE.md         # Guide installation rapide
@@ -116,8 +116,8 @@ Gestion-Truffiere/
 
 ### Prérequis
 
-- Node.js ≥ 18.0.0
-- PostgreSQL ≥ 15
+- Node.js >= 18.0.0
+- PostgreSQL >= 15
 - npm ou yarn
 - Git
 
@@ -155,98 +155,6 @@ cd frontend && npm start
 
 ---
 
-## 📦 Installation détaillée
-
-### Étape 1 : Configuration Backend
-
-```bash
-cd backend
-
-# Installation des dépendances
-npm install
-
-# Créer le fichier .env
-cat > .env << EOL
-# Base de données
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=gestion_truffiere
-DB_USER=postgres
-DB_PASSWORD=votre_mot_de_passe
-
-# JWT
-JWT_SECRET=votre_secret_super_securise_32_caracteres_minimum
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
-
-# Email (optionnel pour reset password)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=votre.email@gmail.com
-SMTP_PASS=votre_mot_de_passe_app
-
-# API
-PORT=5000
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-EOL
-
-# Initialiser la base de données
-psql -U postgres << SQL
-CREATE DATABASE gestion_truffiere;
-\c gestion_truffiere
-\i database/init.sql
-SQL
-
-# Lancer le serveur
-npm start
-# ✅ API disponible sur http://localhost:5000
-```
-
-### Étape 2 : Configuration Frontend
-
-```bash
-cd frontend
-
-# Installation des dépendances
-npm install
-
-# Créer le fichier .env
-cat > .env << EOL
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_VERSION=4.0.0
-EOL
-
-# Lancer l'application
-npm start
-# ✅ Interface disponible sur http://localhost:3000
-```
-
-### Étape 3 : Création du premier utilisateur
-
-Deux options :
-
-**Option A - Via l'interface web** :
-1. Accéder à http://localhost:3000
-2. Cliquer sur "S'inscrire"
-3. Remplir le formulaire avec le rôle "Propriétaire"
-
-**Option B - Via la base de données** :
-
-```sql
--- Mot de passe: admin123
-INSERT INTO users (email, password_hash, nom, prenom, role_id)
-VALUES (
-    'admin@truffiere.fr',
-    '$2a$10$CwTycUXWue0Thq9StjUM0uJ8JnQBBN8T2OKhKm.xhzCN.sJZHKQsm',
-    'Admin',
-    'Système',
-    (SELECT id FROM roles WHERE nom = 'proprietaire')
-);
-```
-
----
-
 ## 🔑 Authentification
 
 ### Système de rôles
@@ -268,38 +176,6 @@ VALUES (
 - ✅ Réinitialisation sécurisée par email
 
 **📖 Plus de détails : [analyse-authentification.md](./analyse-authentification.md)**
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [DEMARRAGE_RAPIDE.md](./DEMARRAGE_RAPIDE.md) | Guide d'installation et premier lancement |
-| [README_NOUVELLES_FONCTIONNALITES.md](./README_NOUVELLES_FONCTIONNALITES.md) | Détail des fonctionnalités V4 |
-| [Dashboard_Reorganisation.md](./Dashboard_Reorganisation.md) | Architecture du tableau de bord |
-| [analyse-authentification.md](./analyse-authentification.md) | Système d'authentification |
-| `backend/API.md` | Documentation des endpoints API |
-| `frontend/COMPONENTS.md` | Guide des composants React |
-
----
-
-## 🛠️ Technologies utilisées
-
-### Backend
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
-
-### Frontend
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
-
-### DevOps
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
 
 ---
 
@@ -332,23 +208,16 @@ VALUES (
 Les contributions sont les bienvenues ! Voici comment participer :
 
 1. **Fork** le projet
-2. **Créer une branche** pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
-3. **Commit** vos changements (`git commit -m 'Add AmazingFeature'`)
-4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
+2. **Créer une branche** pour votre fonctionnalité
+3. **Commit** vos changements
+4. **Push** vers la branche
 5. **Ouvrir une Pull Request**
-
-### Guidelines
-
-- Suivre les conventions de code existantes
-- Écrire des tests pour les nouvelles fonctionnalités
-- Mettre à jour la documentation si nécessaire
-- Commenter le code pour les parties complexes
 
 ---
 
 ## 📄 Licence
 
-Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+Ce projet est sous licence MIT.
 
 ---
 
@@ -366,14 +235,6 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 - Contributeurs open-source
 - [INRAE](https://www.inrae.fr/) pour les recherches sur la trufficulture
 - [WETRUF](https://wetruf.com/) pour l'inspiration
-
----
-
-## 📞 Support
-
-- 📧 Email: support@gestion-truffiere.fr
-- 🐛 Issues: [GitHub Issues](https://github.com/lepekinoi/Gestion-Truffiere/issues)
-- 📖 Documentation: [Wiki](https://github.com/lepekinoi/Gestion-Truffiere/wiki)
 
 ---
 
