@@ -316,6 +316,73 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: amendement_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.amendement_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_amendement character varying(50),
+    nom_produit_amendement character varying(150),
+    origine_produit character varying(150),
+    numero_lot character varying(100),
+    certification_bio boolean DEFAULT false,
+    composition_npk character varying(50),
+    composition_cao numeric(5,2),
+    composition_mgo numeric(5,2),
+    composition_autres text,
+    dose_kg_ha numeric(10,2),
+    dose_kg_arbre numeric(10,2),
+    quantite_totale_kg numeric(10,2),
+    methode_epandage character varying(50),
+    incorporation boolean DEFAULT false,
+    profondeur_incorporation_cm integer,
+    ph_sol_avant numeric(4,2),
+    ph_sol_apres numeric(4,2),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.amendement_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE amendement_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.amendement_details IS 'Détails spécifiques aux amendements 🌱';
+
+
+--
+-- Name: COLUMN amendement_details.certification_bio; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.amendement_details.certification_bio IS 'Produit utilisable en agriculture biologique';
+
+
+--
+-- Name: amendement_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.amendement_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.amendement_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: amendement_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.amendement_details_id_seq OWNED BY public.amendement_details.id;
+
+
+--
 -- Name: amendements_ref; Type: TABLE; Schema: public; Owner: unstuffed1004
 --
 
@@ -355,6 +422,61 @@ ALTER SEQUENCE public.amendements_ref_id_seq OWNER TO unstuffed1004;
 --
 
 ALTER SEQUENCE public.amendements_ref_id_seq OWNED BY public.amendements_ref.id;
+
+
+--
+-- Name: analyse_sol_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.analyse_sol_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    profondeur_prelevement_cm integer,
+    nombre_echantillons integer,
+    laboratoire character varying(150),
+    reference_analyse character varying(100),
+    resultats_ph numeric(4,2),
+    resultats_calcaire_actif numeric(5,2),
+    resultats_matiere_organique numeric(5,2),
+    resultats_azote numeric(6,3),
+    resultats_phosphore numeric(6,2),
+    resultats_potassium numeric(6,2),
+    resultats_cec numeric(6,2),
+    interpretation text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.analyse_sol_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE analyse_sol_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.analyse_sol_details IS 'Détails spécifiques aux analyses de sol 🧪';
+
+
+--
+-- Name: analyse_sol_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.analyse_sol_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.analyse_sol_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: analyse_sol_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.analyse_sol_details_id_seq OWNED BY public.analyse_sol_details.id;
 
 
 --
@@ -622,6 +744,54 @@ ALTER SEQUENCE public.historique_id_seq OWNED BY public.historique.id;
 
 
 --
+-- Name: inoculation_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.inoculation_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_inoculum character varying(100),
+    espece_truffe_inoculation character varying(100),
+    quantite_inoculum character varying(50),
+    methode_inoculation character varying(100),
+    fournisseur_inoculum character varying(150),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.inoculation_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE inoculation_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.inoculation_details IS 'Détails spécifiques aux inoculations 💉';
+
+
+--
+-- Name: inoculation_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.inoculation_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.inoculation_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: inoculation_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.inoculation_details_id_seq OWNED BY public.inoculation_details.id;
+
+
+--
 -- Name: intervention_details; Type: TABLE; Schema: public; Owner: unstuffed1004
 --
 
@@ -883,6 +1053,72 @@ ALTER SEQUENCE public.interventions_id_seq OWNED BY public.interventions.id;
 
 
 --
+-- Name: irrigation_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.irrigation_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    volume_eau_m3 numeric(10,2),
+    volume_eau_par_arbre_l numeric(10,2),
+    methode_irrigation character varying(50),
+    source_eau character varying(50),
+    debit_l_h numeric(10,2),
+    pression_bar numeric(5,2),
+    frequence_irrigation character varying(30),
+    humidite_sol_avant numeric(5,2),
+    humidite_sol_apres numeric(5,2),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.irrigation_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE irrigation_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.irrigation_details IS 'Détails spécifiques aux interventions d''irrigation 💧';
+
+
+--
+-- Name: COLUMN irrigation_details.volume_eau_m3; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.irrigation_details.volume_eau_m3 IS 'Volume d''eau apporté en m³';
+
+
+--
+-- Name: COLUMN irrigation_details.volume_eau_par_arbre_l; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.irrigation_details.volume_eau_par_arbre_l IS 'Volume d''eau par arbre en litres';
+
+
+--
+-- Name: irrigation_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.irrigation_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.irrigation_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: irrigation_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.irrigation_details_id_seq OWNED BY public.irrigation_details.id;
+
+
+--
 -- Name: login_attempts; Type: TABLE; Schema: public; Owner: unstuffed1004
 --
 
@@ -933,6 +1169,123 @@ ALTER SEQUENCE public.login_attempts_id_seq OWNER TO unstuffed1004;
 --
 
 ALTER SEQUENCE public.login_attempts_id_seq OWNED BY public.login_attempts.id;
+
+
+--
+-- Name: observation_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.observation_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_observation character varying(50),
+    niveau_urgence character varying(30),
+    etat_brule character varying(50),
+    diametre_brule_m numeric(5,2),
+    evolution_brule character varying(50),
+    presence_ascomes boolean DEFAULT false,
+    nombre_ascomes integer,
+    indice_mycorhization character varying(30),
+    symptomes_observes text,
+    ravageurs_identifies character varying(255),
+    degats_constates text,
+    preconisations text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.observation_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE observation_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.observation_details IS 'Détails spécifiques aux observations 🔍';
+
+
+--
+-- Name: COLUMN observation_details.etat_brule; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.observation_details.etat_brule IS 'État du brûlé (zone sans végétation autour de l''arbre mycorhizé)';
+
+
+--
+-- Name: COLUMN observation_details.indice_mycorhization; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.observation_details.indice_mycorhization IS 'Estimation du taux de mycorhization des racines';
+
+
+--
+-- Name: observation_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.observation_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.observation_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: observation_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.observation_details_id_seq OWNED BY public.observation_details.id;
+
+
+--
+-- Name: paillage_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.paillage_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_paillage character varying(50),
+    epaisseur_cm integer,
+    surface_paillee_m2 numeric(10,2),
+    quantite_paillage_m3 numeric(10,2),
+    origine_paillage character varying(150),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.paillage_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE paillage_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.paillage_details IS 'Détails spécifiques au paillage 🍂';
+
+
+--
+-- Name: paillage_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.paillage_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.paillage_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: paillage_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.paillage_details_id_seq OWNED BY public.paillage_details.id;
 
 
 --
@@ -1057,6 +1410,113 @@ ALTER SEQUENCE public.password_reset_tokens_id_seq OWNER TO unstuffed1004;
 --
 
 ALTER SEQUENCE public.password_reset_tokens_id_seq OWNED BY public.password_reset_tokens.id;
+
+
+--
+-- Name: piegeage_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.piegeage_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_piege character varying(50),
+    cible_piegeage character varying(100),
+    nombre_pieges integer,
+    densite_pieges_ha integer,
+    date_releve date,
+    captures integer,
+    action_suite character varying(255),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.piegeage_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE piegeage_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.piegeage_details IS 'Détails spécifiques au piégeage 🪤';
+
+
+--
+-- Name: piegeage_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.piegeage_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.piegeage_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: piegeage_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.piegeage_details_id_seq OWNED BY public.piegeage_details.id;
+
+
+--
+-- Name: plantation_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.plantation_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    espece_plantee character varying(100),
+    variete_plant character varying(100),
+    type_mycorhization character varying(100),
+    fournisseur_plant character varying(150),
+    certification_plant character varying(100),
+    numero_lot_plant character varying(100),
+    taille_plant_cm integer,
+    diametre_collet_mm integer,
+    dimensions_trou_cm character varying(50),
+    amendement_plantation text,
+    arrosage_plantation_l integer,
+    tuteur boolean DEFAULT false,
+    protection_gibier boolean DEFAULT false,
+    type_protection character varying(100),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.plantation_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE plantation_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.plantation_details IS 'Détails spécifiques aux plantations 🌳';
+
+
+--
+-- Name: plantation_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.plantation_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.plantation_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: plantation_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.plantation_details_id_seq OWNED BY public.plantation_details.id;
 
 
 --
@@ -1370,6 +1830,188 @@ CREATE VIEW public.stats_ventes AS
 
 
 ALTER VIEW public.stats_ventes OWNER TO unstuffed1004;
+
+--
+-- Name: taille_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.taille_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_taille character varying(50),
+    intensite_taille character varying(30),
+    hauteur_avant_cm integer,
+    hauteur_apres_cm integer,
+    diametre_couronne_avant_m numeric(5,2),
+    diametre_couronne_apres_m numeric(5,2),
+    branches_supprimees integer,
+    diametre_max_coupe_cm integer,
+    volume_residus_m3 numeric(10,2),
+    destination_residus character varying(50),
+    outils_taille character varying(200),
+    desinfection_outils boolean DEFAULT false,
+    produit_desinfection character varying(100),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.taille_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE taille_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.taille_details IS 'Détails spécifiques aux opérations de taille ✂️';
+
+
+--
+-- Name: taille_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.taille_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.taille_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: taille_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.taille_details_id_seq OWNED BY public.taille_details.id;
+
+
+--
+-- Name: traitement_phyto_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.traitement_phyto_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    categorie_traitement character varying(50),
+    nom_commercial character varying(150),
+    matiere_active character varying(255),
+    numero_amm character varying(50),
+    fabricant character varying(100),
+    dose_produit_ha numeric(10,3),
+    dose_produit_arbre numeric(10,3),
+    concentration character varying(50),
+    volume_bouillie_l numeric(10,2),
+    surface_traitee_ha numeric(10,4),
+    methode_application character varying(50),
+    cible_traitement character varying(150),
+    delai_avant_recolte_jours integer,
+    zone_non_traitee_m numeric(5,2),
+    equipement_protection character varying(255),
+    conditions_application text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.traitement_phyto_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE traitement_phyto_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.traitement_phyto_details IS 'Détails spécifiques aux traitements phytosanitaires 🧪';
+
+
+--
+-- Name: COLUMN traitement_phyto_details.delai_avant_recolte_jours; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.traitement_phyto_details.delai_avant_recolte_jours IS 'DAR - Délai réglementaire avant récolte';
+
+
+--
+-- Name: COLUMN traitement_phyto_details.zone_non_traitee_m; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON COLUMN public.traitement_phyto_details.zone_non_traitee_m IS 'ZNT - Distance minimale des cours d''eau';
+
+
+--
+-- Name: traitement_phyto_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.traitement_phyto_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.traitement_phyto_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: traitement_phyto_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.traitement_phyto_details_id_seq OWNED BY public.traitement_phyto_details.id;
+
+
+--
+-- Name: travail_sol_details; Type: TABLE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TABLE public.travail_sol_details (
+    id integer NOT NULL,
+    intervention_id integer NOT NULL,
+    type_travail_sol character varying(50),
+    outil_travail_sol character varying(100),
+    zone_travaillee character varying(50),
+    profondeur_travail_cm integer,
+    largeur_travail_m numeric(5,2),
+    distance_tronc_m numeric(5,2),
+    etat_sol_avant character varying(30),
+    enherbement_avant character varying(30),
+    enherbement_apres character varying(30),
+    presence_cailloux boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.travail_sol_details OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE travail_sol_details; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.travail_sol_details IS 'Détails spécifiques aux travaux du sol 🚜';
+
+
+--
+-- Name: travail_sol_details_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
+--
+
+CREATE SEQUENCE public.travail_sol_details_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.travail_sol_details_id_seq OWNER TO unstuffed1004;
+
+--
+-- Name: travail_sol_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: unstuffed1004
+--
+
+ALTER SEQUENCE public.travail_sol_details_id_seq OWNED BY public.travail_sol_details.id;
+
 
 --
 -- Name: types_intervention; Type: TABLE; Schema: public; Owner: unstuffed1004
@@ -1690,10 +2332,24 @@ ALTER SEQUENCE public.ventes_id_seq OWNED BY public.ventes.id;
 
 
 --
+-- Name: amendement_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.amendement_details ALTER COLUMN id SET DEFAULT nextval('public.amendement_details_id_seq'::regclass);
+
+
+--
 -- Name: amendements_ref id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
 --
 
 ALTER TABLE ONLY public.amendements_ref ALTER COLUMN id SET DEFAULT nextval('public.amendements_ref_id_seq'::regclass);
+
+
+--
+-- Name: analyse_sol_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.analyse_sol_details ALTER COLUMN id SET DEFAULT nextval('public.analyse_sol_details_id_seq'::regclass);
 
 
 --
@@ -1739,6 +2395,13 @@ ALTER TABLE ONLY public.historique ALTER COLUMN id SET DEFAULT nextval('public.h
 
 
 --
+-- Name: inoculation_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.inoculation_details ALTER COLUMN id SET DEFAULT nextval('public.inoculation_details_id_seq'::regclass);
+
+
+--
 -- Name: intervention_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
 --
 
@@ -1753,10 +2416,31 @@ ALTER TABLE ONLY public.interventions ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: irrigation_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.irrigation_details ALTER COLUMN id SET DEFAULT nextval('public.irrigation_details_id_seq'::regclass);
+
+
+--
 -- Name: login_attempts id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
 --
 
 ALTER TABLE ONLY public.login_attempts ALTER COLUMN id SET DEFAULT nextval('public.login_attempts_id_seq'::regclass);
+
+
+--
+-- Name: observation_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.observation_details ALTER COLUMN id SET DEFAULT nextval('public.observation_details_id_seq'::regclass);
+
+
+--
+-- Name: paillage_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.paillage_details ALTER COLUMN id SET DEFAULT nextval('public.paillage_details_id_seq'::regclass);
 
 
 --
@@ -1778,6 +2462,20 @@ ALTER TABLE ONLY public.parcelles ALTER COLUMN id SET DEFAULT nextval('public.pa
 --
 
 ALTER TABLE ONLY public.password_reset_tokens ALTER COLUMN id SET DEFAULT nextval('public.password_reset_tokens_id_seq'::regclass);
+
+
+--
+-- Name: piegeage_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.piegeage_details ALTER COLUMN id SET DEFAULT nextval('public.piegeage_details_id_seq'::regclass);
+
+
+--
+-- Name: plantation_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.plantation_details ALTER COLUMN id SET DEFAULT nextval('public.plantation_details_id_seq'::regclass);
 
 
 --
@@ -1809,6 +2507,27 @@ ALTER TABLE ONLY public.refresh_tokens ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: taille_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.taille_details ALTER COLUMN id SET DEFAULT nextval('public.taille_details_id_seq'::regclass);
+
+
+--
+-- Name: traitement_phyto_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.traitement_phyto_details ALTER COLUMN id SET DEFAULT nextval('public.traitement_phyto_details_id_seq'::regclass);
+
+
+--
+-- Name: travail_sol_details id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.travail_sol_details ALTER COLUMN id SET DEFAULT nextval('public.travail_sol_details_id_seq'::regclass);
+
+
+--
 -- Name: types_intervention id; Type: DEFAULT; Schema: public; Owner: unstuffed1004
 --
 
@@ -1837,6 +2556,14 @@ ALTER TABLE ONLY public.ventes ALTER COLUMN id SET DEFAULT nextval('public.vente
 
 
 --
+-- Data for Name: amendement_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.amendement_details (id, intervention_id, type_amendement, nom_produit_amendement, origine_produit, numero_lot, certification_bio, composition_npk, composition_cao, composition_mgo, composition_autres, dose_kg_ha, dose_kg_arbre, quantite_totale_kg, methode_epandage, incorporation, profondeur_incorporation_cm, ph_sol_avant, ph_sol_apres, created_at, updated_at) FROM stdin;
+\.
+
+
+--
 -- Data for Name: amendements_ref; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
 --
 
@@ -1849,6 +2576,14 @@ COPY public.amendements_ref (id, nom, type_amendement, composition, dose_recomma
 6	Fumier composté	Organique	N-P-K variable	10000-30000 kg	t	Fertilisation organique	\N	t	2026-01-03 18:09:46.28507
 7	BRF	Organique	Carbone, lignine	50-100 m³	t	Stimulation vie du sol	\N	t	2026-01-03 18:09:46.28507
 8	Cendre de bois	Minéral	K2O 5-10%, CaO 25-50%	200-500 kg	t	Apport potasse et calcium	\N	t	2026-01-03 18:09:46.28507
+\.
+
+
+--
+-- Data for Name: analyse_sol_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.analyse_sol_details (id, intervention_id, profondeur_prelevement_cm, nombre_echantillons, laboratoire, reference_analyse, resultats_ph, resultats_calcaire_actif, resultats_matiere_organique, resultats_azote, resultats_phosphore, resultats_potassium, resultats_cec, interpretation, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -2356,6 +3091,7 @@ COPY public.historique (id, table_name, record_id, action, old_data, new_data, u
 1841	ventes	16	INSERT	\N	{"id": 16, "notes": "", "statut": "Payée", "client_id": 7, "created_at": "2026-01-03T22:16:33.940094", "date_vente": "2020-12-07", "recolte_id": null, "commande_id": null, "mode_paiement": "", "montant_total": 0.00, "numero_facture": "FACT-2026-005", "prix_unitaire_kg": 0.00, "quantite_grammes": 180.00}	\N	2026-01-03 22:16:33.940094
 1842	recoltes	13	INSERT	\N	{"id": 13, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:29:33.777224", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 1.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-03 22:29:33.777224
 1885	recoltes	40	INSERT	\N	{"id": 40, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 353, "maturite": null, "created_at": "2026-01-03T22:50:29.712129", "exposition": "Sud", "parcelle_id": 1, "date_recolte": "2020-12-09", "poids_grammes": 21.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-03 22:50:29.712129
+3769	parcelles	11	DELETE	{"id": 11, "nom": "gdfg", "notes": null, "ph_sol": null, "type_sol": null, "geometrie": null, "exposition": null, "surface_ha": 0.60, "date_creation": "2026-01-13T22:54:28.544581"}	\N	\N	2026-01-13 22:54:32.264906
 1843	recoltes	13	UPDATE	{"id": 13, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:29:33.777224", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 1.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	{"id": 13, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:29:33.777224", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 11.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-03 22:29:53.829201
 1844	recoltes	13	UPDATE	{"id": 13, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:29:33.777224", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 11.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	{"id": 13, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:29:33.777224", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 1.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-03 22:30:01.094363
 1845	recoltes	14	INSERT	\N	{"id": 14, "chien": "Lyxi", "notes": null, "caveur": "Daniel", "calibre": null, "qualite": null, "arbre_id": 230, "maturite": null, "created_at": "2026-01-03T22:30:20.560731", "exposition": "Est", "parcelle_id": 2, "date_recolte": "2020-12-09", "poids_grammes": 11.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-03 22:30:20.560731
@@ -3278,6 +4014,7 @@ COPY public.historique (id, table_name, record_id, action, old_data, new_data, u
 2716	ventes	34	INSERT	\N	{"id": 34, "notes": "1ere catégorie", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:38:32.016482", "date_vente": "2021-01-25", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 289.80, "numero_facture": ".", "prix_unitaire_kg": 700.00, "quantite_grammes": 414.00}	\N	2026-01-06 18:38:32.016482
 2717	ventes	35	INSERT	\N	{"id": 35, "notes": "1ere catégorie", "statut": "En attente", "client_id": 2, "created_at": "2026-01-06T18:40:52.949294", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Chèque", "montant_total": 22.50, "numero_facture": ".", "prix_unitaire_kg": 750.00, "quantite_grammes": 30.00}	\N	2026-01-06 18:40:52.949294
 2718	ventes	36	INSERT	\N	{"id": 36, "notes": "1ere catégorie", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:42:03.65901", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 120.00, "numero_facture": ".", "prix_unitaire_kg": 800.00, "quantite_grammes": 150.00}	\N	2026-01-06 18:42:03.65901
+3763	parcelles	10	INSERT	\N	{"id": 10, "nom": "test", "notes": "", "ph_sol": 8.0, "type_sol": "Argileux", "geometrie": null, "exposition": null, "surface_ha": 1.00, "date_creation": "2026-01-13T22:09:25.311849"}	\N	2026-01-13 22:09:25.311849
 2719	ventes	12	UPDATE	{"id": 12, "notes": "", "statut": "Payée", "client_id": 2, "created_at": "2026-01-03T22:12:59.056445", "date_vente": "2020-12-07", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 39.00, "numero_facture": "FACT-2026-001", "prix_unitaire_kg": 650.00, "quantite_grammes": 60.00}	{"id": 12, "notes": "1ere catégorie", "statut": "Payée", "client_id": 2, "created_at": "2026-01-03T22:12:59.056445", "date_vente": "2020-12-07", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 39.00, "numero_facture": "FACT-2026-001", "prix_unitaire_kg": 650.00, "quantite_grammes": 60.00}	\N	2026-01-06 18:44:07.267196
 2720	ventes	14	UPDATE	{"id": 14, "notes": "2e catégorie", "statut": "Payée", "client_id": 5, "created_at": "2026-01-03T22:15:25.127409", "date_vente": "2020-12-07", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 77.55, "numero_facture": "FACT-2026-003", "prix_unitaire_kg": 550.00, "quantite_grammes": 141.00}	{"id": 14, "notes": "2e catégorie", "statut": "Payée", "client_id": 5, "created_at": "2026-01-03T22:15:25.127409", "date_vente": "2020-12-07", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 77.55, "numero_facture": "FACT-2026-003", "prix_unitaire_kg": 550.00, "quantite_grammes": 141.00}	\N	2026-01-06 18:44:48.45442
 2721	ventes	18	UPDATE	{"id": 18, "notes": "1ere catégorie", "statut": "Payée", "client_id": 4, "created_at": "2026-01-03T23:04:06.953181", "date_vente": "2020-12-14", "recolte_id": null, "commande_id": null, "mode_paiement": "", "montant_total": 88.50, "numero_facture": "FACT-2026-007", "prix_unitaire_kg": 750.00, "quantite_grammes": 118.00}	{"id": 18, "notes": "1ere catégorie", "statut": "Payée", "client_id": 4, "created_at": "2026-01-03T23:04:06.953181", "date_vente": "2020-12-14", "recolte_id": null, "commande_id": null, "mode_paiement": "", "montant_total": 88.50, "numero_facture": "FACT-2026-007", "prix_unitaire_kg": 750.00, "quantite_grammes": 118.00}	\N	2026-01-06 18:45:43.241835
@@ -3289,6 +4026,7 @@ COPY public.historique (id, table_name, record_id, action, old_data, new_data, u
 2727	ventes	29	UPDATE	{"id": 29, "notes": "", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:27:06.441219", "date_vente": "2021-01-11", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 70.80, "numero_facture": ".", "prix_unitaire_kg": 600.00, "quantite_grammes": 118.00}	{"id": 29, "notes": "2eme catégorie", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:27:06.441219", "date_vente": "2021-01-11", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 70.80, "numero_facture": ".", "prix_unitaire_kg": 600.00, "quantite_grammes": 118.00}	\N	2026-01-06 18:49:35.240448
 2728	ventes	30	UPDATE	{"id": 30, "notes": "extra", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:30:16.976452", "date_vente": "2021-01-18", "recolte_id": null, "commande_id": null, "mode_paiement": "", "montant_total": 25.60, "numero_facture": ".", "prix_unitaire_kg": 800.00, "quantite_grammes": 32.00}	{"id": 30, "notes": "extra", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:30:16.976452", "date_vente": "2021-01-18", "recolte_id": null, "commande_id": null, "mode_paiement": "", "montant_total": 25.60, "numero_facture": ".", "prix_unitaire_kg": 800.00, "quantite_grammes": 32.00}	\N	2026-01-06 18:50:04.038943
 2753	recoltes	192	INSERT	\N	{"id": 192, "chien": "Sweetie", "notes": null, "caveur": "Marc", "calibre": null, "qualite": "Deuxième catégorie", "arbre_id": 9, "maturite": null, "created_at": "2026-01-08T08:32:05.289039", "exposition": null, "parcelle_id": 2, "date_recolte": "2021-11-21", "poids_grammes": 70.00, "profondeur_cm": null, "temperature_sol": null, "conditions_meteo": null}	\N	2026-01-08 08:32:05.289039
+3765	parcelles	10	DELETE	{"id": 10, "nom": "test", "notes": "", "ph_sol": 8.0, "type_sol": "Argileux", "geometrie": null, "exposition": null, "surface_ha": 1.00, "date_creation": "2026-01-13T22:09:25.311849"}	\N	\N	2026-01-13 22:11:30.905869
 2729	ventes	36	UPDATE	{"id": 36, "notes": "1ere catégorie", "statut": "En attente", "client_id": 4, "created_at": "2026-01-06T18:42:03.65901", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 120.00, "numero_facture": ".", "prix_unitaire_kg": 800.00, "quantite_grammes": 150.00}	{"id": 36, "notes": "1ere catégorie", "statut": "Payée", "client_id": 4, "created_at": "2026-01-06T18:42:03.65901", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Espèces", "montant_total": 120.00, "numero_facture": ".", "prix_unitaire_kg": 800.00, "quantite_grammes": 150.00}	\N	2026-01-06 18:51:23.243323
 2730	ventes	35	UPDATE	{"id": 35, "notes": "1ere catégorie", "statut": "En attente", "client_id": 2, "created_at": "2026-01-06T18:40:52.949294", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Chèque", "montant_total": 22.50, "numero_facture": ".", "prix_unitaire_kg": 750.00, "quantite_grammes": 30.00}	{"id": 35, "notes": "1ere catégorie", "statut": "Payée", "client_id": 2, "created_at": "2026-01-06T18:40:52.949294", "date_vente": "2021-02-15", "recolte_id": null, "commande_id": null, "mode_paiement": "Chèque", "montant_total": 22.50, "numero_facture": ".", "prix_unitaire_kg": 750.00, "quantite_grammes": 30.00}	\N	2026-01-06 18:51:34.059354
 2731	ventes	33	UPDATE	{"id": 33, "notes": "1ere catégorie", "statut": "En attente", "client_id": 2, "created_at": "2026-01-06T18:37:27.761343", "date_vente": "2021-01-25", "recolte_id": null, "commande_id": null, "mode_paiement": "Chèque", "montant_total": 42.00, "numero_facture": ".", "prix_unitaire_kg": 750.00, "quantite_grammes": 56.00}	{"id": 33, "notes": "1ere catégorie", "statut": "Payée", "client_id": 2, "created_at": "2026-01-06T18:37:27.761343", "date_vente": "2021-01-25", "recolte_id": null, "commande_id": null, "mode_paiement": "Chèque", "montant_total": 42.00, "numero_facture": ".", "prix_unitaire_kg": 750.00, "quantite_grammes": 56.00}	\N	2026-01-06 18:51:43.306226
@@ -4207,6 +4945,38 @@ COPY public.historique (id, table_name, record_id, action, old_data, new_data, u
 3740	parametres	60	UPDATE	{"id": 60, "cle": "stock_alerte_critique", "valeur": 100, "updated_at": "2026-01-13T18:18:45.937553", "description": null}	{"id": 60, "cle": "stock_alerte_critique", "valeur": 100, "updated_at": "2026-01-13T18:19:15.074448", "description": null}	\N	2026-01-13 18:19:15.074448
 3741	parametres	61	UPDATE	{"id": 61, "cle": "stock_alerte_faible", "valeur": 500, "updated_at": "2026-01-13T18:18:45.955158", "description": null}	{"id": 61, "cle": "stock_alerte_faible", "valeur": 500, "updated_at": "2026-01-13T18:19:15.126626", "description": null}	\N	2026-01-13 18:19:15.126626
 3742	parametres	62	UPDATE	{"id": 62, "cle": "stock_prix_moyen_defaut", "valeur": 800, "updated_at": "2026-01-13T18:18:45.973131", "description": null}	{"id": 62, "cle": "stock_prix_moyen_defaut", "valeur": 800, "updated_at": "2026-01-13T18:19:15.145272", "description": null}	\N	2026-01-13 18:19:15.145272
+3743	parametres	2	UPDATE	{"id": 2, "cle": "colonnes_affichees_arbres", "valeur": ["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "notes", "hauteur_m"], "updated_at": "2026-01-04T20:56:47.492222", "description": null}	{"id": 2, "cle": "colonnes_affichees_arbres", "valeur": ["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "notes", "hauteur_m"], "updated_at": "2026-01-13T20:33:01.133258", "description": null}	\N	2026-01-13 20:33:01.133258
+3744	parametres	5	UPDATE	{"id": 5, "cle": "colonnes_affichees_clients", "valeur": ["nom", "type", "email", "telephone", "ville", "prenom", "raison_sociale", "notes"], "updated_at": "2026-01-04T20:56:47.509834", "description": null}	{"id": 5, "cle": "colonnes_affichees_clients", "valeur": ["nom", "type", "email", "telephone", "ville", "prenom", "raison_sociale", "notes"], "updated_at": "2026-01-13T20:33:01.218295", "description": null}	\N	2026-01-13 20:33:01.218295
+3745	parametres	3	UPDATE	{"id": 3, "cle": "colonnes_affichees_interventions", "valeur": ["date_prevue", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "date_realisee", "meteo"], "updated_at": "2026-01-04T20:56:47.522841", "description": null}	{"id": 3, "cle": "colonnes_affichees_interventions", "valeur": ["date_prevue", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "date_realisee", "meteo"], "updated_at": "2026-01-13T20:33:01.23389", "description": null}	\N	2026-01-13 20:33:01.23389
+3746	parametres	1	UPDATE	{"id": 1, "cle": "colonnes_affichees_parcelles", "valeur": ["nom", "type_sol", "ph_sol", "date_creation", "notes", "surface_ha"], "updated_at": "2026-01-04T20:56:47.536001", "description": null}	{"id": 1, "cle": "colonnes_affichees_parcelles", "valeur": ["nom", "type_sol", "ph_sol", "date_creation", "notes", "surface_ha"], "updated_at": "2026-01-13T20:33:01.248786", "description": null}	\N	2026-01-13 20:33:01.248786
+3747	parametres	4	UPDATE	{"id": 4, "cle": "colonnes_affichees_recoltes", "valeur": ["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "prix_kg", "caveur", "chien", "conditions_meteo", "maturite", "profondeur_cm"], "updated_at": "2026-01-04T20:56:47.54876", "description": null}	{"id": 4, "cle": "colonnes_affichees_recoltes", "valeur": ["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "prix_kg", "caveur", "chien", "conditions_meteo", "maturite", "profondeur_cm", "notes"], "updated_at": "2026-01-13T20:33:01.265616", "description": null}	\N	2026-01-13 20:33:01.265616
+3748	parametres	6	UPDATE	{"id": 6, "cle": "colonnes_affichees_ventes", "valeur": ["date_vente", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "statut", "numero_facture", "commande_numero"], "updated_at": "2026-01-04T20:56:47.56145", "description": null}	{"id": 6, "cle": "colonnes_affichees_ventes", "valeur": ["date_vente", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "statut", "numero_facture", "commande_numero"], "updated_at": "2026-01-13T20:33:01.281966", "description": null}	\N	2026-01-13 20:33:01.281966
+3749	parametres	8	UPDATE	{"id": 8, "cle": "colonnes_export_arbres", "valeur": ["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "hauteur_m", "notes"], "updated_at": "2026-01-04T20:56:47.574286", "description": null}	{"id": 8, "cle": "colonnes_export_arbres", "valeur": ["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "hauteur_m", "notes"], "updated_at": "2026-01-13T20:33:01.299511", "description": null}	\N	2026-01-13 20:33:01.299511
+3750	parametres	11	UPDATE	{"id": 11, "cle": "colonnes_export_clients", "valeur": ["nom", "prenom", "raison_sociale", "type", "email", "telephone", "adresse", "code_postal", "ville", "pays", "siret", "notes"], "updated_at": "2026-01-04T20:56:47.586893", "description": null}	{"id": 11, "cle": "colonnes_export_clients", "valeur": ["nom", "prenom", "raison_sociale", "type", "email", "telephone", "adresse", "code_postal", "ville", "pays", "siret", "notes"], "updated_at": "2026-01-13T20:33:01.314715", "description": null}	\N	2026-01-13 20:33:01.314715
+3751	parametres	9	UPDATE	{"id": 9, "cle": "colonnes_export_interventions", "valeur": ["date_prevue", "date_realisee", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "description", "notes"], "updated_at": "2026-01-04T20:56:47.601543", "description": null}	{"id": 9, "cle": "colonnes_export_interventions", "valeur": ["date_prevue", "date_realisee", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "description", "notes"], "updated_at": "2026-01-13T20:33:01.330778", "description": null}	\N	2026-01-13 20:33:01.330778
+3752	parametres	7	UPDATE	{"id": 7, "cle": "colonnes_export_parcelles", "valeur": ["nom", "surface_ha", "type_sol", "ph_sol", "exposition", "notes"], "updated_at": "2026-01-04T20:56:47.618567", "description": null}	{"id": 7, "cle": "colonnes_export_parcelles", "valeur": ["nom", "surface_ha", "type_sol", "ph_sol", "exposition", "notes"], "updated_at": "2026-01-13T20:33:01.347499", "description": null}	\N	2026-01-13 20:33:01.347499
+3766	arbres	378	DELETE	{"id": 378, "etat": "Bon", "notes": "TEst de Samuel", "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 10, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	\N	2026-01-13 22:11:30.905869
+3753	parametres	10	UPDATE	{"id": 10, "cle": "colonnes_export_recoltes", "valeur": ["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "maturite", "prix_kg", "caveur", "notes"], "updated_at": "2026-01-04T20:56:47.632528", "description": null}	{"id": 10, "cle": "colonnes_export_recoltes", "valeur": ["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "maturite", "prix_kg", "caveur", "notes"], "updated_at": "2026-01-13T20:33:01.366667", "description": null}	\N	2026-01-13 20:33:01.366667
+3754	parametres	12	UPDATE	{"id": 12, "cle": "colonnes_export_ventes", "valeur": ["date_vente", "numero_facture", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "mode_paiement", "statut", "notes", "commande_numero"], "updated_at": "2026-01-04T20:56:47.645894", "description": null}	{"id": 12, "cle": "colonnes_export_ventes", "valeur": ["date_vente", "numero_facture", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "mode_paiement", "statut", "notes", "commande_numero"], "updated_at": "2026-01-13T20:33:01.384282", "description": null}	\N	2026-01-13 20:33:01.384282
+3755	interventions	10	INSERT	\N	{"id": 10, "cout": null, "meteo": "", "notes": "", "statut": "Planifié", "arbre_id": null, "personnel": "", "created_at": "2026-01-13T20:42:27.207809", "updated_at": "2026-01-13T20:42:27.207809", "date_prevue": "2026-01-13", "description": "", "parcelle_id": 1, "date_realisee": null, "duree_minutes": null, "type_intervention_id": 12}	\N	2026-01-13 20:42:27.207809
+3756	interventions	10	DELETE	{"id": 10, "cout": null, "meteo": "", "notes": "", "statut": "Planifié", "arbre_id": null, "personnel": "", "created_at": "2026-01-13T20:42:27.207809", "updated_at": "2026-01-13T20:42:27.207809", "date_prevue": "2026-01-13", "description": "", "parcelle_id": 1, "date_realisee": null, "duree_minutes": null, "type_intervention_id": 12}	\N	\N	2026-01-13 20:42:31.076593
+3757	users	1	UPDATE	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T18:10:29.89589", "updated_at": "2026-01-13T18:10:29.89589", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T21:15:13.606833", "updated_at": "2026-01-13T21:15:13.606833", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	\N	2026-01-13 21:15:13.606833
+3758	users	1	UPDATE	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T21:15:13.606833", "updated_at": "2026-01-13T21:15:13.606833", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T21:18:14.642304", "updated_at": "2026-01-13T21:18:14.642304", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	\N	2026-01-13 21:18:14.642304
+3759	arbres	378	INSERT	\N	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TEST", "latitude": null, "position": null, "hauteur_m": null, "longitude": null, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	2026-01-13 22:08:05.08481
+3760	arbres	378	UPDATE	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TEST", "latitude": null, "position": null, "hauteur_m": null, "longitude": null, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TESTte", "latitude": null, "position": null, "hauteur_m": null, "longitude": null, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	2026-01-13 22:08:14.31412
+3761	arbres	378	UPDATE	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TESTte", "latitude": null, "position": null, "hauteur_m": null, "longitude": null, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	2026-01-13 22:08:22.415755
+3762	arbres	378	UPDATE	{"id": 378, "etat": "Bon", "notes": null, "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	{"id": 378, "etat": "Bon", "notes": "TEst de Samuel", "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	2026-01-13 22:08:31.718639
+3768	parcelles	11	INSERT	\N	{"id": 11, "nom": "gdfg", "notes": null, "ph_sol": null, "type_sol": null, "geometrie": null, "exposition": null, "surface_ha": 0.60, "date_creation": "2026-01-13T22:54:28.544581"}	\N	2026-01-13 22:54:28.544581
+3764	arbres	378	UPDATE	{"id": 378, "etat": "Bon", "notes": "TEst de Samuel", "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 1, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	{"id": 378, "etat": "Bon", "notes": "TEst de Samuel", "espece": "Pin", "numero": "TESTte", "latitude": 46.15643360, "position": null, "hauteur_m": null, "longitude": -0.15322800, "created_at": "2026-01-13T22:08:05.08481", "deleted_at": null, "updated_at": "2026-01-13T22:08:05.08481", "parcelle_id": 10, "variete_truffe": "Tuber melanosporum", "date_plantation": "2026-01-13", "circonference_cm": null, "date_derniere_taille": null}	\N	2026-01-13 22:09:58.901285
+3767	users	1	UPDATE	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T21:18:14.642304", "updated_at": "2026-01-13T21:18:14.642304", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	{"id": 1, "nom": "Administrateur", "role": "admin", "email": "admin@truffiere.local", "prenom": "Système", "is_active": true, "created_at": "2026-01-02T16:29:54.193672", "last_login": "2026-01-13T22:21:44.397582", "updated_at": "2026-01-13T22:21:44.397582", "locked_until": null, "password_hash": "$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu", "email_verified": true, "password_changed_at": null, "failed_login_attempts": 0}	\N	2026-01-13 22:21:44.397582
+\.
+
+
+--
+-- Data for Name: inoculation_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.inoculation_details (id, intervention_id, type_inoculum, espece_truffe_inoculation, quantite_inoculum, methode_inoculation, fournisseur_inoculum, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -4223,6 +4993,14 @@ COPY public.intervention_details (id, intervention_id, volume_eau_m3, volume_eau
 --
 
 COPY public.interventions (id, type_intervention_id, parcelle_id, arbre_id, date_prevue, date_realisee, duree_minutes, personnel, description, cout, statut, meteo, notes, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: irrigation_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.irrigation_details (id, intervention_id, volume_eau_m3, volume_eau_par_arbre_l, methode_irrigation, source_eau, debit_l_h, pression_bar, frequence_irrigation, humidite_sol_avant, humidite_sol_apres, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -4260,6 +5038,25 @@ COPY public.login_attempts (id, email, ip_address, user_agent, success, failure_
 27	agnes.motard@gmail.com	83.200.170.105	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	t	\N	2026-01-10 23:07:02.439784
 28	motard.marc@gmail.com	83.200.170.105	Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36	t	\N	2026-01-11 17:16:15.483287
 29	admin@truffiere.local	192.168.1.254	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0	t	\N	2026-01-13 18:10:29.90263
+30	admin@truffiere.local	192.168.1.254	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	t	\N	2026-01-13 21:15:13.628924
+31	admin@truffiere.local	192.168.1.254	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	t	\N	2026-01-13 21:18:14.648437
+32	admin@truffiere.local	192.168.1.254	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	t	\N	2026-01-13 22:21:44.40377
+\.
+
+
+--
+-- Data for Name: observation_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.observation_details (id, intervention_id, type_observation, niveau_urgence, etat_brule, diametre_brule_m, evolution_brule, presence_ascomes, nombre_ascomes, indice_mycorhization, symptomes_observes, ravageurs_identifies, degats_constates, preconisations, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: paillage_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.paillage_details (id, intervention_id, type_paillage, epaisseur_cm, surface_paillee_m2, quantite_paillage_m3, origine_paillage, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -4269,18 +5066,13 @@ COPY public.login_attempts (id, email, ip_address, user_agent, success, failure_
 
 COPY public.parametres (id, cle, valeur, description, updated_at) FROM stdin;
 62	stock_prix_moyen_defaut	800	\N	2026-01-13 18:19:15.145272
-5	colonnes_affichees_clients	["nom", "type", "email", "telephone", "ville", "prenom", "raison_sociale", "notes"]	\N	2026-01-04 20:56:47.509834
-3	colonnes_affichees_interventions	["date_prevue", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "date_realisee", "meteo"]	\N	2026-01-04 20:56:47.522841
-1	colonnes_affichees_parcelles	["nom", "type_sol", "ph_sol", "date_creation", "notes", "surface_ha"]	\N	2026-01-04 20:56:47.536001
+2	colonnes_affichees_arbres	["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "notes", "hauteur_m"]	\N	2026-01-13 20:33:01.133258
+5	colonnes_affichees_clients	["nom", "type", "email", "telephone", "ville", "prenom", "raison_sociale", "notes"]	\N	2026-01-13 20:33:01.218295
 37	app_date_format	"DD/MM/YYYY"	\N	2026-01-13 18:19:14.567699
-4	colonnes_affichees_recoltes	["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "prix_kg", "caveur", "chien", "conditions_meteo", "maturite", "profondeur_cm"]	\N	2026-01-04 20:56:47.54876
-6	colonnes_affichees_ventes	["date_vente", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "statut", "numero_facture", "commande_numero"]	\N	2026-01-04 20:56:47.56145
-8	colonnes_export_arbres	["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "hauteur_m", "notes"]	\N	2026-01-04 20:56:47.574286
-11	colonnes_export_clients	["nom", "prenom", "raison_sociale", "type", "email", "telephone", "adresse", "code_postal", "ville", "pays", "siret", "notes"]	\N	2026-01-04 20:56:47.586893
-9	colonnes_export_interventions	["date_prevue", "date_realisee", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "description", "notes"]	\N	2026-01-04 20:56:47.601543
-7	colonnes_export_parcelles	["nom", "surface_ha", "type_sol", "ph_sol", "exposition", "notes"]	\N	2026-01-04 20:56:47.618567
-10	colonnes_export_recoltes	["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "maturite", "prix_kg", "caveur", "notes"]	\N	2026-01-04 20:56:47.632528
-12	colonnes_export_ventes	["date_vente", "numero_facture", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "mode_paiement", "statut", "notes", "commande_numero"]	\N	2026-01-04 20:56:47.645894
+3	colonnes_affichees_interventions	["date_prevue", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "date_realisee", "meteo"]	\N	2026-01-13 20:33:01.23389
+1	colonnes_affichees_parcelles	["nom", "type_sol", "ph_sol", "date_creation", "notes", "surface_ha"]	\N	2026-01-13 20:33:01.248786
+4	colonnes_affichees_recoltes	["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "prix_kg", "caveur", "chien", "conditions_meteo", "maturite", "profondeur_cm", "notes"]	\N	2026-01-13 20:33:01.265616
+6	colonnes_affichees_ventes	["date_vente", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "statut", "numero_facture", "commande_numero"]	\N	2026-01-13 20:33:01.281966
 39	app_devise	"EUR"	\N	2026-01-13 18:19:14.58995
 38	app_langue	"fr"	\N	2026-01-13 18:19:14.606859
 69	app_theme	"#2c5f2d"	\N	2026-01-13 18:19:14.623263
@@ -4295,7 +5087,12 @@ COPY public.parametres (id, cle, valeur, description, updated_at) FROM stdin;
 52	entreprise_tva	""	\N	2026-01-13 18:19:14.777083
 43	entreprise_ville	"Lusseray"	\N	2026-01-13 18:19:14.793718
 58	facture_bic	""	\N	2026-01-13 18:19:14.81079
-2	colonnes_affichees_arbres	["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "notes", "hauteur_m"]	\N	2026-01-04 20:56:47.492222
+8	colonnes_export_arbres	["numero", "espece", "variete_truffe", "parcelle_nom", "etat", "date_plantation", "hauteur_m", "notes"]	\N	2026-01-13 20:33:01.299511
+11	colonnes_export_clients	["nom", "prenom", "raison_sociale", "type", "email", "telephone", "adresse", "code_postal", "ville", "pays", "siret", "notes"]	\N	2026-01-13 20:33:01.314715
+9	colonnes_export_interventions	["date_prevue", "date_realisee", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout", "description", "notes"]	\N	2026-01-13 20:33:01.330778
+7	colonnes_export_parcelles	["nom", "surface_ha", "type_sol", "ph_sol", "exposition", "notes"]	\N	2026-01-13 20:33:01.347499
+10	colonnes_export_recoltes	["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "maturite", "prix_kg", "caveur", "notes"]	\N	2026-01-13 20:33:01.366667
+12	colonnes_export_ventes	["date_vente", "numero_facture", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "mode_paiement", "statut", "notes", "commande_numero"]	\N	2026-01-13 20:33:01.384282
 55	facture_conditions_paiement	"Paiement à réception"	\N	2026-01-13 18:19:14.829611
 56	facture_delai_paiement	30	\N	2026-01-13 18:19:14.848065
 57	facture_iban	""	\N	2026-01-13 18:19:14.869951
@@ -4328,6 +5125,22 @@ COPY public.parcelles (id, nom, surface_ha, geometrie, type_sol, ph_sol, exposit
 --
 
 COPY public.password_reset_tokens (id, user_id, token_hash, expires_at, used, used_at, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: piegeage_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.piegeage_details (id, intervention_id, type_piege, cible_piegeage, nombre_pieges, densite_pieges_ha, date_releve, captures, action_suite, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: plantation_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.plantation_details (id, intervention_id, espece_plantee, variete_plant, type_mycorhization, fournisseur_plant, certification_plant, numero_lot_plant, taille_plant_cm, diametre_collet_mm, dimensions_trou_cm, amendement_plantation, arrosage_plantation_l, tuteur, protection_gibier, type_protection, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -5309,6 +6122,9 @@ COPY public.refresh_tokens (id, user_id, token_hash, device_info, ip_address, ex
 26	4	f5cf2133258862a4bcb7532a4ac71e56cfbb7f0a4988883dcaadb51099bf1012	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	83.200.170.105	2026-01-17 23:07:02.405	f	\N	\N	2026-01-10 23:07:02.406041
 27	3	141aaa699b1a3475c1e60b3b008da0f0095acae305c927e8e380eaf9c999319f	Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36	83.200.170.105	2026-01-18 17:16:15.442	f	\N	\N	2026-01-11 17:16:15.44301
 28	1	f4f8032706b986195866b26cbf9c61282bc6745cc80c2ce61119b4b54aa1395d	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0	192.168.1.254	2026-01-20 18:10:29.865	f	\N	\N	2026-01-13 18:10:29.866226
+29	1	a30bf9671a38c177fde08f1306bdbc88b4386d23661609e6ebdfd5276903ace1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	192.168.1.254	2026-01-20 21:15:13.601	f	\N	\N	2026-01-13 21:15:13.602067
+30	1	9a880740c6c73da6b3cf67e41c264ad614843f902e60bef7e4eab7026ad497c5	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	192.168.1.254	2026-01-20 21:18:14.637	f	\N	\N	2026-01-13 21:18:14.638587
+31	1	f040773b232e213fee82ae287f41153cffd7b22521d947661f10069709250f03	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0	192.168.1.254	2026-01-20 22:21:44.391	f	\N	\N	2026-01-13 22:21:44.392008
 \.
 
 
@@ -5317,6 +6133,30 @@ COPY public.refresh_tokens (id, user_id, token_hash, device_info, ip_address, ex
 --
 
 COPY public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) FROM stdin;
+\.
+
+
+--
+-- Data for Name: taille_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.taille_details (id, intervention_id, type_taille, intensite_taille, hauteur_avant_cm, hauteur_apres_cm, diametre_couronne_avant_m, diametre_couronne_apres_m, branches_supprimees, diametre_max_coupe_cm, volume_residus_m3, destination_residus, outils_taille, desinfection_outils, produit_desinfection, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: traitement_phyto_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.traitement_phyto_details (id, intervention_id, categorie_traitement, nom_commercial, matiere_active, numero_amm, fabricant, dose_produit_ha, dose_produit_arbre, concentration, volume_bouillie_l, surface_traitee_ha, methode_application, cible_traitement, delai_avant_recolte_jours, zone_non_traitee_m, equipement_protection, conditions_application, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: travail_sol_details; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.travail_sol_details (id, intervention_id, type_travail_sol, outil_travail_sol, zone_travaillee, profondeur_travail_cm, largeur_travail_m, distance_tronc_m, etat_sol_avant, enherbement_avant, enherbement_apres, presence_cailloux, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -5360,7 +6200,7 @@ COPY public.users (id, email, password_hash, nom, prenom, role, is_active, email
 2	burbansamuel@gmail.com	$2a$12$cwfgVGKNOcwFYub9cGPOQ.f3q8U/9GcToZwEG4zDK1A8HDQym1k/O	Samuel	BURBAN	user	t	t	2026-01-08 22:53:54.689326	\N	0	\N	2026-01-02 18:13:44.355252	2026-01-08 22:53:54.689326
 4	agnes.motard@gmail.com	$2a$12$0P5EyAA4eiHqi0Lh8/FTCO1TeJ.y1ffCqd/n.L9pq9k4py6RGek6G	MOTARD	Agnès	user	t	t	2026-01-10 23:07:02.434805	\N	0	\N	2026-01-04 10:16:11.067066	2026-01-10 23:07:02.434805
 3	motard.marc@gmail.com	$2a$12$psG.fWi84uH3FZGzUhTs2e0yfKSCFEnYCz4uQCKwoBRPcwAHv5YR2	MOTARD	Marc	user	t	t	2026-01-11 17:16:15.475555	\N	0	\N	2026-01-04 10:13:04.392374	2026-01-11 17:16:15.475555
-1	admin@truffiere.local	$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu	Administrateur	Système	admin	t	t	2026-01-13 18:10:29.89589	\N	0	\N	2026-01-02 16:29:54.193672	2026-01-13 18:10:29.89589
+1	admin@truffiere.local	$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu	Administrateur	Système	admin	t	t	2026-01-13 22:21:44.397582	\N	0	\N	2026-01-02 16:29:54.193672	2026-01-13 22:21:44.397582
 \.
 
 
@@ -5518,6 +6358,13 @@ COPY topology.layer (topology_id, layer_id, schema_name, table_name, feature_col
 
 
 --
+-- Name: amendement_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.amendement_details_id_seq', 1, false);
+
+
+--
 -- Name: amendements_ref_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
@@ -5525,10 +6372,17 @@ SELECT pg_catalog.setval('public.amendements_ref_id_seq', 8, true);
 
 
 --
+-- Name: analyse_sol_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.analyse_sol_details_id_seq', 1, false);
+
+
+--
 -- Name: arbres_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.arbres_id_seq', 377, true);
+SELECT pg_catalog.setval('public.arbres_id_seq', 378, true);
 
 
 --
@@ -5563,7 +6417,14 @@ SELECT pg_catalog.setval('public.commandes_id_seq', 1, true);
 -- Name: historique_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.historique_id_seq', 3742, true);
+SELECT pg_catalog.setval('public.historique_id_seq', 3769, true);
+
+
+--
+-- Name: inoculation_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.inoculation_details_id_seq', 1, false);
 
 
 --
@@ -5577,14 +6438,35 @@ SELECT pg_catalog.setval('public.intervention_details_id_seq', 5, true);
 -- Name: interventions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.interventions_id_seq', 9, true);
+SELECT pg_catalog.setval('public.interventions_id_seq', 16, true);
+
+
+--
+-- Name: irrigation_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.irrigation_details_id_seq', 1, false);
 
 
 --
 -- Name: login_attempts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.login_attempts_id_seq', 29, true);
+SELECT pg_catalog.setval('public.login_attempts_id_seq', 32, true);
+
+
+--
+-- Name: observation_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.observation_details_id_seq', 1, false);
+
+
+--
+-- Name: paillage_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.paillage_details_id_seq', 1, false);
 
 
 --
@@ -5598,7 +6480,7 @@ SELECT pg_catalog.setval('public.parametres_id_seq', 74, true);
 -- Name: parcelles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.parcelles_id_seq', 9, true);
+SELECT pg_catalog.setval('public.parcelles_id_seq', 11, true);
 
 
 --
@@ -5606,6 +6488,20 @@ SELECT pg_catalog.setval('public.parcelles_id_seq', 9, true);
 --
 
 SELECT pg_catalog.setval('public.password_reset_tokens_id_seq', 1, false);
+
+
+--
+-- Name: piegeage_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.piegeage_details_id_seq', 1, false);
+
+
+--
+-- Name: plantation_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.plantation_details_id_seq', 1, false);
 
 
 --
@@ -5633,7 +6529,28 @@ SELECT pg_catalog.setval('public.recoltes_id_seq', 934, true);
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 28, true);
+SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 31, true);
+
+
+--
+-- Name: taille_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.taille_details_id_seq', 1, false);
+
+
+--
+-- Name: traitement_phyto_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.traitement_phyto_details_id_seq', 1, false);
+
+
+--
+-- Name: travail_sol_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
+--
+
+SELECT pg_catalog.setval('public.travail_sol_details_id_seq', 1, false);
 
 
 --
@@ -5672,11 +6589,27 @@ SELECT pg_catalog.setval('topology.topology_id_seq', 1, false);
 
 
 --
+-- Name: amendement_details amendement_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.amendement_details
+    ADD CONSTRAINT amendement_details_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: amendements_ref amendements_ref_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
 --
 
 ALTER TABLE ONLY public.amendements_ref
     ADD CONSTRAINT amendements_ref_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: analyse_sol_details analyse_sol_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.analyse_sol_details
+    ADD CONSTRAINT analyse_sol_details_pkey PRIMARY KEY (id);
 
 
 --
@@ -5752,6 +6685,14 @@ ALTER TABLE ONLY public.historique
 
 
 --
+-- Name: inoculation_details inoculation_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.inoculation_details
+    ADD CONSTRAINT inoculation_details_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: intervention_details intervention_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
 --
 
@@ -5768,11 +6709,35 @@ ALTER TABLE ONLY public.interventions
 
 
 --
+-- Name: irrigation_details irrigation_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.irrigation_details
+    ADD CONSTRAINT irrigation_details_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: login_attempts login_attempts_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
 --
 
 ALTER TABLE ONLY public.login_attempts
     ADD CONSTRAINT login_attempts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: observation_details observation_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.observation_details
+    ADD CONSTRAINT observation_details_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: paillage_details paillage_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.paillage_details
+    ADD CONSTRAINT paillage_details_pkey PRIMARY KEY (id);
 
 
 --
@@ -5805,6 +6770,22 @@ ALTER TABLE ONLY public.parcelles
 
 ALTER TABLE ONLY public.password_reset_tokens
     ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: piegeage_details piegeage_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.piegeage_details
+    ADD CONSTRAINT piegeage_details_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plantation_details plantation_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.plantation_details
+    ADD CONSTRAINT plantation_details_pkey PRIMARY KEY (id);
 
 
 --
@@ -5845,6 +6826,30 @@ ALTER TABLE ONLY public.recoltes
 
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: taille_details taille_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.taille_details
+    ADD CONSTRAINT taille_details_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: traitement_phyto_details traitement_phyto_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.traitement_phyto_details
+    ADD CONSTRAINT traitement_phyto_details_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: travail_sol_details travail_sol_details_pkey; Type: CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.travail_sol_details
+    ADD CONSTRAINT travail_sol_details_pkey PRIMARY KEY (id);
 
 
 --
@@ -5904,6 +6909,20 @@ ALTER TABLE ONLY public.ventes
 
 
 --
+-- Name: idx_amendement_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_amendement_intervention ON public.amendement_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_analyse_sol_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_analyse_sol_intervention ON public.analyse_sol_details USING btree (intervention_id);
+
+
+--
 -- Name: idx_arbres_deleted_at; Type: INDEX; Schema: public; Owner: unstuffed1004
 --
 
@@ -5946,6 +6965,13 @@ CREATE INDEX idx_historique_table_record ON public.historique USING btree (table
 
 
 --
+-- Name: idx_inoculation_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_inoculation_intervention ON public.inoculation_details USING btree (intervention_id);
+
+
+--
 -- Name: idx_intervention_details_intervention_id; Type: INDEX; Schema: public; Owner: unstuffed1004
 --
 
@@ -5974,6 +7000,13 @@ CREATE INDEX idx_interventions_parcelle ON public.interventions USING btree (par
 
 
 --
+-- Name: idx_irrigation_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_irrigation_intervention ON public.irrigation_details USING btree (intervention_id);
+
+
+--
 -- Name: idx_login_attempts_attempted_at; Type: INDEX; Schema: public; Owner: unstuffed1004
 --
 
@@ -5995,6 +7028,20 @@ CREATE INDEX idx_login_attempts_ip ON public.login_attempts USING btree (ip_addr
 
 
 --
+-- Name: idx_observation_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_observation_intervention ON public.observation_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_paillage_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_paillage_intervention ON public.paillage_details USING btree (intervention_id);
+
+
+--
 -- Name: idx_password_reset_token_hash; Type: INDEX; Schema: public; Owner: unstuffed1004
 --
 
@@ -6006,6 +7053,20 @@ CREATE INDEX idx_password_reset_token_hash ON public.password_reset_tokens USING
 --
 
 CREATE INDEX idx_password_reset_user_id ON public.password_reset_tokens USING btree (user_id);
+
+
+--
+-- Name: idx_piegeage_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_piegeage_intervention ON public.piegeage_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_plantation_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_plantation_intervention ON public.plantation_details USING btree (intervention_id);
 
 
 --
@@ -6055,6 +7116,34 @@ CREATE INDEX idx_refresh_tokens_token_hash ON public.refresh_tokens USING btree 
 --
 
 CREATE INDEX idx_refresh_tokens_user_id ON public.refresh_tokens USING btree (user_id);
+
+
+--
+-- Name: idx_taille_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_taille_intervention ON public.taille_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_traitement_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_traitement_intervention ON public.traitement_phyto_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_traitement_produit; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_traitement_produit ON public.traitement_phyto_details USING btree (nom_commercial);
+
+
+--
+-- Name: idx_travail_sol_intervention; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_travail_sol_intervention ON public.travail_sol_details USING btree (intervention_id);
 
 
 --
@@ -6282,6 +7371,20 @@ COMMENT ON TRIGGER types_intervention_historique ON public.types_intervention IS
 
 
 --
+-- Name: amendement_details update_amendement_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_amendement_updated_at BEFORE UPDATE ON public.amendement_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: analyse_sol_details update_analyse_sol_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_analyse_sol_updated_at BEFORE UPDATE ON public.analyse_sol_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: caveurs update_caveurs_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
 --
 
@@ -6303,6 +7406,34 @@ CREATE TRIGGER update_commandes_updated_at BEFORE UPDATE ON public.commandes FOR
 
 
 --
+-- Name: inoculation_details update_inoculation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_inoculation_updated_at BEFORE UPDATE ON public.inoculation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: irrigation_details update_irrigation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_irrigation_updated_at BEFORE UPDATE ON public.irrigation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: observation_details update_observation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_observation_updated_at BEFORE UPDATE ON public.observation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: paillage_details update_paillage_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_paillage_updated_at BEFORE UPDATE ON public.paillage_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: parametres update_parametres_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
 --
 
@@ -6310,10 +7441,45 @@ CREATE TRIGGER update_parametres_updated_at BEFORE UPDATE ON public.parametres F
 
 
 --
+-- Name: piegeage_details update_piegeage_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_piegeage_updated_at BEFORE UPDATE ON public.piegeage_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: plantation_details update_plantation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_plantation_updated_at BEFORE UPDATE ON public.plantation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: preferences_utilisateur update_preferences_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
 --
 
 CREATE TRIGGER update_preferences_updated_at BEFORE UPDATE ON public.preferences_utilisateur FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: taille_details update_taille_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_taille_updated_at BEFORE UPDATE ON public.taille_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: traitement_phyto_details update_traitement_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_traitement_updated_at BEFORE UPDATE ON public.traitement_phyto_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: travail_sol_details update_travail_sol_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
+--
+
+CREATE TRIGGER update_travail_sol_updated_at BEFORE UPDATE ON public.travail_sol_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -6338,6 +7504,22 @@ CREATE TRIGGER ventes_historique AFTER INSERT OR DELETE OR UPDATE ON public.vent
 
 
 --
+-- Name: amendement_details amendement_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.amendement_details
+    ADD CONSTRAINT amendement_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: analyse_sol_details analyse_sol_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.analyse_sol_details
+    ADD CONSTRAINT analyse_sol_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: arbres arbres_parcelle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
 --
 
@@ -6351,6 +7533,102 @@ ALTER TABLE ONLY public.arbres
 
 ALTER TABLE ONLY public.commandes
     ADD CONSTRAINT commandes_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE SET NULL;
+
+
+--
+-- Name: amendement_details fk_amendement_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.amendement_details
+    ADD CONSTRAINT fk_amendement_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: analyse_sol_details fk_analyse_sol_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.analyse_sol_details
+    ADD CONSTRAINT fk_analyse_sol_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: inoculation_details fk_inoculation_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.inoculation_details
+    ADD CONSTRAINT fk_inoculation_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: irrigation_details fk_irrigation_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.irrigation_details
+    ADD CONSTRAINT fk_irrigation_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: observation_details fk_observation_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.observation_details
+    ADD CONSTRAINT fk_observation_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: paillage_details fk_paillage_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.paillage_details
+    ADD CONSTRAINT fk_paillage_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: piegeage_details fk_piegeage_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.piegeage_details
+    ADD CONSTRAINT fk_piegeage_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: plantation_details fk_plantation_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.plantation_details
+    ADD CONSTRAINT fk_plantation_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: taille_details fk_taille_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.taille_details
+    ADD CONSTRAINT fk_taille_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: traitement_phyto_details fk_traitement_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.traitement_phyto_details
+    ADD CONSTRAINT fk_traitement_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: travail_sol_details fk_travail_sol_intervention; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.travail_sol_details
+    ADD CONSTRAINT fk_travail_sol_intervention FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: inoculation_details inoculation_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.inoculation_details
+    ADD CONSTRAINT inoculation_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
 
 
 --
@@ -6386,11 +7664,51 @@ ALTER TABLE ONLY public.interventions
 
 
 --
+-- Name: irrigation_details irrigation_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.irrigation_details
+    ADD CONSTRAINT irrigation_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: observation_details observation_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.observation_details
+    ADD CONSTRAINT observation_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: paillage_details paillage_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.paillage_details
+    ADD CONSTRAINT paillage_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: password_reset_tokens password_reset_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
 --
 
 ALTER TABLE ONLY public.password_reset_tokens
     ADD CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: piegeage_details piegeage_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.piegeage_details
+    ADD CONSTRAINT piegeage_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: plantation_details plantation_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.plantation_details
+    ADD CONSTRAINT plantation_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
 
 
 --
@@ -6415,6 +7733,30 @@ ALTER TABLE ONLY public.recoltes
 
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: taille_details taille_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.taille_details
+    ADD CONSTRAINT taille_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: traitement_phyto_details traitement_phyto_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.traitement_phyto_details
+    ADD CONSTRAINT traitement_phyto_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: travail_sol_details travail_sol_details_intervention_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
+--
+
+ALTER TABLE ONLY public.travail_sol_details
+    ADD CONSTRAINT travail_sol_details_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES public.interventions(id) ON DELETE CASCADE;
 
 
 --
