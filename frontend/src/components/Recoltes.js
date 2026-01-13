@@ -1120,7 +1120,7 @@ function Recoltes() {
             }}
           >
             🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length + (filterAnnee !== 'all' ? 1 : 0)})`}
-            <span style={{ fontSize: '0.8rem' }}>{showFilters ? 'â–²' : 'â–¼'}</span>
+            <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
           </button>
           
           {hasActiveFilters && (
