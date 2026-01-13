@@ -3021,12 +3021,36 @@ app.use((req, res) => {
 });
 
 // Erreur globale
+// app.use((err, req, res, next) => {
+  // console.error('Erreur serveur:', err);
+  // if (err.message === 'Non autorisé par CORS') {
+    // return res.status(403).json({ error: 'Origine non autorisée', code: 'CORS_ERROR' });
+  // }
+  // res.status(500).json({ error: 'Erreur interne', code: 'INTERNAL_ERROR' });
+// });
+
 app.use((err, req, res, next) => {
-  console.error('Erreur serveur:', err);
-  if (err.message === 'Non autorisé par CORS') {
-    return res.status(403).json({ error: 'Origine non autorisée', code: 'CORS_ERROR' });
-  }
-  res.status(500).json({ error: 'Erreur interne', code: 'INTERNAL_ERROR' });
+	console.error('Erreur serveur:', {
+		message: err.message, 
+		stack: process.env.NODE_ENV === 'development' ? err.stack : undefined, 
+		route: req.path, 
+		user: req.user?.id, 
+		ip: req.ip 
+	});
+	
+	if (err.message === 'Non autorisé par CORS') {
+		return res.status(403).json({ error: 'Origine non autorisée', code: 'CORS_ERROR' });
+	}
+	// Erreurs PostgreSQL courantes
+	if (err.code === '23505') {
+		return res.status(409).json({ error: 'Conflit : doublon détecté', code: 'UNIQUE_VIOLATION' });
+	}
+	
+	res.status(500).json({ 
+		error: 'Erreur interne', 
+		code: 'INTERNAL_ERROR', 
+		details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+	}); 
 });
 
 // ============================================================
@@ -3035,22 +3059,7 @@ app.use((err, req, res, next) => {
 
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`
-â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-â•‘                                                            â•‘
-â•‘   ðŸ„ API Truffière v2.0.0                                  â•‘
-â•‘   Serveur démarré sur le port ${PORT}                         â•‘
-â•‘                                                            â•‘
-â•‘   ðŸ” Authentification JWT activée                          â•‘
-â•‘   ðŸ“Š Base de données PostgreSQL connectée                  â•‘
-â•‘                                                            â•‘
-â•‘   Endpoints:                                               â•‘
-â•‘   - POST /api/auth/login                                   â•‘
-â•‘   - POST /api/auth/refresh                                 â•‘
-â•‘   - GET  /api/auth/me                                      â•‘
-â•‘                                                            â•‘
-â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  `);
+  console.log(``);
 });
 
 module.exports = app;

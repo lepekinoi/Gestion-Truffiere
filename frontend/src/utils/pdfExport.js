@@ -1,5 +1,3 @@
-// pdfExport.js
-
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import truffeIcon from './truffeicon.png';
