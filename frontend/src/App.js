@@ -15,6 +15,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Parcelles from './components/Parcelles';
 import Arbres from './components/Arbres';
+// import ArbresPage from './features/arbres/ArbresPage';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
 import Recoltes from './components/Recoltes';
@@ -159,30 +160,32 @@ const MainApp = () => {
   };
 
   const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'parcelles':
-        return <Parcelles highlightId={searchHighlight?.category === 'parcelles' ? searchHighlight.id : null} />;
-      case 'arbres':
-        return <Arbres highlightId={searchHighlight?.category === 'arbres' ? searchHighlight.id : null} />;
-      case 'carte':
-        return <Carte />;
-      case 'interventions':
+	switch (currentPage) {
+	case 'dashboard':
+		return <Dashboard />;
+    case 'parcelles':
+		return <Parcelles highlightId={searchHighlight?.category === 'parcelles' ? searchHighlight.id : null} />;
+	case 'arbres':
+		return <Arbres highlightId={searchHighlight?.category === 'arbres' ? searchHighlight.id : null} />;
+	// case 'arbres':
+		// return <ArbresPage />;
+	case 'carte':
+		return <Carte />;
+	case 'interventions':
         return <Interventions highlightId={searchHighlight?.category === 'interventions' ? searchHighlight.id : null} />;
-      case 'recoltes':
+	case 'recoltes':
         return <Recoltes highlightId={searchHighlight?.category === 'recoltes' ? searchHighlight.id : null} />;
-      case 'commercial':
+	case 'commercial':
         return <Commercial highlightId={searchHighlight?.id} highlightCategory={searchHighlight?.category} />;
-      case 'statistiques':
+	case 'statistiques':
         return <Statistiques />;
-      case 'previsions':
+	case 'previsions':
         return <Previsions />;
-      case 'historique':
+	case 'historique':
         return <Historique />;
-      case 'parametres':
+	case 'parametres':
         return <Parametres />;
-      default:
+	default:
         return <Dashboard />;
     }
   };

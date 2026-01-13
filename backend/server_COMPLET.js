@@ -952,125 +952,26 @@ app.get('/api/parcelles/:id', async (req, res) => {
 app.post('/api/parcelles', requireWriteAccess, async (req, res) => {
   try {
     const { nom, surface_ha, type_sol, ph_sol, notes, coordinates } = req.body;
-
-    console.log('📥 POST /api/parcelles - Données reçues:', {
-      nom,
-      surface_ha,
-      type_sol,
-      ph_sol,
-      notes,
-      hasCoordinates: !!(coordinates && coordinates.length > 0)
-    });
-
-    // 🛡️ VALIDATION
-    if (!nom || nom.trim() === '') {
-      return res.status(400).json({ 
-        error: 'Le nom est obligatoire',
-        code: 'MISSING_NOM' 
-      });
-    }
-
-    if (!surface_ha || isNaN(parseFloat(surface_ha))) {
-      return res.status(400).json({ 
-        error: 'La surface doit être un nombre valide',
-        code: 'INVALID_SURFACE' 
-      });
-    }
-
-    // Valider pH si fourni
-    if (ph_sol !== null && ph_sol !== undefined && ph_sol !== '') {
-      if (isNaN(parseFloat(ph_sol))) {
-        return res.status(400).json({ 
-          error: 'Le pH doit être un nombre valide',
-          code: 'INVALID_PH' 
-        });
-      }
-    }
-
+    
     let query, params;
-
-    // Avec coordonnées
+    
     if (coordinates && coordinates.length > 0) {
-      try {
-const coordsString = coordinates.map(coord => 
-  `${coord[1]} ${coord[0]}`  // ✅ Backticks normaux
-).join(', ');
-		
-
-        const firstCoord = coordinates[0];
-        const lastCoord = coordinates[coordinates.length - 1];
-        const needsClosure = (firstCoord[0] !== lastCoord[0] || firstCoord[1] !== lastCoord[1]);
-
-        const polygonWKT = needsClosure 
-          ? `POLYGON((${coordsString}, ${firstCoord[1]} ${firstCoord[0]}))`
-          : `POLYGON((${coordsString}))`;
-
-        query = `INSERT INTO parcelles (nom, surface_ha, type_sol, ph_sol, notes, geometrie) 
-                 VALUES ($1, $2, $3, $4, $5, ST_GeomFromText($6, 4326)) 
-                 RETURNING *`;
-
-        params = [
-          nom.trim(),
-          parseFloat(surface_ha),
-          type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
-          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,  // ← Gestion de ''
-          notes && notes.trim() !== '' ? notes.trim() : null,
-          polygonWKT
-        ];
-
-      } catch (geoError) {
-        console.error('⚠️ Erreur géométrie, création sans géométrie:', geoError.message);
-
-        // Sans géométrie en cas d'erreur
-        query = `INSERT INTO parcelles (nom, surface_ha, type_sol, ph_sol, notes) 
-                 VALUES ($1, $2, $3, $4, $5) 
-                 RETURNING *`;
-
-        params = [
-          nom.trim(),
-          parseFloat(surface_ha),
-          type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
-          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
-          notes && notes.trim() !== '' ? notes.trim() : null
-        ];
-      }
-    } 
-    // Sans coordonnées
-    else {
-      query = `INSERT INTO parcelles (nom, surface_ha, type_sol, ph_sol, notes) 
-               VALUES ($1, $2, $3, $4, $5) 
-               RETURNING *`;
-
-      params = [
-        nom.trim(),
-        parseFloat(surface_ha),
-        type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
-        ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,  // ← Conversion '' → null
-        notes && notes.trim() !== '' ? notes.trim() : null
-      ];
+      const coordsString = coordinates.map(coord => `${coord[1]} ${coord[0]}`).join(', ');
+      const polygonWKT = `POLYGON((${coordsString}, ${coordinates[0][1]} ${coordinates[0][0]}))`;
+      
+      query = `INSERT INTO parcelles (nom, surface_ha, type_sol, ph_sol, notes, geometrie) 
+               VALUES ($1, $2, $3, $4, $5, ST_GeomFromText($6, 4326)) RETURNING *`;
+      params = [nom, surface_ha, type_sol, ph_sol, notes, polygonWKT];
+    } else {
+      query = 'INSERT INTO parcelles (nom, surface_ha, type_sol, ph_sol, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *';
+      params = [nom, surface_ha, type_sol, ph_sol, notes];
     }
-
-    console.log('🔵 Exécution SQL:', { query: query.substring(0, 80) + '...', params });
-
+    
     const result = await pool.query(query, params);
-
-    console.log('✅ Parcelle créée, ID:', result.rows[0].id);
-
     res.status(201).json(result.rows[0]);
-
   } catch (err) {
-    console.error('═══════════════════════════════════════');
-    console.error('❌ ERREUR POST /api/parcelles');
-    console.error('Message:', err.message);
-    console.error('Code:', err.code);
-    console.error('Detail:', err.detail);
-    console.error('═══════════════════════════════════════');
-
-    res.status(500).json({ 
-      error: 'Erreur lors de la création',
-      details: err.message,
-      code: err.code
-    });
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la création de la parcelle' });
   }
 });
 
@@ -1343,21 +1244,7 @@ app.post('/api/interventions', requireWriteAccess, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO interventions (type_intervention_id, parcelle_id, arbre_id, date_prevue, date_realisee, duree_minutes, personnel, description, cout, statut, meteo, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      // [type_intervention_id, parcelle_id || null, arbre_id || null, date_prevue, date_realisee || null, duree_minutes || null, personnel, description, cout || null, statut || 'Planifié', meteo, notes]
-	  [
-  typeinterventionid,
-  emptyToNull(parcelleid),      // ← AJOUTER
-  emptyToNull(arbreid),          // ← AJOUTER
-  dateprevue,
-  emptyToNull(daterealisee),     // ← AJOUTER
-  emptyToNull(dureeminutes),     // ← AJOUTER
-  personnel,
-  description,
-  emptyToNull(cout),             // ← AJOUTER
-  statut || 'Planifié',
-  emptyToNull(meteo),            // ← AJOUTER
-  emptyToNull(notes)             // ← AJOUTER
-]
+      [type_intervention_id, parcelle_id || null, arbre_id || null, date_prevue, date_realisee || null, duree_minutes || null, personnel, description, cout || null, statut || 'Planifié', meteo, notes]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

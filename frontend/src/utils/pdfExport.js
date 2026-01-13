@@ -1,12 +1,9 @@
+// src/utils/pdfExport.js
+
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import truffeIcon from './truffeicon.png';
 
-/**
- * Utilitaire d'export PDF pour l'application Truffiere
- */
-
-// Configuration des couleurs du theme
 const COLORS = {
   primary: '#2c5f2d',
   secondary: '#97bc62',
@@ -15,11 +12,8 @@ const COLORS = {
   border: '#bdc3c7'
 };
 
-/**
- * Fonction pour charger une image en base64
- */
-const loadImageAsBase64 = (src) => {
-  return new Promise((resolve, reject) => {
+const loadImageAsBase64 = (src) =>
+  new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = () => {
@@ -33,223 +27,155 @@ const loadImageAsBase64 = (src) => {
     img.onerror = reject;
     img.src = src;
   });
-};
 
-/**
- * Fonction generique pour creer un PDF avec en-tete et pied de page
- */
 const createBasePDF = async (title, subtitle = '', withLogo = true) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // En-tete
   doc.setFillColor(COLORS.primary);
   doc.rect(0, 0, pageWidth, 30, 'F');
-  
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  
-  // Ajouter le logo si disponible
+
   if (withLogo) {
     try {
       const logoBase64 = await loadImageAsBase64(truffeIcon);
       doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 55, 2, 10, 10);
-      doc.text('Gestion de Truffiere', pageWidth / 2 + 5, 10, { align: 'center' });
-    } catch (e) {
-      doc.text('Gestion de Truffiere', pageWidth / 2, 10, { align: 'center' });
+      doc.text('Gestion de Truffière', pageWidth / 2 + 5, 10, { align: 'center' });
+    } catch {
+      doc.text('Gestion de Truffière', pageWidth / 2, 10, { align: 'center' });
     }
   } else {
-    doc.text('Gestion de Truffiere', pageWidth / 2, 10, { align: 'center' });
+    doc.text('Gestion de Truffière', pageWidth / 2, 10, { align: 'center' });
   }
-  
+
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
   doc.text(title, pageWidth / 2, 22, { align: 'center' });
 
-  // Sous-titre si fourni
   if (subtitle) {
     doc.setFontSize(10);
     doc.setTextColor(COLORS.text);
     doc.text(subtitle, 14, 38);
   }
 
-  // Date de generation
   doc.setFontSize(9);
   doc.setTextColor(COLORS.text);
-  const dateStr = `Genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}`;
+  const dateStr = `Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`;
   doc.text(dateStr, pageWidth - 14, 38, { align: 'right' });
 
-  // Pied de page
   const addFooter = () => {
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(
-      `Page ${doc.internal.getNumberOfPages()}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
+    doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth / 2, pageHeight - 10, {
+      align: 'center'
+    });
   };
 
   return { doc, addFooter, startY: 45 };
 };
 
-/**
- * Export PDF : Liste des parcelles
- */
+// PARCELLES
 export const exportParcellesPDF = async (parcelles) => {
   const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Parcelles',
     `Total : ${parcelles.length} parcelle(s)`
   );
 
-  const tableData = parcelles.map(p => [
+  const tableData = parcelles.map((p) => [
     p.nom,
     `${p.surface_ha} ha`,
     p.type_sol || '-',
     p.ph_sol ? `pH ${p.ph_sol}` : '-',
-    new Date(p.date_creation).toLocaleDateString('fr-FR')
+    p.date_creation ? new Date(p.date_creation).toLocaleDateString('fr-FR') : '-'
   ]);
 
   doc.autoTable({
-    startY: startY,
-    head: [['Nom', 'Surface', 'Type de sol', 'pH', 'Date creation']],
+    startY,
+    head: [['Nom', 'Surface', 'Type de sol', 'pH', 'Date création']],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold',
-      halign: 'center'
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 5
-    },
-    columnStyles: {
-      0: { cellWidth: 40 },
-      1: { cellWidth: 25, halign: 'center' },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 25, halign: 'center' },
-      4: { cellWidth: 25, halign: 'center' },
-      5: { cellWidth: 30, halign: 'center' }
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 5 },
     didDrawPage: addFooter
   });
-
-  if (parcelles.some(p => p.notes)) {
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notes :', 14, finalY);
-    
-    let currentY = finalY + 7;
-    parcelles.forEach(p => {
-      if (p.notes) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${p.nom} : ${p.notes}`, 14, currentY, { maxWidth: 180 });
-        currentY += 7;
-      }
-    });
-  }
 
   doc.save(`parcelles_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Liste des arbres
- */
+// ARBRES
 export const exportArbresPDF = async (arbres, parcelleFilter = null) => {
-  const filteredArbres = parcelleFilter 
-    ? arbres.filter(a => a.parcelle_id === parcelleFilter)
-    : arbres;
+  const filtered = parcelleFilter ? arbres.filter((a) => a.parcelle_id === parcelleFilter) : arbres;
 
   const { doc, addFooter, startY } = await createBasePDF(
     'Inventaire des Arbres Truffiers',
-    parcelleFilter 
-      ? `Parcelle filtree - Total : ${filteredArbres.length} arbre(s)`
-      : `Total : ${filteredArbres.length} arbre(s)`
+    parcelleFilter
+      ? `Parcelle filtrée — Total : ${filtered.length} arbre(s)`
+      : `Total : ${filtered.length} arbre(s)`
   );
 
-  const tableData = filteredArbres.map(a => [
+  const tableData = filtered.map((a) => [
     a.numero,
     a.espece,
     a.variete_truffe || '-',
     a.parcelle_nom || '-',
     a.etat,
-    new Date(a.date_plantation).toLocaleDateString('fr-FR'),
+    a.date_plantation ? new Date(a.date_plantation).toLocaleDateString('fr-FR') : '-',
     a.circonference_cm ? `${a.circonference_cm} cm` : '-'
   ]);
 
   doc.autoTable({
-    startY: startY,
-    head: [['Numero', 'Espece', 'Variete truffe', 'Parcelle', 'Etat', 'Plantation', 'Circonf.']],
+    startY,
+    head: [['Numéro', 'Espèce', 'Variété truffe', 'Parcelle', 'État', 'Plantation', 'Circonf.']],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold',
-      halign: 'center'
-    },
-    styles: {
-      fontSize: 9,
-      cellPadding: 4
-    },
-    columnStyles: {
-      0: { cellWidth: 20, halign: 'center' },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 30 },
-      4: { cellWidth: 20, halign: 'center' },
-      5: { cellWidth: 25, halign: 'center' },
-      6: { cellWidth: 20, halign: 'center' }
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 4 },
     didDrawPage: addFooter
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;
+  const stats = {
+    Bon: filtered.filter((a) => a.etat === 'Bon').length,
+    Moyen: filtered.filter((a) => a.etat === 'Moyen').length,
+    Mauvais: filtered.filter((a) => a.etat === 'Mauvais').length,
+    Mort: filtered.filter((a) => a.etat === 'Mort').length
+  };
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('Statistiques :', 14, finalY);
-  
-  const stats = {
-    'Bon': filteredArbres.filter(a => a.etat === 'Bon').length,
-    'Moyen': filteredArbres.filter(a => a.etat === 'Moyen').length,
-    'Mauvais': filteredArbres.filter(a => a.etat === 'Mauvais').length,
-    'Mort': filteredArbres.filter(a => a.etat === 'Mort').length
-  };
 
-  let statY = finalY + 7;
+  let y = finalY + 7;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   Object.entries(stats).forEach(([etat, count]) => {
     if (count > 0) {
-      doc.text(`- ${etat} : ${count} arbre(s)`, 14, statY);
-      statY += 5;
+      doc.text(`- ${etat} : ${count} arbre(s)`, 14, y);
+      y += 5;
     }
   });
 
   doc.save(`arbres_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Statistiques de production
- */
+// PRODUCTION
 export const exportProductionPDF = async (stats) => {
   const { doc, addFooter, startY } = await createBasePDF(
     'Rapport de Production',
-    `Periode : ${new Date().getFullYear()}`
+    `Période : ${new Date().getFullYear()}`
   );
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('Production par Parcelle', 14, startY);
 
-  const parcelleData = stats.parcelles.map(p => [
+  const parcelleData = (stats.parcelles || []).map((p) => [
     p.nom_parcelle,
     `${p.annee}`,
     `${(p.poids_total_g / 1000).toFixed(2)} kg`,
@@ -259,19 +185,10 @@ export const exportProductionPDF = async (stats) => {
 
   doc.autoTable({
     startY: startY + 5,
-    head: [['Parcelle', 'Annee', 'Production', 'Valeur', 'Prix moyen']],
+    head: [['Parcelle', 'Année', 'Production', 'Valeur', 'Prix moyen']],
     body: parcelleData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' }
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
     didDrawPage: addFooter
   });
 
@@ -280,7 +197,8 @@ export const exportProductionPDF = async (stats) => {
   doc.setFont('helvetica', 'bold');
   doc.text('Top 10 Arbres Producteurs', 14, currentY);
 
-  const top10Arbres = stats.arbres
+  const top10Arbres = (stats.arbres || [])
+    .slice()
     .sort((a, b) => b.poids_total_g - a.poids_total_g)
     .slice(0, 10);
 
@@ -289,45 +207,35 @@ export const exportProductionPDF = async (stats) => {
     a.numero_arbre,
     a.espece,
     `${(a.poids_total_g / 1000).toFixed(2)} kg`,
-    `${a.nombre_recoltes || 0} recolte(s)`
+    `${a.nombre_recoltes || 0} récolte(s)`
   ]);
 
   doc.autoTable({
     startY: currentY + 5,
-    head: [['Rang', 'Arbre', 'Espece', 'Production', 'Recoltes']],
+    head: [['Rang', 'Arbre', 'Espèce', 'Production', 'Récoltes']],
     body: arbreData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 15 },
-      3: { halign: 'right' },
-      4: { halign: 'center' }
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
     didDrawPage: addFooter
   });
 
   doc.save(`production_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Liste des interventions
- */
+// INTERVENTIONS
 export const exportInterventionsPDF = async (interventions, filterStatut = 'all') => {
-  const filteredInterventions = filterStatut === 'all' 
-    ? interventions 
-    : interventions.filter(i => i.statut === filterStatut);
+  const filtered =
+    filterStatut === 'all'
+      ? interventions
+      : interventions.filter((i) => i.statut === filterStatut);
 
   const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Interventions',
-    `${filterStatut === 'all' ? 'Toutes' : filterStatut} - Total : ${filteredInterventions.length}`
+    `${filterStatut === 'all' ? 'Toutes' : filterStatut} — Total : ${filtered.length}`
   );
 
-  const tableData = filteredInterventions.map(i => [
-    new Date(i.date_prevue).toLocaleDateString('fr-FR'),
+  const tableData = filtered.map((i) => [
+    i.date_prevue ? new Date(i.date_prevue).toLocaleDateString('fr-FR') : '-',
     i.type_nom || '-',
     i.parcelle_nom || '-',
     i.arbre_numero || '-',
@@ -337,346 +245,291 @@ export const exportInterventionsPDF = async (interventions, filterStatut = 'all'
   ]);
 
   doc.autoTable({
-    startY: startY,
-    head: [['Date', 'Type', 'Parcelle', 'Arbre', 'Statut', 'Personnel', 'Cout']],
+    startY,
+    head: [['Date', 'Type', 'Parcelle', 'Arbre', 'Statut', 'Personnel', 'Coût']],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    styles: {
-      fontSize: 9,
-      cellPadding: 3
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 3 },
     didDrawPage: addFooter
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;
   const statsIntervention = {
-    planifie: filteredInterventions.filter(i => i.statut === 'Planifie').length,
-    enCours: filteredInterventions.filter(i => i.statut === 'En cours').length,
-    termine: filteredInterventions.filter(i => i.statut === 'Termine').length,
-    annule: filteredInterventions.filter(i => i.statut === 'Annule').length,
-    coutTotal: filteredInterventions.reduce((sum, i) => sum + parseFloat(i.cout || 0), 0)
+    planifie: filtered.filter((i) => i.statut === 'Planifié').length,
+    enCours: filtered.filter((i) => i.statut === 'En cours').length,
+    termine: filtered.filter((i) => i.statut === 'Terminé').length,
+    annule: filtered.filter((i) => i.statut === 'Annulé').length,
+    coutTotal: filtered.reduce((sum, i) => sum + parseFloat(i.cout || 0), 0)
   };
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 35, 'F');
-  
-  doc.text('Resume des Interventions', 104, finalY, { align: 'center' });
-  
+
+  doc.text('Résumé des Interventions', 104, finalY, { align: 'center' });
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
-  doc.text(`- Planifie : ${statsIntervention.planifie}`, 20, finalY + 8);
+  doc.text(`- Planifié : ${statsIntervention.planifie}`, 20, finalY + 8);
   doc.text(`- En cours : ${statsIntervention.enCours}`, 20, finalY + 15);
-  doc.text(`- Termine : ${statsIntervention.termine}`, 20, finalY + 22);
-  doc.text(`- Annule : ${statsIntervention.annule}`, 120, finalY + 8);
-  doc.text(`- Cout total : ${statsIntervention.coutTotal.toFixed(2)} EUR`, 120, finalY + 15);
+  doc.text(`- Terminé : ${statsIntervention.termine}`, 20, finalY + 22);
+  doc.text(`- Annulé : ${statsIntervention.annule}`, 120, finalY + 8);
+  doc.text(`- Coût total : ${statsIntervention.coutTotal.toFixed(2)} EUR`, 120, finalY + 15);
 
   doc.save(`interventions_${filterStatut}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Rapport de recoltes
- */
+// RÉCOLTES
 export const exportRecoltesPDF = async (recoltes, annee = null) => {
-  const filteredRecoltes = annee
-    ? recoltes.filter(r => new Date(r.date_recolte).getFullYear() === annee)
+  const filtered = annee
+    ? recoltes.filter((r) => new Date(r.date_recolte).getFullYear() === annee)
     : recoltes;
 
   const { doc, addFooter, startY } = await createBasePDF(
-    'Rapport des Recoltes',
-    annee ? `Annee ${annee} - ${filteredRecoltes.length} recolte(s)` : `Total : ${filteredRecoltes.length} recolte(s)`
+    'Rapport des Récoltes',
+    annee
+      ? `Année ${annee} — ${filtered.length} récolte(s)`
+      : `Total : ${filtered.length} récolte(s)`
   );
 
-  const tableData = filteredRecoltes.map(r => [
-    new Date(r.date_recolte).toLocaleDateString('fr-FR'),
+  const tableData = filtered.map((r) => [
+    r.date_recolte ? new Date(r.date_recolte).toLocaleDateString('fr-FR') : '-',
     r.parcelle_nom || '-',
     r.arbre_numero || '-',
-    `${r.poids_grammes} g`,
+    `${r.poids_grammes || 0} g`,
     r.qualite || '-',
     r.calibre || '-',
     r.notes ? 'Oui' : ''
   ]);
 
   doc.autoTable({
-    startY: startY,
-    head: [['Date', 'Parcelle', 'Arbre', 'Poids', 'Qualite', 'Calibre', 'Notes']],
+    startY,
+    head: [['Date', 'Parcelle', 'Arbre', 'Poids', 'Qualité', 'Calibre', 'Notes']],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    styles: {
-      fontSize: 9,
-      cellPadding: 3
-    },
-    columnStyles: {
-      0: { cellWidth: 25 },
-      3: { halign: 'right' },
-      6: { halign: 'center', cellWidth: 15 }
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 3 },
     didDrawPage: addFooter
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;
-  const totalPoids = filteredRecoltes.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0);
-  const avgQuality = filteredRecoltes.filter(r => r.qualite).length;
+  const totalPoids = filtered.reduce(
+    (sum, r) => sum + parseFloat(r.poids_grammes || 0),
+    0
+  );
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Resume :', 14, finalY);
-  
+  doc.text('Résumé :', 14, finalY);
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`- Poids total : ${(totalPoids / 1000).toFixed(2)} kg`, 14, finalY + 7);
-  doc.text(`- Poids moyen par recolte : ${(totalPoids / filteredRecoltes.length / 1000).toFixed(2)} kg`, 14, finalY + 14);
-  doc.text(`- Recoltes avec qualite renseignee : ${avgQuality}/${filteredRecoltes.length}`, 14, finalY + 21);
+  if (filtered.length > 0) {
+    doc.text(
+      `- Poids moyen par récolte : ${(totalPoids / filtered.length / 1000).toFixed(2)} kg`,
+      14,
+      finalY + 14
+    );
+  }
 
   doc.save(`recoltes_${annee || 'toutes'}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Liste des clients
- */
+// CLIENTS
 export const exportClientsPDF = async (clients, colonnesExport = null) => {
   const { doc, addFooter, startY } = await createBasePDF(
     'Liste des Clients',
     `Total : ${clients.length} client(s)`
   );
 
-  // Colonnes par défaut si non spécifiées
   const defaultCols = ['nom', 'type', 'email', 'telephone', 'ville', 'date_premier_achat'];
   const cols = colonnesExport && colonnesExport.length > 0 ? colonnesExport : defaultCols;
 
-  // Configuration des colonnes disponibles (largeurs ajustées pour tenir sur A4)
   const colConfig = {
-    nom: { 
-      label: 'Nom', 
-      render: (c) => c.type === 'Particulier' ? `${c.nom} ${c.prenom || ''}`.trim() : (c.raison_sociale || c.nom),
-      width: 'auto'
+    nom: {
+      label: 'Nom',
+      render: (c) =>
+        c.type === 'Particulier'
+          ? `${c.nom} ${c.prenom || ''}`.trim()
+          : c.raison_sociale || c.nom
     },
-    prenom: { label: 'Prénom', render: (c) => c.prenom || '-', width: 'auto' },
-    raison_sociale: { label: 'Raison sociale', render: (c) => c.raison_sociale || '-', width: 'auto' },
-    type: { label: 'Type', render: (c) => c.type || '-', width: 20, align: 'center' },
-    email: { label: 'Email', render: (c) => c.email || '-', width: 'auto' },
-    telephone: { label: 'Tél.', render: (c) => c.telephone || '-', width: 25 },
-    adresse: { label: 'Adresse', render: (c) => c.adresse || '-', width: 'auto' },
-    code_postal: { label: 'CP', render: (c) => c.code_postal || '-', width: 15, align: 'center' },
-    ville: { label: 'Ville', render: (c) => c.ville || '-', width: 'auto' },
-    pays: { label: 'Pays', render: (c) => c.pays || '-', width: 20 },
-    siret: { label: 'SIRET', render: (c) => c.siret || '-', width: 30 },
-    date_premier_achat: { 
-      label: '1er achat', 
-      render: (c) => c.date_premier_achat ? new Date(c.date_premier_achat).toLocaleDateString('fr-FR') : '-',
-      width: 22, 
-      align: 'center' 
+    prenom: { label: 'Prénom', render: (c) => c.prenom || '-' },
+    raison_sociale: { label: 'Raison sociale', render: (c) => c.raison_sociale || '-' },
+    type: { label: 'Type', render: (c) => c.type || '-' },
+    email: { label: 'Email', render: (c) => c.email || '-' },
+    telephone: { label: 'Tél.', render: (c) => c.telephone || '-' },
+    adresse: { label: 'Adresse', render: (c) => c.adresse || '-' },
+    code_postal: { label: 'CP', render: (c) => c.code_postal || '-' },
+    ville: { label: 'Ville', render: (c) => c.ville || '-' },
+    pays: { label: 'Pays', render: (c) => c.pays || '-' },
+    siret: { label: 'SIRET', render: (c) => c.siret || '-' },
+    date_premier_achat: {
+      label: '1er achat',
+      render: (c) =>
+        c.date_premier_achat
+          ? new Date(c.date_premier_achat).toLocaleDateString('fr-FR')
+          : '-'
     },
-    notes: { label: 'Notes', render: (c) => c.notes || '-', width: 'auto' }
+    notes: { label: 'Notes', render: (c) => c.notes || '-' }
   };
 
-  // Filtrer les colonnes valides
-  const validCols = cols.filter(col => colConfig[col]);
-  
-  // En-têtes et données du tableau
-  const headers = validCols.map(col => colConfig[col].label);
-  const tableData = clients.map(c => validCols.map(col => colConfig[col].render(c)));
-
-  // Styles des colonnes (laisser auto-size pour les colonnes sans width fixe)
-  const columnStyles = {};
-  validCols.forEach((col, index) => {
-    const config = colConfig[col];
-    const style = { halign: config.align || 'left' };
-    if (config.width !== 'auto') {
-      style.cellWidth = config.width;
-    }
-    columnStyles[index] = style;
-  });
+  const validCols = cols.filter((col) => colConfig[col]);
+  const headers = validCols.map((col) => colConfig[col].label);
+  const tableData = clients.map((c) => validCols.map((col) => colConfig[col].render(c)));
 
   doc.autoTable({
-    startY: startY,
+    startY,
     head: [headers],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-      overflow: 'linebreak'
-    },
-    columnStyles: columnStyles,
-    tableWidth: 'auto',
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
     didDrawPage: addFooter
   });
 
   doc.save(`clients_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Liste des ventes
- */
+// VENTES
 export const exportVentesPDF = async (ventes, clients = [], colonnesExport = null, annee = null) => {
-  const filteredVentes = annee
-    ? ventes.filter(v => new Date(v.date_vente).getFullYear() === annee)
+  const filtered = annee
+    ? ventes.filter((v) => new Date(v.date_vente).getFullYear() === annee)
     : ventes;
 
   const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Ventes',
-    annee ? `Année ${annee} - ${filteredVentes.length} vente(s)` : `Total : ${filteredVentes.length} vente(s)`
+    annee
+      ? `Année ${annee} — ${filtered.length} vente(s)`
+      : `Total : ${filtered.length} vente(s)`
   );
 
-  // Colonnes par défaut si non spécifiées
-  const defaultCols = ['date_vente', 'client_nom', 'quantite_grammes', 'prix_unitaire_kg', 'montant_total', 'mode_paiement', 'statut'];
+  const defaultCols = [
+    'date_vente',
+    'client_nom',
+    'quantite_grammes',
+    'prix_unitaire_kg',
+    'montant_total',
+    'mode_paiement',
+    'statut'
+  ];
   const cols = colonnesExport && colonnesExport.length > 0 ? colonnesExport : defaultCols;
 
-  // Fonction pour récupérer le nom du client
   const getClientName = (v) => {
     if (v.client_nom) return v.client_nom;
-    const client = clients.find(c => c.id === v.client_id);
-    if (client) {
-      return client.type === 'Particulier' 
-        ? `${client.nom} ${client.prenom || ''}`.trim()
-        : (client.raison_sociale || client.nom);
-    }
-    return '-';
+    const client = clients.find((c) => c.id === v.client_id);
+    if (!client) return '-';
+    return client.type === 'Particulier'
+      ? `${client.nom} ${client.prenom || ''}`.trim()
+      : client.raison_sociale || client.nom;
   };
 
-  // Configuration des colonnes disponibles (largeurs ajustées)
   const colConfig = {
-    date_vente: { 
-      label: 'Date', 
-      render: (v) => new Date(v.date_vente).toLocaleDateString('fr-FR'),
-      width: 22, 
-      align: 'center' 
+    date_vente: {
+      label: 'Date',
+      render: (v) =>
+        v.date_vente ? new Date(v.date_vente).toLocaleDateString('fr-FR') : '-'
     },
-    numero_facture: { label: 'N° Facture', render: (v) => v.numero_facture || '-', width: 'auto' },
-    client_nom: { label: 'Client', render: (v) => getClientName(v), width: 'auto' },
-    quantite_grammes: { 
-      label: 'Qté', 
-      render: (v) => v.quantite_grammes ? `${(parseFloat(v.quantite_grammes) / 1000).toFixed(2)} kg` : '-',
-      width: 18, 
-      align: 'right' 
+    numero_facture: { label: 'N° Facture', render: (v) => v.numero_facture || '-' },
+    client_nom: { label: 'Client', render: (v) => getClientName(v) },
+    quantite_grammes: {
+      label: 'Qté',
+      render: (v) =>
+        v.quantite_grammes
+          ? `${(parseFloat(v.quantite_grammes) / 1000).toFixed(2)} kg`
+          : '-'
     },
-    prix_unitaire_kg: { 
-      label: 'Prix/kg', 
-      render: (v) => v.prix_unitaire_kg ? `${parseFloat(v.prix_unitaire_kg).toFixed(0)} €` : '-',
-      width: 18, 
-      align: 'right' 
+    prix_unitaire_kg: {
+      label: 'Prix/kg',
+      render: (v) =>
+        v.prix_unitaire_kg ? `${parseFloat(v.prix_unitaire_kg).toFixed(0)} €` : '-'
     },
-    montant_total: { 
-      label: 'Montant', 
-      render: (v) => `${parseFloat(v.montant_total || 0).toFixed(2)} €`,
-      width: 22, 
-      align: 'right' 
+    montant_total: {
+      label: 'Montant',
+      render: (v) => `${parseFloat(v.montant_total || 0).toFixed(2)} €`
     },
-    mode_paiement: { label: 'Paiement', render: (v) => v.mode_paiement || '-', width: 22 },
-    statut: { label: 'Statut', render: (v) => v.statut || '-', width: 20, align: 'center' },
-    commande_numero: { 
-      label: 'Cmd', 
-      render: (v) => v.commande_numero || (v.commande_id ? `#${v.commande_id}` : '-'),
-      width: 18 
+    mode_paiement: { label: 'Paiement', render: (v) => v.mode_paiement || '-' },
+    statut: { label: 'Statut', render: (v) => v.statut || '-' },
+    commande_numero: {
+      label: 'Cmd',
+      render: (v) => v.commande_numero || (v.commande_id ? `#${v.commande_id}` : '-')
     },
-    notes: { label: 'Notes', render: (v) => v.notes || '-', width: 'auto' }
+    notes: { label: 'Notes', render: (v) => v.notes || '-' }
   };
 
-  // Filtrer les colonnes valides
-  const validCols = cols.filter(col => colConfig[col]);
-  
-  // En-têtes et données du tableau
-  const headers = validCols.map(col => colConfig[col].label);
-  const tableData = filteredVentes.map(v => validCols.map(col => colConfig[col].render(v)));
-
-  // Styles des colonnes (laisser auto-size pour les colonnes sans width fixe)
-  const columnStyles = {};
-  validCols.forEach((col, index) => {
-    const config = colConfig[col];
-    const style = { halign: config.align || 'left' };
-    if (config.width !== 'auto') {
-      style.cellWidth = config.width;
-    }
-    if (col === 'montant_total') {
-      style.fontStyle = 'bold';
-    }
-    columnStyles[index] = style;
-  });
+  const validCols = cols.filter((col) => colConfig[col]);
+  const headers = validCols.map((col) => colConfig[col].label);
+  const tableData = filtered.map((v) => validCols.map((col) => colConfig[col].render(v)));
 
   doc.autoTable({
-    startY: startY,
+    startY,
     head: [headers],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-      overflow: 'linebreak'
-    },
-    columnStyles: columnStyles,
-    tableWidth: 'auto',
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
     didDrawPage: addFooter
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;
-  const totalQuantite = filteredVentes.reduce((sum, v) => sum + parseFloat(v.quantite_grammes || 0), 0);
-  const totalMontant = filteredVentes.reduce((sum, v) => sum + parseFloat(v.montant_total || 0), 0);
-  const prixMoyen = totalQuantite > 0 ? (totalMontant / (totalQuantite / 1000)) : 0;
+  const totalQuantite = filtered.reduce(
+    (sum, v) => sum + parseFloat(v.quantite_grammes || 0),
+    0
+  );
+  const totalMontant = filtered.reduce(
+    (sum, v) => sum + parseFloat(v.montant_total || 0),
+    0
+  );
+  const prixMoyen = totalQuantite > 0 ? totalMontant / (totalQuantite / 1000) : 0;
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 35, 'F');
-  
+
   doc.text('Résumé des Ventes', 104, finalY, { align: 'center' });
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
   doc.text(`- Quantité totale : ${(totalQuantite / 1000).toFixed(2)} kg`, 20, finalY + 8);
   doc.text(`- Chiffre d'affaires : ${totalMontant.toFixed(2)} EUR`, 20, finalY + 15);
   doc.text(`- Prix moyen : ${prixMoyen.toFixed(2)} EUR/kg`, 20, finalY + 22);
-  doc.text(`- Nombre de ventes : ${filteredVentes.length}`, 120, finalY + 8);
-  doc.text(`- Vente moyenne : ${filteredVentes.length > 0 ? (totalMontant / filteredVentes.length).toFixed(2) : '0.00'} EUR`, 120, finalY + 15);
+  doc.text(`- Nombre de ventes : ${filtered.length}`, 120, finalY + 8);
+  doc.text(
+    `- Vente moyenne : ${
+      filtered.length > 0 ? (totalMontant / filtered.length).toFixed(2) : '0.00'
+    } EUR`,
+    120,
+    finalY + 15
+  );
 
   doc.save(`ventes_${annee || 'toutes'}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Liste des commandes
- */
+// COMMANDES — LISTE
 export const exportCommandesPDF = async (commandes, clients) => {
   const { doc, addFooter, startY } = await createBasePDF(
     'Liste des Commandes',
     `Total : ${commandes.length} commande(s)`
   );
 
-  const tableData = commandes.map(c => {
-    const client = clients.find(cl => cl.id === c.client_id);
-    const clientNom = client 
-      ? (client.type === 'Particulier' 
-          ? `${client.nom} ${client.prenom || ''}`
-          : client.raison_sociale || client.nom)
+  const tableData = commandes.map((c) => {
+    const client = clients.find((cl) => cl.id === c.client_id);
+    const clientNom = client
+      ? client.type === 'Particulier'
+        ? `${client.nom} ${client.prenom || ''}`
+        : client.raison_sociale || client.nom
       : '-';
-    
+
     return [
       c.numero_commande || `CMD-${c.id}`,
-      new Date(c.date_commande).toLocaleDateString('fr-FR'),
+      c.date_commande ? new Date(c.date_commande).toLocaleDateString('fr-FR') : '-',
       clientNom,
-      c.date_livraison_demandee ? new Date(c.date_livraison_demandee).toLocaleDateString('fr-FR') : '-',
+      c.date_livraison_demandee
+        ? new Date(c.date_livraison_demandee).toLocaleDateString('fr-FR')
+        : '-',
       `${parseFloat(c.poids_grammes || 0).toFixed(0)} g`,
       c.calibre || '-',
       c.qualite || '-',
@@ -686,19 +539,24 @@ export const exportCommandesPDF = async (commandes, clients) => {
   });
 
   doc.autoTable({
-    startY: startY,
-    head: [['N. Commande', 'Date', 'Client', 'Livraison', 'Poids', 'Calibre', 'Qualite', 'Montant', 'Statut']],
+    startY,
+    head: [
+      [
+        'N° Commande',
+        'Date',
+        'Client',
+        'Livraison',
+        'Poids',
+        'Calibre',
+        'Qualité',
+        'Montant',
+        'Statut'
+      ]
+    ],
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2
-    },
+    headStyles: { fillColor: COLORS.primary, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 2 },
     columnStyles: {
       0: { cellWidth: 25 },
       1: { cellWidth: 20 },
@@ -713,110 +571,124 @@ export const exportCommandesPDF = async (commandes, clients) => {
     didDrawPage: addFooter
   });
 
-  // Statistiques
   const finalY = doc.lastAutoTable.finalY + 10;
   const statsCommande = {
-    enAttente: commandes.filter(c => c.statut === 'En attente').length,
-    confirmees: commandes.filter(c => c.statut === 'Confirmee').length,
-    enPreparation: commandes.filter(c => c.statut === 'En preparation').length,
-    livrees: commandes.filter(c => c.statut === 'Livree').length,
-    annulees: commandes.filter(c => c.statut === 'Annulee').length,
-    poidsTotal: commandes.filter(c => c.statut !== 'Annulee').reduce((sum, c) => sum + parseFloat(c.poids_grammes || 0), 0),
-    montantTotal: commandes.filter(c => c.statut !== 'Annulee').reduce((sum, c) => sum + parseFloat(c.montant_total || 0), 0)
+    enAttente: commandes.filter((c) => c.statut === 'En attente').length,
+    confirmees: commandes.filter((c) => c.statut === 'Confirmée').length,
+    enPreparation: commandes.filter((c) => c.statut === 'En préparation').length,
+    livrees: commandes.filter((c) => c.statut === 'Livrée').length,
+    annulees: commandes.filter((c) => c.statut === 'Annulée').length,
+    poidsTotal: commandes
+      .filter((c) => c.statut !== 'Annulée')
+      .reduce((sum, c) => sum + parseFloat(c.poids_grammes || 0), 0),
+    montantTotal: commandes
+      .filter((c) => c.statut !== 'Annulée')
+      .reduce((sum, c) => sum + parseFloat(c.montant_total || 0), 0)
   };
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 40, 'F');
-  
-  doc.text('Resume des Commandes', 104, finalY, { align: 'center' });
-  
+
+  doc.text('Résumé des Commandes', 104, finalY, { align: 'center' });
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
   doc.text(`- En attente : ${statsCommande.enAttente}`, 20, finalY + 8);
-  doc.text(`- Confirmees : ${statsCommande.confirmees}`, 20, finalY + 15);
-  doc.text(`- En preparation : ${statsCommande.enPreparation}`, 20, finalY + 22);
-  doc.text(`- Livrees : ${statsCommande.livrees}`, 20, finalY + 29);
-  doc.text(`- Poids total commande : ${(statsCommande.poidsTotal / 1000).toFixed(2)} kg`, 100, finalY + 8);
-  doc.text(`- Montant total : ${statsCommande.montantTotal.toFixed(2)} EUR`, 100, finalY + 15);
-  doc.text(`- Annulees : ${statsCommande.annulees}`, 100, finalY + 22);
+  doc.text(`- Confirmées : ${statsCommande.confirmees}`, 20, finalY + 15);
+  doc.text(`- En préparation : ${statsCommande.enPreparation}`, 20, finalY + 22);
+  doc.text(`- Livrées : ${statsCommande.livrees}`, 20, finalY + 29);
+  doc.text(
+    `- Poids total commande : ${(statsCommande.poidsTotal / 1000).toFixed(2)} kg`,
+    100,
+    finalY + 8
+  );
+  doc.text(
+    `- Montant total : ${statsCommande.montantTotal.toFixed(2)} EUR`,
+    100,
+    finalY + 15
+  );
+  doc.text(`- Annulées : ${statsCommande.annulees}`, 100, finalY + 22);
 
   doc.save(`commandes_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Export PDF : Detail d'une commande (bon de commande)
- */
+// COMMANDES — DÉTAIL
 export const exportCommandeDetailPDF = async (commande, client) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
 
-  // En-tete
   doc.setFillColor(COLORS.primary);
   doc.rect(0, 0, pageWidth, 35, 'F');
-  
-  // Ajouter le logo
+
   try {
     const logoBase64 = await loadImageAsBase64(truffeIcon);
     doc.addImage(logoBase64, 'PNG', 14, 5, 12, 12);
-  } catch (e) {
-    // Continuer sans logo
-  }
-  
+  } catch {}
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
   doc.text('BON DE COMMANDE', pageWidth / 2, 15, { align: 'center' });
-  
+
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
-  doc.text(commande.numero_commande || `CMD-${commande.id}`, pageWidth / 2, 28, { align: 'center' });
+  doc.text(commande.numero_commande || `CMD-${commande.id}`, pageWidth / 2, 28, {
+    align: 'center'
+  });
 
-  // Infos commande
   doc.setTextColor(COLORS.text);
   doc.setFontSize(10);
   let currentY = 45;
-  
+
   doc.setFont('helvetica', 'bold');
   doc.text('Date de commande :', 14, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(new Date(commande.date_commande).toLocaleDateString('fr-FR'), 60, currentY);
-  
+  doc.text(
+    commande.date_commande
+      ? new Date(commande.date_commande).toLocaleDateString('fr-FR')
+      : '-',
+    60,
+    currentY
+  );
+
   if (commande.date_livraison_demandee) {
     currentY += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text('Livraison souhaitee :', 14, currentY);
+    doc.text('Livraison souhaitée :', 14, currentY);
     doc.setFont('helvetica', 'normal');
-    doc.text(new Date(commande.date_livraison_demandee).toLocaleDateString('fr-FR'), 60, currentY);
+    doc.text(
+      new Date(commande.date_livraison_demandee).toLocaleDateString('fr-FR'),
+      60,
+      currentY
+    );
   }
 
-  // Statut
   currentY += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Statut :', 14, currentY);
   doc.setFont('helvetica', 'normal');
   doc.text(commande.statut || 'En attente', 60, currentY);
 
-  // Client
   currentY += 15;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, currentY - 5, 180, 10, 'F');
   doc.text('Client', 18, currentY + 2);
-  
+
   currentY += 12;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
+
   if (client) {
-    const clientNom = client.type === 'Particulier' 
-      ? `${client.nom} ${client.prenom || ''}`
-      : client.raison_sociale || client.nom;
+    const clientNom =
+      client.type === 'Particulier'
+        ? `${client.nom} ${client.prenom || ''}`
+        : client.raison_sociale || client.nom;
     doc.text(clientNom, 14, currentY);
-    
+
     if (client.adresse) {
       currentY += 6;
       doc.text(client.adresse, 14, currentY);
@@ -834,41 +706,41 @@ export const exportCommandeDetailPDF = async (commande, client) => {
       doc.text(`Email : ${client.email}`, 14, currentY);
     }
   } else {
-    doc.text('Client non specifie', 14, currentY);
+    doc.text('Client non spécifié', 14, currentY);
   }
 
-  // Details produit
   currentY += 15;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, currentY - 5, 180, 10, 'F');
-  doc.text('Details de la commande', 18, currentY + 2);
+  doc.text('Détails de la commande', 18, currentY + 2);
 
   currentY += 12;
-  
+
   const produitData = [
-    ['Poids demande', `${parseFloat(commande.poids_grammes || 0).toFixed(0)} g (${(parseFloat(commande.poids_grammes || 0) / 1000).toFixed(2)} kg)`],
-    ['Calibre', commande.calibre || 'Non specifie'],
-    ['Qualite', commande.qualite || 'Non specifiee'],
-    ['Maturite', commande.maturite || 'Non specifiee']
+    [
+      'Poids demandé',
+      `${parseFloat(commande.poids_grammes || 0).toFixed(0)} g (${(
+        parseFloat(commande.poids_grammes || 0) / 1000
+      ).toFixed(2)} kg)`
+    ],
+    ['Calibre', commande.calibre || 'Non spécifié'],
+    ['Qualité', commande.qualite || 'Non spécifiée'],
+    ['Maturité', commande.maturite || 'Non spécifiée']
   ];
 
   doc.autoTable({
     startY: currentY,
     body: produitData,
     theme: 'plain',
-    styles: {
-      fontSize: 10,
-      cellPadding: 3
-    },
+    styles: { fontSize: 10, cellPadding: 3 },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 50 },
       1: { cellWidth: 130 }
     }
   });
 
-  // Tarification
   currentY = doc.lastAutoTable.finalY + 10;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -879,24 +751,25 @@ export const exportCommandeDetailPDF = async (commande, client) => {
   currentY += 12;
 
   const prixData = [
-    ['Prix unitaire', commande.prix_unitaire_kg ? `${parseFloat(commande.prix_unitaire_kg).toFixed(2)} EUR/kg` : 'Non defini'],
+    [
+      'Prix unitaire',
+      commande.prix_unitaire_kg
+        ? `${parseFloat(commande.prix_unitaire_kg).toFixed(2)} EUR/kg`
+        : 'Non défini'
+    ]
   ];
 
   doc.autoTable({
     startY: currentY,
     body: prixData,
     theme: 'plain',
-    styles: {
-      fontSize: 10,
-      cellPadding: 3
-    },
+    styles: { fontSize: 10, cellPadding: 3 },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 50 },
       1: { cellWidth: 130 }
     }
   });
 
-  // Montant total
   currentY = doc.lastAutoTable.finalY + 5;
   doc.setFillColor(COLORS.primary);
   doc.rect(100, currentY, 94, 15, 'F');
@@ -904,69 +777,84 @@ export const exportCommandeDetailPDF = async (commande, client) => {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL :', 105, currentY + 10);
-  doc.text(`${parseFloat(commande.montant_total || 0).toFixed(2)} EUR`, 188, currentY + 10, { align: 'right' });
+  doc.text(
+    `${parseFloat(commande.montant_total || 0).toFixed(2)} EUR`,
+    188,
+    currentY + 10,
+    { align: 'right' }
+  );
 
-  // Notes
   if (commande.notes) {
     currentY += 25;
     doc.setTextColor(COLORS.text);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes :', 14, currentY);
-    
+
     currentY += 7;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(commande.notes, 14, currentY, { maxWidth: 180 });
   }
 
-  // Pied de page
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text(
-    `Genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}`,
+    `Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString(
+      'fr-FR'
+    )}`,
     pageWidth / 2,
     doc.internal.pageSize.height - 10,
     { align: 'center' }
   );
 
-  doc.save(`commande_${commande.numero_commande || commande.id}_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(
+    `commande_${commande.numero_commande || commande.id}_${
+      new Date().toISOString().split('T')[0]
+    }.pdf`
+  );
 };
 
-/**
- * Export PDF complet : Rapport annuel
- */
+// RAPPORT ANNUEL
 export const exportRapportAnnuelPDF = async (data) => {
-  const { parcelles, arbres, recoltes, ventes, annee } = data;
-  
+  const { parcelles = [], arbres = [], recoltes = [], ventes = [], annee } = data;
+
   const { doc, addFooter } = await createBasePDF(
     `Rapport Annuel ${annee}`,
-    'Vue d\'ensemble complete de l\'exploitation'
+    "Vue d'ensemble complète de l'exploitation"
   );
 
   let currentY = 50;
 
-  // 1. Vue d'ensemble
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.secondary);
   doc.rect(14, currentY - 5, 180, 10, 'F');
-  doc.text('Vue d\'ensemble', 18, currentY + 2);
-  
+  doc.text("Vue d'ensemble", 18, currentY + 2);
+
   currentY += 15;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
+
+  const totalPoids = recoltes.reduce(
+    (sum, r) => sum + parseFloat(r.poids_grammes || 0),
+    0
+  );
+  const totalCA = ventes.reduce(
+    (sum, v) => sum + parseFloat(v.montant_total || 0),
+    0
+  );
+
   const statsAnnuel = [
     `Parcelles : ${parcelles.length}`,
     `Arbres : ${arbres.length}`,
-    `Recoltes : ${recoltes.length}`,
+    `Récoltes : ${recoltes.length}`,
     `Ventes : ${ventes.length}`,
-    `Production totale : ${(recoltes.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0) / 1000).toFixed(2)} kg`,
-    `Chiffre d'affaires : ${ventes.reduce((sum, v) => sum + parseFloat(v.montant_total || 0), 0).toFixed(2)} EUR`
+    `Production totale : ${(totalPoids / 1000).toFixed(2)} kg`,
+    `Chiffre d'affaires : ${totalCA.toFixed(2)} EUR`
   ];
 
-  statsAnnuel.forEach(stat => {
+  statsAnnuel.forEach((stat) => {
     doc.text(`- ${stat}`, 20, currentY);
     currentY += 7;
   });

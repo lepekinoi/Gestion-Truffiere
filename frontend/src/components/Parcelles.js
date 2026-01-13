@@ -286,25 +286,53 @@ function Parcelles() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      if (editingParcelle) {
-        await axios.put(`${API_URL}/parcelles/${editingParcelle.id}`, formData);
-        showMessage('Parcelle mise à jour !', 'success');
-      } else {
-        await axios.post(`${API_URL}/parcelles`, formData);
-        showMessage('Parcelle créée !', 'success');
-      }
-      loadData();
-      closeModal();
-    } catch (error) {
-      showMessage('Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsProcessing(false);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  // Validation
+  if (!formData.nom || formData.nom.trim() === '') {
+    showMessage('Le nom est obligatoire', 'error');
+    return;
+  }
+  
+  if (!formData.surface_ha || formData.surface_ha === '') {
+    showMessage('La surface est obligatoire', 'error');
+    return;
+  }
+  
+  setIsProcessing(true);
+  try {
+    // 🔧 NETTOYAGE: Convertir '' en null
+    const dataToSend = {
+      nom: formData.nom.trim(),
+      surface_ha: parseFloat(formData.surface_ha),
+      type_sol: formData.type_sol && formData.type_sol.trim() !== '' ? formData.type_sol.trim() : null,
+      ph_sol: formData.ph_sol && formData.ph_sol !== '' ? parseFloat(formData.ph_sol) : null,  // ← FIX
+      notes: formData.notes && formData.notes.trim() !== '' ? formData.notes.trim() : null,
+      coordinates: formData.coordinates || null
+    };
+    
+    console.log('📤 Envoi:', dataToSend);
+    
+    if (editingParcelle) {
+      await axios.put(`${API_URL}/parcelles/${editingParcelle.id}`, dataToSend);
+      showMessage('Parcelle mise à jour !', 'success');
+    } else {
+      await axios.post(`${API_URL}/parcelles`, dataToSend);
+      showMessage('Parcelle créée !', 'success');
     }
-  };
+    
+    loadData();
+    closeModal();
+    
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+    const errorMsg = error.response?.data?.details || error.response?.data?.error || 'Erreur lors de la sauvegarde';
+    showMessage(errorMsg, 'error');
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleEdit = (parcelle) => {
     setEditingParcelle(parcelle);
@@ -1405,8 +1433,16 @@ function Parcelles() {
                   <input type="text" name="nom" value={formData.nom} onChange={handleInputChange} required placeholder="Ex: Parcelle Nord" />
                 </div>
                 <div className="form-group">
-                  <label>Surface (ha)</label>
-                  <input type="number" name="surface_ha" value={formData.surface_ha} onChange={handleInputChange} step="0.01" placeholder="Ex: 1.5" />
+                  <label>Surface (ha) *</label>
+					<input 
+					  type="number" 
+					  name="surfaceha" 
+					  value={formData.surfaceha} 
+					  onChange={handleInputChange} 
+					  required
+					  step="0.01" 
+					  placeholder="Ex: 1.5" 
+					/>
                 </div>
                 <div className="form-group">
                   <label>Type de sol</label>

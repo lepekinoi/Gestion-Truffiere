@@ -3,7 +3,7 @@ import axios from 'axios';
 import { exportInterventionsPDF } from '../utils/pdfExport';
 import { validateInterventionsCSV } from '../utils/csvImport';
 import CSVImportModal from './CSVImportModal';
-import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
+import useColumnSettings, { COLONNES_CONFIG } from '../hooks/useColumnSettings';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -16,405 +16,337 @@ const PAGINATION_OPTIONS = [
   { value: 'all', label: 'Tous' }
 ];
 
-// ============================================================================
+// ========================================
 // CONFIGURATION DES CHAMPS PAR TYPE D'INTERVENTION
-// ============================================================================
-
+// ========================================
 const CHAMPS_PAR_TYPE = {
   'Irrigation': {
     icon: '💧',
     sections: [
       {
-        titre: '💧 Paramètres d\'irrigation',
+        titre: "Paramètres d'irrigation",
         champs: [
-          { name: 'volume_eau_m3', label: 'Volume total (m³)', type: 'number', step: '0.1', placeholder: 'Ex: 5.5' },
-          { name: 'volume_eau_par_arbre_L', label: 'Volume par arbre (L)', type: 'number', step: '0.1', placeholder: 'Ex: 50' },
-          { name: 'methode_irrigation', label: 'Méthode', type: 'select', options: [
-            '', 'Goutte-à-goutte', 'Aspersion', 'Micro-aspersion', 'Gravitaire', 'Citerne', 'Tuyau manuel'
-          ]},
-          { name: 'source_eau', label: 'Source d\'eau', type: 'select', options: [
-            '', 'Réseau', 'Puits', 'Forage', 'Récupération eau de pluie', 'Citerne', 'Cours d\'eau', 'Bassin'
-          ]},
-          { name: 'debit_L_h', label: 'Débit (L/h)', type: 'number', step: '0.1', placeholder: 'Ex: 4' },
-          { name: 'pression_bar', label: 'Pression (bar)', type: 'number', step: '0.1', placeholder: 'Ex: 2.5' },
-          { name: 'frequence_irrigation', label: 'Fréquence', type: 'select', options: [
-            '', 'Ponctuel', 'Quotidien', 'Tous les 2 jours', 'Hebdomadaire', 'Bi-hebdomadaire', 'Mensuel'
-          ]},
+          { name: 'volumeEauM3', label: 'Volume total (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 5.5' },
+          { name: 'volumeEauParArbreL', label: 'Volume par arbre (L)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
+          { name: 'methodeIrrigation', label: 'Méthode', type: 'select', options: ['', 'Goutte-à-goutte', 'Aspersion', 'Micro-aspersion', 'Gravitaire', 'Citerne', 'Tuyau manuel'] },
+          { name: 'sourceEau', label: 'Source d\'eau', type: 'select', options: ['', 'Réseau', 'Puits', 'Forage', 'Récupération eau de pluie', 'Citerne', 'Cours d\'eau', 'Bassin'] },
+          { name: 'debitLh', label: 'Débit (L/h)', type: 'number', step: 0.1, placeholder: 'Ex: 4' },
+          { name: 'pressionBar', label: 'Pression (bar)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'frequenceIrrigation', label: 'Fréquence', type: 'select', options: ['', 'Ponctuel', 'Quotidien', 'Tous les 2 jours', 'Hebdomadaire', 'Bi-hebdomadaire', 'Mensuel'] }
         ]
       },
       {
-        titre: '🌡️ Mesures du sol',
+        titre: 'Mesures du sol',
         champs: [
-          { name: 'humidite_sol_avant', label: 'Humidité sol avant (%)', type: 'number', step: '0.1', placeholder: 'Ex: 25' },
-          { name: 'humidite_sol_apres', label: 'Humidité sol après (%)', type: 'number', step: '0.1', placeholder: 'Ex: 45' },
+          { name: 'humiditeSolAvant', label: 'Humidité sol avant (%)', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
+          { name: 'humiditeSolApres', label: 'Humidité sol après (%)', type: 'number', step: 0.1, placeholder: 'Ex: 45' }
         ]
       }
     ]
   },
-  
   'Traitement': {
     icon: '🧪',
     sections: [
       {
-        titre: '🧪 Produit utilisé',
+        titre: 'Produit utilisé',
         champs: [
-          { name: 'categorie_traitement', label: 'Catégorie', type: 'select', options: [
-            '', 'Fongicide', 'Insecticide', 'Herbicide', 'Acaricide', 'Répulsif', 'Stimulant', 'Autre'
-          ]},
-          { name: 'nom_commercial', label: 'Nom commercial *', type: 'text', placeholder: 'Ex: Bouillie bordelaise' },
-          { name: 'matiere_active', label: 'Matière(s) active(s)', type: 'text', placeholder: 'Ex: Sulfate de cuivre' },
-          { name: 'numero_amm', label: 'N° AMM', type: 'text', placeholder: 'Ex: 9800123' },
-          { name: 'fabricant', label: 'Fabricant', type: 'text', placeholder: 'Ex: BASF' },
+          { name: 'categorieTraitement', label: 'Catégorie', type: 'select', options: ['', 'Fongicide', 'Insecticide', 'Herbicide', 'Acaricide', 'Répulsif', 'Stimulant', 'Autre'] },
+          { name: 'nomCommercial', label: 'Nom commercial', type: 'text', placeholder: 'Ex: Bouillie bordelaise' },
+          { name: 'matiereActive', label: 'Matières actives', type: 'text', placeholder: 'Ex: Sulfate de cuivre' },
+          { name: 'numeroAmm', label: 'N° AMM', type: 'text', placeholder: 'Ex: 9800123' },
+          { name: 'fabricant', label: 'Fabricant', type: 'text', placeholder: 'Ex: BASF' }
         ]
       },
       {
-        titre: '📐 Dosage et application',
+        titre: 'Dosage et application',
         champs: [
-          { name: 'dose_produit_ha', label: 'Dose/ha (L ou kg)', type: 'number', step: '0.01', placeholder: 'Ex: 2.5' },
-          { name: 'dose_produit_arbre', label: 'Dose/arbre (mL ou g)', type: 'number', step: '0.1', placeholder: 'Ex: 50' },
+          { name: 'doseProduitHa', label: 'Dose/ha (L ou kg)', type: 'number', step: 0.01, placeholder: 'Ex: 2.5' },
+          { name: 'doseProduitArbre', label: 'Dose/arbre (mL ou g)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
           { name: 'concentration', label: 'Concentration', type: 'text', placeholder: 'Ex: 2% ou 50g/L' },
-          { name: 'volume_bouillie_L', label: 'Volume bouillie (L)', type: 'number', step: '0.1', placeholder: 'Ex: 100' },
-          { name: 'surface_traitee_ha', label: 'Surface traitée (ha)', type: 'number', step: '0.01', placeholder: 'Ex: 0.5' },
-          { name: 'methode_application', label: 'Méthode d\'application', type: 'select', options: [
-            '', 'Pulvérisateur dorsal', 'Pulvérisateur tracté', 'Atomiseur', 'Drone', 'Pinceau', 'Injection tronc', 'Arrosage'
-          ]},
+          { name: 'volumeBouillieL', label: 'Volume bouillie (L)', type: 'number', step: 0.1, placeholder: 'Ex: 100' },
+          { name: 'surfaceTraiteeHa', label: 'Surface traitée (ha)', type: 'number', step: 0.01, placeholder: 'Ex: 0.5' },
+          { name: 'methodeApplication', label: 'Méthode d\'application', type: 'select', options: ['', 'Pulvérisateur dorsal', 'Pulvérisateur tracté', 'Atomiseur', 'Drone', 'Pinceau', 'Injection tronc', 'Arrosage'] }
         ]
       },
       {
-        titre: '🎯 Cible et réglementation',
+        titre: 'Cible et réglementation',
         champs: [
-          { name: 'cible_traitement', label: 'Cible / Ravageur', type: 'text', placeholder: 'Ex: Mouche de la truffe, Pucerons' },
-          { name: 'delai_avant_recolte_jours', label: 'DAR (jours) *', type: 'number', placeholder: 'Ex: 21', help: 'Délai Avant Récolte réglementaire' },
-          { name: 'zone_non_traitee_m', label: 'ZNT (mètres)', type: 'number', step: '0.1', placeholder: 'Ex: 5' },
-          { name: 'equipement_protection', label: 'EPI utilisés', type: 'text', placeholder: 'Ex: Gants, masque, combinaison' },
-          { name: 'conditions_application', label: 'Conditions d\'application', type: 'textarea', placeholder: 'Température, vent, hygrométrie...' },
+          { name: 'cibleTraitement', label: 'Cible / Ravageur', type: 'text', placeholder: 'Ex: Mouche de la truffe, Pucerons' },
+          { name: 'delaiAvantRecolteJours', label: 'DAR (jours)', type: 'number', placeholder: 'Ex: 21', help: 'Délai Avant Récolte réglementaire' },
+          { name: 'zoneNonTraiteeM', label: 'ZNT (mètres)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'equipementProtection', label: 'EPI utilisés', type: 'text', placeholder: 'Ex: Gants, masque, combinaison' },
+          { name: 'conditionsApplication', label: 'Conditions d\'application', type: 'textarea', placeholder: 'Température, vent, hygrométrie...' }
         ]
       }
     ]
   },
-  
   'Amendement': {
-    icon: '🌿',
+    icon: '🌱',
     sections: [
       {
-        titre: '🌿 Produit d\'amendement',
+        titre: 'Produit d\'amendement',
         champs: [
-          { name: 'type_amendement', label: 'Type d\'amendement', type: 'select', options: [
-            '', 'Calcaire broyé', 'Dolomie', 'Chaux vive', 'Chaux éteinte', 'Lithothamne', 
-            'Compost', 'Fumier composté', 'BRF', 'Cendre de bois', 'Engrais vert', 'Autre'
-          ]},
-          { name: 'nom_produit_amendement', label: 'Nom du produit', type: 'text', placeholder: 'Ex: Calcaire broyé 0-4' },
-          { name: 'origine_produit', label: 'Fournisseur / Origine', type: 'text', placeholder: 'Ex: Carrière locale' },
-          { name: 'numero_lot', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' },
-          { name: 'certification_bio', label: 'Utilisable en bio', type: 'checkbox' },
+          { name: 'typeAmendement', label: 'Type d\'amendement', type: 'select', options: ['', 'Calcaire broyé', 'Dolomie', 'Chaux vive', 'Chaux éteinte', 'Lithothamne', 'Compost', 'Fumier composté', 'BRF', 'Cendre de bois', 'Engrais vert', 'Autre'] },
+          { name: 'nomProduitAmendement', label: 'Nom du produit', type: 'text', placeholder: 'Ex: Calcaire broyé 0-4' },
+          { name: 'origineProduit', label: 'Fournisseur / Origine', type: 'text', placeholder: 'Ex: Carrière locale' },
+          { name: 'numeroLot', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' },
+          { name: 'certificationBio', label: 'Utilisable en bio', type: 'checkbox' }
         ]
       },
       {
-        titre: '🧪 Composition',
+        titre: 'Composition',
         champs: [
-          { name: 'composition_npk', label: 'NPK', type: 'text', placeholder: 'Ex: 10-5-15' },
-          { name: 'composition_cao', label: 'CaO (%)', type: 'number', step: '0.1', placeholder: 'Ex: 50' },
-          { name: 'composition_mgo', label: 'MgO (%)', type: 'number', step: '0.1', placeholder: 'Ex: 5' },
-          { name: 'composition_autres', label: 'Autres éléments', type: 'textarea', placeholder: 'Oligoéléments, matière organique...' },
+          { name: 'compositionNpk', label: 'NPK', type: 'text', placeholder: 'Ex: 10-5-15' },
+          { name: 'compositionCao', label: 'CaO (%)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
+          { name: 'compositionMgo', label: 'MgO (%)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'compositionAutres', label: 'Autres éléments', type: 'textarea', placeholder: 'Oligoéléments, matière organique...' }
         ]
       },
       {
-        titre: '📐 Dosage et application',
+        titre: 'Dosage et application',
         champs: [
-          { name: 'dose_kg_ha', label: 'Dose (kg/ha)', type: 'number', step: '1', placeholder: 'Ex: 1500' },
-          { name: 'dose_kg_arbre', label: 'Dose (kg/arbre)', type: 'number', step: '0.1', placeholder: 'Ex: 5' },
-          { name: 'quantite_totale_kg', label: 'Quantité totale (kg)', type: 'number', step: '1', placeholder: 'Ex: 500' },
-          { name: 'methode_epandage', label: 'Méthode d\'épandage', type: 'select', options: [
-            '', 'Manuel', 'Épandeur centrifuge', 'Épandeur à hérisson', 'Enfouissement localisé'
-          ]},
+          { name: 'doseKgHa', label: 'Dose (kg/ha)', type: 'number', step: 1, placeholder: 'Ex: 1500' },
+          { name: 'doseKgArbre', label: 'Dose (kg/arbre)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'quantiteTotaleKg', label: 'Quantité totale (kg)', type: 'number', step: 1, placeholder: 'Ex: 500' },
+          { name: 'methodeEpandage', label: 'Méthode d\'épandage', type: 'select', options: ['', 'Manuel', 'Épandeur centrifuge', 'Épandeur hérisson', 'Enfouissement localisé'] },
           { name: 'incorporation', label: 'Incorporé au sol', type: 'checkbox' },
-          { name: 'profondeur_incorporation_cm', label: 'Profondeur incorporation (cm)', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'profondeurIncorporationCm', label: 'Profondeur incorporation (cm)', type: 'number', placeholder: 'Ex: 10' }
         ]
       },
       {
-        titre: '🌡️ Mesures pH',
+        titre: 'Mesures pH',
         champs: [
-          { name: 'ph_sol_avant', label: 'pH sol avant', type: 'number', step: '0.1', min: '0', max: '14', placeholder: 'Ex: 7.2' },
-          { name: 'ph_sol_apres', label: 'pH sol après', type: 'number', step: '0.1', min: '0', max: '14', placeholder: 'Mesure différée' },
+          { name: 'phSolAvant', label: 'pH sol avant', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Ex: 7.2' },
+          { name: 'phSolApres', label: 'pH sol après', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Mesure différée' }
         ]
       }
     ]
   },
-  
   'Taille': {
     icon: '✂️',
     sections: [
       {
-        titre: '✂️ Type de taille',
+        titre: 'Type de taille',
         champs: [
-          { name: 'type_taille', label: 'Type de taille', type: 'select', options: [
-            '', 'Formation', 'Entretien', 'Sanitaire', 'Éclaircie', 'Rabattage', 'Taille en vert'
-          ]},
-          { name: 'intensite_taille', label: 'Intensité', type: 'select', options: [
-            '', 'Légère (<20%)', 'Modérée (20-40%)', 'Forte (>40%)'
-          ]},
+          { name: 'typeTaille', label: 'Type de taille', type: 'select', options: ['', 'Formation', 'Entretien', 'Sanitaire', 'Éclaircie', 'Rabattage', 'Taille en vert'] },
+          { name: 'intensiteTaille', label: 'Intensité', type: 'select', options: ['', 'Légère (<20%)', 'Modérée (20-40%)', 'Forte (>40%)'] }
         ]
       },
       {
-        titre: '📐 Mesures',
+        titre: 'Mesures',
         champs: [
-          { name: 'hauteur_avant_cm', label: 'Hauteur avant (cm)', type: 'number', placeholder: 'Ex: 350' },
-          { name: 'hauteur_apres_cm', label: 'Hauteur après (cm)', type: 'number', placeholder: 'Ex: 280' },
-          { name: 'diametre_couronne_avant_m', label: 'Ø couronne avant (m)', type: 'number', step: '0.1', placeholder: 'Ex: 4.5' },
-          { name: 'diametre_couronne_apres_m', label: 'Ø couronne après (m)', type: 'number', step: '0.1', placeholder: 'Ex: 3.5' },
-          { name: 'branches_supprimees', label: 'Branches supprimées', type: 'number', placeholder: 'Nombre' },
-          { name: 'diametre_max_coupe_cm', label: 'Plus gros Ø coupé (cm)', type: 'number', placeholder: 'Ex: 8' },
+          { name: 'hauteurAvantCm', label: 'Hauteur avant (cm)', type: 'number', placeholder: 'Ex: 350' },
+          { name: 'hauteurApresCm', label: 'Hauteur après (cm)', type: 'number', placeholder: 'Ex: 280' },
+          { name: 'diametreCouronneAvantM', label: 'Ø couronne avant (m)', type: 'number', step: 0.1, placeholder: 'Ex: 4.5' },
+          { name: 'diametreCouronneApresM', label: 'Ø couronne après (m)', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
+          { name: 'branchesSupprimees', label: 'Branches supprimées', type: 'number', placeholder: 'Nombre' },
+          { name: 'diametreMaxCoupeCm', label: 'Plus gros Ø coupé (cm)', type: 'number', placeholder: 'Ex: 8' }
         ]
       },
       {
-        titre: '🌿 Résidus et outils',
+        titre: 'Résidus et outils',
         champs: [
-          { name: 'volume_residus_m3', label: 'Volume résidus (m³)', type: 'number', step: '0.1', placeholder: 'Ex: 2.5' },
-          { name: 'destination_residus', label: 'Destination résidus', type: 'select', options: [
-            '', 'Broyage sur place', 'BRF', 'Brûlage', 'Export', 'Compostage'
-          ]},
-          { name: 'outils_taille', label: 'Outils utilisés', type: 'text', placeholder: 'Ex: Sécateur, tronçonneuse' },
-          { name: 'desinfection_outils', label: 'Outils désinfectés', type: 'checkbox' },
-          { name: 'produit_desinfection', label: 'Produit désinfection', type: 'text', placeholder: 'Ex: Alcool, eau de javel' },
+          { name: 'volumeResidusM3', label: 'Volume résidus (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'destinationResidus', label: 'Destination résidus', type: 'select', options: ['', 'Broyage sur place', 'BRF', 'Brûlage', 'Export', 'Compostage'] },
+          { name: 'outilsTaille', label: 'Outils utilisés', type: 'text', placeholder: 'Ex: Sécateur, tronçonneuse' },
+          { name: 'desinfectionOutils', label: 'Outils désinfectés', type: 'checkbox' },
+          { name: 'produitDesinfection', label: 'Produit désinfection', type: 'text', placeholder: 'Ex: Alcool, eau de javel' }
         ]
       }
     ]
   },
-  
   'Travail du sol': {
     icon: '🚜',
     sections: [
       {
-        titre: '🚜 Type de travail',
+        titre: 'Type de travail',
         champs: [
-          { name: 'type_travail_sol', label: 'Type de travail', type: 'select', options: [
-            '', 'Griffage', 'Binage', 'Décompactage', 'Désherbage mécanique', 'Scarification', 'Aération', 'Buttage'
-          ]},
-          { name: 'outil_travail_sol', label: 'Outil utilisé', type: 'select', options: [
-            '', 'Griffe manuelle', 'Binette', 'Motobineuse', 'Décompacteur', 'Cultivateur', 'Herse rotative', 'Disque'
-          ]},
-          { name: 'zone_travaillee', label: 'Zone travaillée', type: 'select', options: [
-            '', 'Inter-rang', 'Sous couronne', 'Brûlé uniquement', 'Rang complet', 'Parcelle entière'
-          ]},
+          { name: 'typeTravailSol', label: 'Type de travail', type: 'select', options: ['', 'Griffage', 'Binage', 'Décompactage', 'Désherbage mécanique', 'Scarification', 'Aération', 'Buttage'] },
+          { name: 'outilTravailSol', label: 'Outil utilisé', type: 'select', options: ['', 'Griffe manuelle', 'Binette', 'Motobineuse', 'Décompacteur', 'Cultivateur', 'Herse rotative', 'Disque'] },
+          { name: 'zoneTravaillee', label: 'Zone travaillée', type: 'select', options: ['', 'Inter-rang', 'Sous couronne', 'Brûlé uniquement', 'Rang complet', 'Parcelle entière'] }
         ]
       },
       {
-        titre: '📐 Paramètres',
+        titre: 'Paramètres',
         champs: [
-          { name: 'profondeur_travail_cm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'largeur_travail_m', label: 'Largeur (m)', type: 'number', step: '0.1', placeholder: 'Ex: 1.5' },
-          { name: 'distance_tronc_m', label: 'Distance min du tronc (m)', type: 'number', step: '0.1', placeholder: 'Ex: 0.5' },
+          { name: 'profondeurTravailCm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'largeurTravailM', label: 'Largeur (m)', type: 'number', step: 0.1, placeholder: 'Ex: 1.5' },
+          { name: 'distanceTroncM', label: 'Distance min du tronc (m)', type: 'number', step: 0.1, placeholder: 'Ex: 0.5' }
         ]
       },
       {
-        titre: '🌱 État du sol',
+        titre: 'État du sol',
         champs: [
-          { name: 'etat_sol_avant', label: 'État du sol', type: 'select', options: [
-            '', 'Sec', 'Frais', 'Humide', 'Détrempé'
-          ]},
-          { name: 'enherbement_avant', label: 'Enherbement avant', type: 'select', options: [
-            '', 'Nul', 'Faible', 'Moyen', 'Fort'
-          ]},
-          { name: 'enherbement_apres', label: 'Enherbement après', type: 'select', options: [
-            '', 'Nul', 'Faible', 'Moyen', 'Fort'
-          ]},
-          { name: 'presence_cailloux', label: 'Sol caillouteux', type: 'checkbox' },
+          { name: 'etatSolAvant', label: 'État du sol', type: 'select', options: ['', 'Sec', 'Frais', 'Humide', 'Détrempé'] },
+          { name: 'enherbementAvant', label: 'Enherbement avant', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
+          { name: 'enherbementApres', label: 'Enherbement après', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
+          { name: 'presenceCailloux', label: 'Sol caillouteux', type: 'checkbox' }
         ]
       }
     ]
   },
-  
   'Observation': {
     icon: '🔍',
     sections: [
       {
-        titre: '🔍 Type d\'observation',
+        titre: 'Type d\'observation',
         champs: [
-          { name: 'type_observation', label: 'Type', type: 'select', options: [
-            '', 'Brûlé', 'Mycorhization', 'Santé arbre', 'Ravageurs', 'Maladie', 'Croissance', 'Général'
-          ]},
-          { name: 'niveau_urgence', label: 'Niveau d\'urgence', type: 'select', options: [
-            '', 'Normal', 'À surveiller', 'Intervention rapide', 'Urgent'
-          ]},
+          { name: 'typeObservation', label: 'Type', type: 'select', options: ['', 'Brûlé', 'Mycorhization', 'Santé arbre', 'Ravageurs', 'Maladie', 'Croissance', 'Général'] },
+          { name: 'niveauUrgence', label: 'Niveau d\'urgence', type: 'select', options: ['', 'Normal', 'À surveiller', 'Intervention rapide', 'Urgent'] }
         ]
       },
       {
-        titre: '🍄 État du brûlé',
+        titre: 'État du brûlé',
         champs: [
-          { name: 'etat_brule', label: 'État du brûlé', type: 'select', options: [
-            '', 'Absent', 'Naissant', 'Bien marqué', 'Étendu', 'En régression', 'Disparu'
-          ]},
-          { name: 'diametre_brule_m', label: 'Diamètre brûlé (m)', type: 'number', step: '0.1', placeholder: 'Ex: 3.5' },
-          { name: 'evolution_brule', label: 'Évolution', type: 'select', options: [
-            '', 'Extension', 'Stable', 'Régression'
-          ]},
-          { name: 'presence_ascomes', label: 'Présence ascocarpes', type: 'checkbox' },
-          { name: 'nombre_ascomes', label: 'Nombre observé', type: 'number', placeholder: 'Si visible' },
+          { name: 'etatBrule', label: 'État du brûlé', type: 'select', options: ['', 'Absent', 'Naissant', 'Bien marqué', 'Étendu', 'En régression', 'Disparu'] },
+          { name: 'diametreBruleM', label: 'Diamètre brûlé (m)', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
+          { name: 'evolutionBrule', label: 'Évolution', type: 'select', options: ['', 'Extension', 'Stable', 'Régression'] },
+          { name: 'presenceAscomes', label: 'Présence ascocarpes', type: 'checkbox' },
+          { name: 'nombreAscomes', label: 'Nombre observé', type: 'number', placeholder: 'Si visible' }
         ]
       },
       {
-        titre: '🌿 Mycorhization et santé',
+        titre: 'Mycorhization et santé',
         champs: [
-          { name: 'indice_mycorhization', label: 'Indice mycorhization', type: 'select', options: [
-            '', 'Faible (0-30%)', 'Moyen (30-60%)', 'Fort (60-90%)', 'Excellent (>90%)'
-          ]},
-          { name: 'symptomes_observes', label: 'Symptômes observés', type: 'textarea', placeholder: 'Décrivez les symptômes...' },
-          { name: 'ravageurs_identifies', label: 'Ravageurs identifiés', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
-          { name: 'degats_constates', label: 'Dégâts constatés', type: 'textarea', placeholder: 'Description des dégâts' },
+          { name: 'indiceMycorhization', label: 'Indice mycorhization', type: 'select', options: ['', 'Faible (0-30%)', 'Moyen (30-60%)', 'Fort (60-90%)', 'Excellent (>90%)'] },
+          { name: 'symptomesObserves', label: 'Symptômes observés', type: 'textarea', placeholder: 'Décrivez les symptômes...' },
+          { name: 'ravageursIdentifies', label: 'Ravageurs identifiés', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
+          { name: 'degatsConstates', label: 'Dégâts constatés', type: 'textarea', placeholder: 'Description des dégâts' }
         ]
       },
       {
-        titre: '📝 Préconisations',
+        titre: 'Préconisations',
         champs: [
-          { name: 'preconisations', label: 'Préconisations', type: 'textarea', placeholder: 'Actions recommandées...' },
+          { name: 'preconisations', label: 'Préconisations', type: 'textarea', placeholder: 'Actions recommandées...' }
         ]
       }
     ]
   },
-  
   'Paillage': {
-    icon: '🌾',
+    icon: '🍂',
     sections: [
       {
-        titre: '🌾 Paillage',
+        titre: 'Paillage',
         champs: [
-          { name: 'type_paillage', label: 'Type de paillage', type: 'select', options: [
-            '', 'BRF', 'Paille', 'Copeaux de bois', 'Écorces', 'Feuilles mortes', 'Miscanthus', 'Autre'
-          ]},
-          { name: 'epaisseur_cm', label: 'Épaisseur (cm)', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'surface_paillee_m2', label: 'Surface paillée (m²)', type: 'number', step: '0.1', placeholder: 'Ex: 25' },
-          { name: 'quantite_paillage_m3', label: 'Quantité (m³)', type: 'number', step: '0.1', placeholder: 'Ex: 2.5' },
-          { name: 'origine_paillage', label: 'Origine / Fournisseur', type: 'text', placeholder: 'Ex: Production propre' },
+          { name: 'typePaillage', label: 'Type de paillage', type: 'select', options: ['', 'BRF', 'Paille', 'Copeaux de bois', 'Écorces', 'Feuilles mortes', 'Miscanthus', 'Autre'] },
+          { name: 'epaisseurCm', label: 'Épaisseur (cm)', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'surfacePailleeM2', label: 'Surface paillée (m²)', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
+          { name: 'quantitePaillageM3', label: 'Quantité (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'originePaillage', label: 'Origine / Fournisseur', type: 'text', placeholder: 'Ex: Production propre' }
         ]
       }
     ]
   },
-  
   'Plantation': {
-    icon: '🌱',
+    icon: '🌳',
     sections: [
       {
-        titre: '🌱 Plant',
+        titre: 'Plant',
         champs: [
-          { name: 'espece_plantee', label: 'Espèce', type: 'select', options: [
-            '', 'Chêne vert', 'Chêne pubescent', 'Chêne pédonculé', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'
-          ]},
-          { name: 'variete_plant', label: 'Variété / Clone', type: 'text', placeholder: 'Ex: Clone INRAE' },
-          { name: 'type_mycorhization', label: 'Mycorhization', type: 'select', options: [
-            '', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Autre'
-          ]},
-          { name: 'fournisseur_plant', label: 'Pépiniériste', type: 'text', placeholder: 'Ex: Robin Pépinières' },
-          { name: 'certification_plant', label: 'Certification', type: 'text', placeholder: 'Ex: INRAE certifié' },
-          { name: 'numero_lot_plant', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' },
+          { name: 'especePlantee', label: 'Espèce', type: 'select', options: ['', 'Chêne vert', 'Chêne pubescent', 'Chêne pédonculé', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'] },
+          { name: 'varietePlant', label: 'Variété / Clone', type: 'text', placeholder: 'Ex: Clone INRAE' },
+          { name: 'typeMycorhization', label: 'Mycorhization', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Autre'] },
+          { name: 'fournisseurPlant', label: 'Pépiniériste', type: 'text', placeholder: 'Ex: Robin Pépinières' },
+          { name: 'certificationPlant', label: 'Certification', type: 'text', placeholder: 'Ex: INRAE certifié' },
+          { name: 'numeroLotPlant', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' }
         ]
       },
       {
-        titre: '📐 Caractéristiques du plant',
+        titre: 'Caractéristiques du plant',
         champs: [
-          { name: 'taille_plant_cm', label: 'Hauteur plant (cm)', type: 'number', placeholder: 'Ex: 50' },
-          { name: 'diametre_collet_mm', label: 'Ø collet (mm)', type: 'number', placeholder: 'Ex: 8' },
+          { name: 'taillePlantCm', label: 'Hauteur plant (cm)', type: 'number', placeholder: 'Ex: 50' },
+          { name: 'diametreColletMm', label: 'Ø collet (mm)', type: 'number', placeholder: 'Ex: 8' }
         ]
       },
       {
-        titre: '🕳️ Plantation',
+        titre: 'Plantation',
         champs: [
-          { name: 'dimensions_trou_cm', label: 'Dimensions trou (cm)', type: 'text', placeholder: 'Ex: 50x50x50' },
-          { name: 'amendement_plantation', label: 'Amendement à la plantation', type: 'textarea', placeholder: 'Ex: 1kg calcaire + terreau mycorhizé' },
-          { name: 'arrosage_plantation_L', label: 'Arrosage plantation (L)', type: 'number', placeholder: 'Ex: 20' },
+          { name: 'dimensionsTrouCm', label: 'Dimensions trou (cm)', type: 'text', placeholder: 'Ex: 50x50x50' },
+          { name: 'amendementPlantation', label: 'Amendement à la plantation', type: 'textarea', placeholder: 'Ex: 1kg calcaire + terreau mycorhizé' },
+          { name: 'arrosagePlantationL', label: 'Arrosage plantation (L)', type: 'number', placeholder: 'Ex: 20' },
           { name: 'tuteur', label: 'Tuteur installé', type: 'checkbox' },
-          { name: 'protection_gibier', label: 'Protection gibier', type: 'checkbox' },
-          { name: 'type_protection', label: 'Type de protection', type: 'text', placeholder: 'Ex: Filet, manchon' },
+          { name: 'protectionGibier', label: 'Protection gibier', type: 'checkbox' },
+          { name: 'typeProtection', label: 'Type de protection', type: 'text', placeholder: 'Ex: Filet, manchon' }
         ]
       }
     ]
   },
-  
   'Analyse de sol': {
-    icon: '🧫',
+    icon: '🧪',
     sections: [
       {
-        titre: '🧫 Prélèvement',
+        titre: 'Prélèvement',
         champs: [
-          { name: 'profondeur_prelevement_cm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 30' },
-          { name: 'nombre_echantillons', label: 'Nombre d\'échantillons', type: 'number', placeholder: 'Ex: 5' },
-          { name: 'laboratoire', label: 'Laboratoire', type: 'text', placeholder: 'Ex: INRAE, Auréa' },
-          { name: 'reference_analyse', label: 'Référence analyse', type: 'text', placeholder: 'N° de dossier' },
+          { name: 'profondeurPrelevementCm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 30' },
+          { name: 'nombreEchantillons', label: 'Nombre d\'échantillons', type: 'number', placeholder: 'Ex: 5' },
+          { name: 'laboratoire', label: 'Laboratoire', type: 'text', placeholder: 'Ex: INRAE, Aurea' },
+          { name: 'referenceAnalyse', label: 'Référence analyse', type: 'text', placeholder: 'N° de dossier' }
         ]
       },
       {
-        titre: '📊 Résultats',
+        titre: 'Résultats',
         champs: [
-          { name: 'resultats_ph', label: 'pH', type: 'number', step: '0.1', placeholder: 'Ex: 7.8' },
-          { name: 'resultats_calcaire_actif', label: 'Calcaire actif (%)', type: 'number', step: '0.1', placeholder: 'Ex: 12' },
-          { name: 'resultats_matiere_organique', label: 'Matière organique (%)', type: 'number', step: '0.1', placeholder: 'Ex: 2.5' },
-          { name: 'resultats_azote', label: 'Azote total (‰)', type: 'number', step: '0.01', placeholder: 'Ex: 1.2' },
-          { name: 'resultats_phosphore', label: 'P2O5 (mg/kg)', type: 'number', placeholder: 'Ex: 85' },
-          { name: 'resultats_potassium', label: 'K2O (mg/kg)', type: 'number', placeholder: 'Ex: 180' },
-          { name: 'resultats_cec', label: 'CEC (meq/100g)', type: 'number', step: '0.1', placeholder: 'Ex: 15' },
+          { name: 'resultatsPh', label: 'pH', type: 'number', step: 0.1, placeholder: 'Ex: 7.8' },
+          { name: 'resultatsCalcaireActif', label: 'Calcaire actif (%)', type: 'number', step: 0.1, placeholder: 'Ex: 12' },
+          { name: 'resultatsMatiereOrganique', label: 'Matière organique (%)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'resultatsAzote', label: 'Azote total (‰)', type: 'number', step: 0.01, placeholder: 'Ex: 1.2' },
+          { name: 'resultatsPhosphore', label: 'P2O5 (mg/kg)', type: 'number', placeholder: 'Ex: 85' },
+          { name: 'resultatsPotassium', label: 'K2O (mg/kg)', type: 'number', placeholder: 'Ex: 180' },
+          { name: 'resultatsCec', label: 'CEC (meq/100g)', type: 'number', step: 0.1, placeholder: 'Ex: 15' }
         ]
       },
       {
-        titre: '📝 Interprétation',
+        titre: 'Interprétation',
         champs: [
-          { name: 'interpretation', label: 'Interprétation et recommandations', type: 'textarea', placeholder: 'Conclusions de l\'analyse...' },
+          { name: 'interpretation', label: 'Interprétation et recommandations', type: 'textarea', placeholder: 'Conclusions de l\'analyse...' }
         ]
       }
     ]
   },
-  
   'Piégeage': {
     icon: '🪤',
     sections: [
       {
-        titre: '🪤 Piégeage',
+        titre: 'Piégeage',
         champs: [
-          { name: 'type_piege', label: 'Type de piège', type: 'select', options: [
-            '', 'Chromotopique jaune', 'Chromotopique bleu', 'Phéromone', 'Alimentaire', 'Mécanique (rongeurs)', 'Autre'
-          ]},
-          { name: 'cible_piegeage', label: 'Cible', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
-          { name: 'nombre_pieges', label: 'Nombre de pièges', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'densite_pieges_ha', label: 'Densité (pièges/ha)', type: 'number', placeholder: 'Ex: 20' },
+          { name: 'typePiege', label: 'Type de piège', type: 'select', options: ['', 'Chromotopique jaune', 'Chromotopique bleu', 'Phéromone', 'Alimentaire', 'Mécanique rongeurs', 'Autre'] },
+          { name: 'ciblePiegeage', label: 'Cible', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
+          { name: 'nombrePieges', label: 'Nombre de pièges', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'densitePiegesHa', label: 'Densité (pièges/ha)', type: 'number', placeholder: 'Ex: 20' }
         ]
       },
       {
-        titre: '📊 Relevé',
+        titre: 'Relevé',
         champs: [
-          { name: 'date_releve', label: 'Date du relevé', type: 'date' },
+          { name: 'dateReleve', label: 'Date du relevé', type: 'date' },
           { name: 'captures', label: 'Nombre de captures', type: 'number', placeholder: 'Ex: 5' },
-          { name: 'action_suite', label: 'Action décidée', type: 'textarea', placeholder: 'Traitement prévu, surveillance...' },
+          { name: 'actionSuite', label: 'Action décidée', type: 'textarea', placeholder: 'Traitement prévu, surveillance...' }
         ]
       }
     ]
   },
-  
   'Inoculation': {
-    icon: '🍄',
+    icon: '💉',
     sections: [
       {
-        titre: '🍄 Inoculation',
+        titre: 'Inoculation',
         champs: [
-          { name: 'type_inoculum', label: 'Type d\'inoculum', type: 'select', options: [
-            '', 'Spores', 'Mycélium', 'Terre mycorhizée', 'Solution sporale', 'Gel mycorhizien'
-          ]},
-          { name: 'espece_truffe_inoculation', label: 'Espèce de truffe', type: 'select', options: [
-            '', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Tuber magnatum'
-          ]},
-          { name: 'quantite_inoculum', label: 'Quantité', type: 'text', placeholder: 'Ex: 50g de spores' },
-          { name: 'methode_inoculation', label: 'Méthode', type: 'select', options: [
-            '', 'Injection racinaire', 'Arrosage solution sporale', 'Incorporation sol', 'Trempage racines'
-          ]},
-          { name: 'fournisseur_inoculum', label: 'Fournisseur', type: 'text', placeholder: 'Ex: Robin, Agri-Truffe' },
+          { name: 'typeInoculum', label: 'Type d\'inoculum', type: 'select', options: ['', 'Spores', 'Mycélium', 'Terre mycorhizée', 'Solution sporale', 'Gel mycorhizien'] },
+          { name: 'especeTruffeInoculation', label: 'Espèce de truffe', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Tuber magnatum'] },
+          { name: 'quantiteInoculum', label: 'Quantité', type: 'text', placeholder: 'Ex: 50g de spores' },
+          { name: 'methodeInoculation', label: 'Méthode', type: 'select', options: ['', 'Injection racinaire', 'Arrosage solution sporale', 'Incorporation sol', 'Trempage racines'] },
+          { name: 'fournisseurInoculum', label: 'Fournisseur', type: 'text', placeholder: 'Ex: Robin, Agri-Truffe' }
         ]
       }
     ]
   }
 };
 
-// ============================================================================
+// ========================================
 // COMPOSANT PRINCIPAL
-// ============================================================================
-
+// ========================================
 function Interventions() {
+  // États de base
   const [interventions, setInterventions] = useState([]);
   const [parcelles, setParcelles] = useState([]);
   const [arbres, setArbres] = useState([]);
@@ -423,9 +355,13 @@ function Interventions() {
   const [produitsPhyto, setProduitsPhyto] = useState([]);
   const [amendementsRef, setAmendementsRef] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modals
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingIntervention, setEditingIntervention] = useState(null);
+  
+  // Filtres
   const [filterStatut, setFilterStatut] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [filterParcelle, setFilterParcelle] = useState('all');
@@ -434,21 +370,20 @@ function Interventions() {
   const [filterDateFin, setFilterDateFin] = useState('');
   const [searchText, setSearchText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // UI
   const [showGraphique, setShowGraphique] = useState(true);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // État pour la pagination
+  // Pagination
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // ============ SÉLECTION MULTIPLE ============
+  // Sélection multiple
   const [selectedInterventions, setSelectedInterventions] = useState(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
-  const [bulkEditData, setBulkEditData] = useState({
-    statut: '',
-    date_realisee: ''
-  });
+  const [bulkEditData, setBulkEditData] = useState({ statut: '', daterealisee: '' });
   
   // Modal de confirmation
   const [confirmModal, setConfirmModal] = useState(null);
@@ -465,35 +400,39 @@ function Interventions() {
   // Afficher/masquer les champs avancés
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   
+  // Formulaire principal
   const [formData, setFormData] = useState({
-    type_intervention_id: '',
-    parcelle_id: '',
-    arbre_ids: [],
-    date_prevue: '',
-    date_realisee: '',
+    typeInterventionId: '',
+    parcelleId: '',
+    arbreIds: [],
+    datePrevue: new Date().toISOString().split('T')[0],
+    dateRealisee: '',
     statut: 'Planifié',
     description: '',
     notes: '',
     cout: '',
-    duree_minutes: '',
+    dureeMinutes: '',
     meteo: '',
     personnel: '',
-    caveur_id: '',
-    details: {}
+    caveurId: ''
   });
-
+  
+  // Détails spécifiques (nouvelle structure)
+  const [detailsData, setDetailsData] = useState({});
+  
   // Hook pour les paramètres de colonnes
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
-
+  
+  // Charger les données au montage
   useEffect(() => {
     loadData();
   }, []);
-
+  
   const showMessage = (text, type = 'success') => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 4000);
   };
-
+  
   const loadData = async () => {
     try {
       const [interventionsRes, parcellesRes, arbresRes, typesRes, caveursRes, produitsRes, amendementsRes] = await Promise.all([
@@ -503,8 +442,10 @@ function Interventions() {
         axios.get(`${API_URL}/types-intervention`),
         axios.get(`${API_URL}/caveurs`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/produits-phyto`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/amendements`).catch(() => ({ data: [] }))
+		axios.get(`${API_URL}/amendements-ref`).catch(() => ({ data: [] }))
+        // axios.get(`${API_URL}/amendements`).catch(() => ({ data: [] }))
       ]);
+      
       setInterventions(interventionsRes.data);
       setParcelles(parcellesRes.data);
       setArbres(arbresRes.data);
@@ -514,32 +455,28 @@ function Interventions() {
       setAmendementsRef(amendementsRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('Erreur lors du chargement:', error);
+      console.error('❌ Erreur lors du chargement:', error);
       setLoading(false);
     }
   };
-
-  // Filtrer les interventions
+  
+  // ========================================
+  // FILTRAGE DES INTERVENTIONS
+  // ========================================
   const filteredInterventions = useMemo(() => {
     return interventions.filter(intervention => {
       // Filtre par statut
-      if (filterStatut !== 'all' && intervention.statut !== filterStatut) {
-        return false;
-      }
+      if (filterStatut !== 'all' && intervention.statut !== filterStatut) return false;
       
       // Filtre par type
-      if (filterType !== 'all' && intervention.type_intervention_id !== parseInt(filterType)) {
-        return false;
-      }
+      if (filterType !== 'all' && intervention.typeInterventionId !== parseInt(filterType)) return false;
       
       // Filtre par parcelle
-      if (filterParcelle !== 'all' && intervention.parcelle_id !== parseInt(filterParcelle)) {
-        return false;
-      }
+      if (filterParcelle !== 'all' && intervention.parcelleId !== parseInt(filterParcelle)) return false;
       
       // Filtre par période
       if (filterPeriode !== 'all') {
-        const dateIntervention = new Date(intervention.date_prevue);
+        const dateIntervention = new Date(intervention.datePrevue);
         const now = new Date();
         
         if (filterPeriode === 'today') {
@@ -549,7 +486,7 @@ function Interventions() {
           weekStart.setDate(now.getDate() - now.getDay());
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekStart.getDate() + 7);
-          if (dateIntervention < weekStart || dateIntervention > weekEnd) return false;
+          if (dateIntervention < weekStart || dateIntervention >= weekEnd) return false;
         } else if (filterPeriode === 'month') {
           if (dateIntervention.getMonth() !== now.getMonth() || dateIntervention.getFullYear() !== now.getFullYear()) return false;
         }
@@ -558,25 +495,25 @@ function Interventions() {
       // Filtre par dates personnalisées
       if (filterDateDebut) {
         const dateDebut = new Date(filterDateDebut);
-        const dateIntervention = new Date(intervention.date_prevue);
+        const dateIntervention = new Date(intervention.datePrevue);
         if (dateIntervention < dateDebut) return false;
       }
       
       if (filterDateFin) {
         const dateFin = new Date(filterDateFin);
-        const dateIntervention = new Date(intervention.date_prevue);
+        const dateIntervention = new Date(intervention.datePrevue);
         if (dateIntervention > dateFin) return false;
       }
       
       // Filtre par recherche textuelle
       if (searchText) {
         const search = searchText.toLowerCase();
-        const typeNom = typesIntervention.find(t => t.id === intervention.type_intervention_id)?.nom || '';
-        const parcelleNom = intervention.parcelle_nom || '';
+        const typeNom = typesIntervention.find(t => t.id === intervention.typeInterventionId)?.nom || '';
+        const parcelleNom = intervention.parcelleNom || '';
         const description = intervention.description || '';
         const notes = intervention.notes || '';
         
-        if (!typeNom.toLowerCase().includes(search) && 
+        if (!typeNom.toLowerCase().includes(search) &&
             !parcelleNom.toLowerCase().includes(search) &&
             !description.toLowerCase().includes(search) &&
             !notes.toLowerCase().includes(search)) {
@@ -587,7 +524,7 @@ function Interventions() {
       return true;
     });
   }, [interventions, filterStatut, filterType, filterParcelle, filterPeriode, filterDateDebut, filterDateFin, searchText, typesIntervention]);
-
+  
   // Calculer le nombre de filtres actifs
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -600,20 +537,21 @@ function Interventions() {
     if (searchText) count++;
     return count;
   }, [filterStatut, filterType, filterParcelle, filterPeriode, filterDateDebut, filterDateFin, searchText]);
-
-  // ===== PAGINATION =====
+  
+  // ========================================
+  // PAGINATION
+  // ========================================
   const totalInterventions = filteredInterventions.length;
   const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(totalInterventions / itemsPerPage);
-  
   const paginatedInterventions = itemsPerPage === 'all' 
     ? filteredInterventions 
     : filteredInterventions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
+  
   const handleItemsPerPageChange = (value) => {
     setItemsPerPage(value);
     setCurrentPage(1);
   };
-
+  
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
@@ -639,16 +577,17 @@ function Interventions() {
         pages.push(totalPages);
       }
     }
+    
     return pages;
   };
-
+  
   // Vérifier si tous les éléments de la page sont sélectionnés
   const isAllPageSelected = paginatedInterventions.length > 0 && paginatedInterventions.every(i => selectedInterventions.has(i.id));
   const isSomePageSelected = paginatedInterventions.some(i => selectedInterventions.has(i.id));
-
-  // ============ SÉLECTION MULTIPLE - FONCTIONS ============
   
-  // Gérer la sélection d'une intervention
+  // ========================================
+  // SÉLECTION MULTIPLE - FONCTIONS
+  // ========================================
   const handleSelectIntervention = (interventionId) => {
     setSelectedInterventions(prev => {
       const newSet = new Set(prev);
@@ -660,8 +599,7 @@ function Interventions() {
       return newSet;
     });
   };
-
-  // Sélectionner/Désélectionner tous les éléments de la page courante
+  
   const handleSelectAllPage = () => {
     const pageIds = paginatedInterventions.map(i => i.id);
     const allSelected = pageIds.every(id => selectedInterventions.has(id));
@@ -676,53 +614,47 @@ function Interventions() {
       return newSet;
     });
   };
-
-  // Sélectionner tous les éléments filtrés
+  
   const handleSelectAllFiltered = () => {
     const allIds = filteredInterventions.map(i => i.id);
     setSelectedInterventions(new Set(allIds));
   };
-
-  // Désélectionner tout
+  
   const handleDeselectAll = () => {
     setSelectedInterventions(new Set());
   };
-
-  // Ouvrir le modal de modification groupée
+  
   const openBulkEditModal = () => {
-    setBulkEditData({
-      statut: '',
-      date_realisee: ''
-    });
+    setBulkEditData({ statut: '', daterealisee: '' });
     setShowBulkEditModal(true);
   };
-
-  // Gérer les changements dans le formulaire de modification groupée
+  
   const handleBulkEditChange = (e) => {
     const { name, value } = e.target;
-    setBulkEditData(prev => ({ ...prev, [name]: value }));
+    setBulkEditData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
-  // Appliquer les modifications groupées
+  
   const handleBulkEditSubmit = async () => {
     if (selectedInterventions.size === 0) return;
     
     setIsProcessing(true);
-    
     try {
       const updates = {};
       if (bulkEditData.statut) updates.statut = bulkEditData.statut;
-      if (bulkEditData.date_realisee) updates.date_realisee = bulkEditData.date_realisee;
-
+      if (bulkEditData.daterealisee) updates.daterealisee = bulkEditData.daterealisee;
+      
       if (Object.keys(updates).length === 0) {
         showMessage('Aucune modification à appliquer', 'error');
         setIsProcessing(false);
         return;
       }
-
+      
       let successCount = 0;
       let errorCount = 0;
-
+      
       for (const interventionId of selectedInterventions) {
         const intervention = interventions.find(i => i.id === interventionId);
         if (intervention) {
@@ -733,42 +665,40 @@ function Interventions() {
             });
             successCount++;
           } catch (error) {
-            console.error(`Erreur pour l'intervention ${interventionId}:`, error);
+            console.error(`❌ Erreur pour l'intervention ${interventionId}:`, error);
             errorCount++;
           }
         }
       }
-
+      
       if (errorCount === 0) {
-        showMessage(`${successCount} intervention(s) modifiée(s) avec succès !`, 'success');
+        showMessage(`${successCount} interventions modifiées avec succès ! ✅`, 'success');
       } else {
-        showMessage(`${successCount} modifiée(s), ${errorCount} erreur(s)`, 'error');
+        showMessage(`${successCount} modifiées, ${errorCount} erreurs`, 'error');
       }
-
+      
       loadData();
       setShowBulkEditModal(false);
       setSelectedInterventions(new Set());
     } catch (error) {
-      console.error('Erreur lors de la modification groupée:', error);
+      console.error('❌ Erreur lors de la modification groupée:', error);
       showMessage('Erreur lors de la modification groupée', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
-
-  // Demander confirmation pour suppression groupée
+  
   const askBulkDelete = () => {
     setConfirmModal({
       type: 'bulk-delete',
       item: null,
       title: 'Suppression groupée',
-      message: `Voulez-vous supprimer ${selectedInterventions.size} intervention(s) ? Cette action est irréversible.`,
+      message: `Voulez-vous supprimer ${selectedInterventions.size} interventions ? Cette action est irréversible.`,
       confirmText: 'Oui, supprimer',
       confirmColor: '#f44336'
     });
   };
-
-  // Exécuter la suppression groupée
+  
   const doBulkDelete = async () => {
     setIsProcessing(true);
     setConfirmModal(null);
@@ -776,34 +706,33 @@ function Interventions() {
     try {
       let successCount = 0;
       let errorCount = 0;
-
+      
       for (const interventionId of selectedInterventions) {
         try {
           await axios.delete(`${API_URL}/interventions/${interventionId}`);
           successCount++;
         } catch (error) {
-          console.error(`Erreur pour l'intervention ${interventionId}:`, error);
+          console.error(`❌ Erreur pour l'intervention ${interventionId}:`, error);
           errorCount++;
         }
       }
-
+      
       if (errorCount === 0) {
-        showMessage(`${successCount} intervention(s) supprimée(s) !`, 'success');
+        showMessage(`${successCount} interventions supprimées ! ✅`, 'success');
       } else {
-        showMessage(`${successCount} supprimée(s), ${errorCount} erreur(s)`, 'error');
+        showMessage(`${successCount} supprimées, ${errorCount} erreurs`, 'error');
       }
-
+      
       loadData();
       setSelectedInterventions(new Set());
     } catch (error) {
-      console.error('Erreur lors de la suppression groupée:', error);
+      console.error('❌ Erreur lors de la suppression groupée:', error);
       showMessage('Erreur lors de la suppression groupée', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
-
-  // Réinitialiser les filtres
+  
   const resetFilters = () => {
     setFilterStatut('all');
     setFilterType('all');
@@ -814,8 +743,10 @@ function Interventions() {
     setSearchText('');
     setCurrentPage(1);
   };
-
-  // Statistiques
+  
+  // ========================================
+  // STATISTIQUES
+  // ========================================
   const stats = useMemo(() => {
     return {
       total: interventions.length,
@@ -824,11 +755,13 @@ function Interventions() {
       terminees: interventions.filter(i => i.statut === 'Terminé').length,
       annulees: interventions.filter(i => i.statut === 'Annulé').length,
       coutTotal: interventions.reduce((sum, i) => sum + (parseFloat(i.cout) || 0), 0),
-      dureeTotale: interventions.reduce((sum, i) => sum + (parseInt(i.duree_minutes) || 0), 0)
+      dureeTotale: interventions.reduce((sum, i) => sum + (parseInt(i.dureeMinutes) || 0), 0)
     };
   }, [interventions]);
-
-  // Données pour le graphique d'activité
+  
+  // ========================================
+  // GRAPHIQUE D'ACTIVITÉ
+  // ========================================
   const graphiqueData = useMemo(() => {
     const data = [];
     const now = new Date();
@@ -840,13 +773,13 @@ function Interventions() {
       const moisNum = date.getMonth();
       
       const interventionsMois = interventions.filter(intervention => {
-        const dateInt = new Date(intervention.date_prevue || intervention.date_realisee);
+        const dateInt = new Date(intervention.datePrevue || intervention.dateRealisee);
         return dateInt.getMonth() === moisNum && dateInt.getFullYear() === annee;
       });
       
       data.push({
-        mois: mois,
-        annee: annee,
+        mois,
+        annee,
         total: interventionsMois.length,
         terminees: interventionsMois.filter(i => i.statut === 'Terminé').length,
         enCours: interventionsMois.filter(i => i.statut === 'En cours').length,
@@ -856,46 +789,61 @@ function Interventions() {
     
     return data;
   }, [interventions]);
-
+  
   const maxInterventions = Math.max(...graphiqueData.map(d => d.total), 1);
-
-  // Filtrer les arbres par parcelle et recherche
-  const arbresFiltered = useMemo(() => {
-    return arbres.filter(arbre => {
-      if (formData.parcelle_id && arbre.parcelle_id !== parseInt(formData.parcelle_id)) {
+  
+  // ========================================
+  // FILTRER LES ARBRES
+  // ========================================
+const arbresFiltered = useMemo(() => {
+  return arbres.filter(arbre => {
+    // ✅ Filtre par parcelle - Conversion en nombre pour comparaison
+    if (formData.parcelleId && parseInt(arbre.parcelleId) !== parseInt(formData.parcelleId)) {
+      return false;
+    }
+    
+    // Filtre par texte de recherche
+    if (arbreSearchText) {
+      const search = arbreSearchText.toLowerCase();
+      const matchNumero = arbre.numero?.toLowerCase().includes(search);
+      const matchEspece = arbre.espece?.toLowerCase().includes(search);
+      const matchVariete = arbre.varieteTruffe?.toLowerCase().includes(search);
+      const matchEtat = arbre.etat?.toLowerCase().includes(search);
+      if (!matchNumero && !matchEspece && !matchVariete && !matchEtat) {
         return false;
       }
-      if (arbreSearchText) {
-        const search = arbreSearchText.toLowerCase();
-        const matchNumero = arbre.numero?.toLowerCase().includes(search);
-        const matchEspece = arbre.espece?.toLowerCase().includes(search);
-        const matchVariete = arbre.variete_truffe?.toLowerCase().includes(search);
-        const matchEtat = arbre.etat?.toLowerCase().includes(search);
-        if (!matchNumero && !matchEspece && !matchVariete && !matchEtat) return false;
-      }
-      return true;
-    });
-  }, [arbres, formData.parcelle_id, arbreSearchText]);
+    }
+    
+    return true;
+  });
+}, [arbres, formData.parcelleId, arbreSearchText]);
 
-  // Configuration des colonnes pour l'affichage
+  
+  // ========================================
+  // CONFIGURATION DES COLONNES
+  // ========================================
   const config = COLONNES_CONFIG.interventions;
   const colonnesValides = colonnesAffichees.filter(col => config[col]);
-
-  // Obtenir le nom du type d'intervention
+  
+  // ========================================
+  // OBTENIR LE NOM DU TYPE
+  // ========================================
   const getTypeName = (typeId) => {
     const type = typesIntervention.find(t => t.id === typeId);
     return type ? type.nom : '-';
   };
-
+  
   // Obtenir l'icône du type
   const getTypeIcon = (typeName) => {
     return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
   };
-
-  // Rendu d'une cellule du tableau
+  
+  // ========================================
+  // RENDU D'UNE CELLULE DU TABLEAU
+  // ========================================
   const renderCell = (intervention, col) => {
-    if (col === 'type_nom') {
-      const typeName = intervention.type_nom || getTypeName(intervention.type_intervention_id);
+    if (col === 'typenom') {
+      const typeName = intervention.typenom || getTypeName(intervention.typeInterventionId);
       const icon = getTypeIcon(typeName);
       return (
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -913,12 +861,13 @@ function Interventions() {
         'Annulé': { background: '#f8d7da', color: '#721c24' }
       };
       const style = statutStyles[intervention.statut] || statutStyles['Planifié'];
+      
       return (
         <span style={{
           padding: '0.25rem 0.75rem',
           borderRadius: '12px',
           fontSize: '0.85rem',
-          fontWeight: '500',
+          fontWeight: 500,
           ...style
         }}>
           {intervention.statut}
@@ -926,7 +875,7 @@ function Interventions() {
       );
     }
     
-    if (col === 'date_prevue' || col === 'date_realisee') {
+    if (col === 'dateprevue' || col === 'daterealisee') {
       const date = intervention[col];
       if (!date) return '-';
       return new Date(date).toLocaleDateString('fr-FR');
@@ -938,12 +887,12 @@ function Interventions() {
       return `${cout.toFixed(2)} €`;
     }
     
-    if (col === 'duree_minutes') {
-      const duree = parseInt(intervention.duree_minutes);
+    if (col === 'dureeminutes') {
+      const duree = parseInt(intervention.dureeMinutes);
       if (!duree || isNaN(duree)) return '-';
       const heures = Math.floor(duree / 60);
       const minutes = duree % 60;
-      return heures > 0 ? `${heures}h${minutes > 0 ? minutes : ''}` : `${minutes}min`;
+      return `${heures}h${minutes > 0 ? minutes + 'min' : ''}`;
     }
     
     if (config[col]?.render) {
@@ -952,8 +901,10 @@ function Interventions() {
     
     return intervention[col] || '-';
   };
-
-  // Fonctions de gestion du formulaire
+  
+  // ========================================
+  // GESTION DU FORMULAIRE
+  // ========================================
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -962,88 +913,98 @@ function Interventions() {
     }));
     
     // Réinitialiser la recherche d'arbres quand la parcelle change
-    if (name === 'parcelle_id') {
+    if (name === 'parcelleId') {
       setArbreSearchText('');
-      setFormData(prev => ({ ...prev, arbre_ids: [] }));
+      setFormData(prev => ({ ...prev, arbreIds: [] }));
     }
     
     // Réinitialiser les détails quand le type change
-    if (name === 'type_intervention_id') {
-      setFormData(prev => ({ ...prev, details: {} }));
+    if (name === 'typeInterventionId') {
+      setDetailsData({});
       setShowAdvancedFields(false);
     }
   };
-
+  
   const handleArbresChange = (e) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
-    setFormData(prev => ({ ...prev, arbre_ids: selectedOptions }));
-  };
-
-  const handleDetailsChange = (e) => {
-    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      details: {
-        ...prev.details,
-        [name]: type === 'checkbox' ? checked : value
-      }
+      arbreIds: selectedOptions
     }));
   };
-
+  
+  const handleDetailsChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setDetailsData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+  
   const openNewModal = () => {
     setEditingIntervention(null);
     setFormData({
-      type_intervention_id: '',
-      parcelle_id: '',
-      arbre_ids: [],
-      date_prevue: new Date().toISOString().split('T')[0],
-      date_realisee: '',
+      typeInterventionId: '',
+      parcelleId: '',
+      arbreIds: [],
+      datePrevue: new Date().toISOString().split('T')[0],
+      dateRealisee: '',
       statut: 'Planifié',
       description: '',
       notes: '',
       cout: '',
-      duree_minutes: '',
+      dureeMinutes: '',
       meteo: '',
       personnel: personnelDefaut,
-      caveur_id: '',
-      details: {}
+      caveurId: ''
     });
+    setDetailsData({});
     setArbreSearchText('');
     setShowAdvancedFields(false);
     setDoublonWarning(null);
     setShowModal(true);
   };
-
-  const handleEdit = (intervention) => {
+  
+  const handleEdit = async (intervention) => {
     setEditingIntervention(intervention);
     setFormData({
-      type_intervention_id: intervention.type_intervention_id || '',
-      parcelle_id: intervention.parcelle_id || '',
-      arbre_ids: intervention.arbre_ids || [],
-      date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',
-      date_realisee: intervention.date_realisee ? intervention.date_realisee.split('T')[0] : '',
+      typeInterventionId: intervention.typeInterventionId || intervention.type_intervention_id,
+      parcelleId: intervention.parcelleId || intervention.parcelle_id,
+      arbreIds: intervention.arbreIds || [],
+      datePrevue: intervention.datePrevue?.split('T')[0] || intervention.date_prevue?.split('T')[0],
+      dateRealisee: intervention.dateRealisee?.split('T')[0] || intervention.date_realisee?.split('T')[0] || '',
       statut: intervention.statut || 'Planifié',
       description: intervention.description || '',
       notes: intervention.notes || '',
       cout: intervention.cout || '',
-      duree_minutes: intervention.duree_minutes || '',
+      dureeMinutes: intervention.dureeMinutes || intervention.duree_minutes || '',
       meteo: intervention.meteo || '',
       personnel: intervention.personnel || '',
-      caveur_id: intervention.caveur_id || '',
-      details: intervention.details || {}
+      caveurId: intervention.caveurId || intervention.caveur_id || ''
     });
+    
+    // Charger les détails depuis la nouvelle API
+    try {
+      const detailsRes = await axios.get(`${API_URL}/interventions/${intervention.id}/details`);
+      setDetailsData(detailsRes.data || {});
+      setShowAdvancedFields(Object.keys(detailsRes.data || {}).length > 0);
+    } catch (error) {
+      console.error('⚠️ Erreur chargement détails:', error);
+      setDetailsData({});
+      setShowAdvancedFields(false);
+    }
+    
     setArbreSearchText('');
-    setShowAdvancedFields(Object.keys(intervention.details || {}).length > 0);
     setDoublonWarning(null);
     setShowModal(true);
   };
-
+  
   const closeModal = () => {
     setShowModal(false);
     setEditingIntervention(null);
     setDoublonWarning(null);
   };
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -1052,56 +1013,68 @@ function Interventions() {
       const dataToSend = {
         ...formData,
         cout: formData.cout ? parseFloat(formData.cout) : null,
-        duree_minutes: formData.duree_minutes ? parseInt(formData.duree_minutes) : null
+        dureeMinutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null
       };
       
+      let savedIntervention;
+      
       if (editingIntervention) {
-        await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
-        showMessage('Intervention mise à jour avec succès !', 'success');
+        const res = await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
+        savedIntervention = res.data;
+        showMessage('Intervention mise à jour avec succès ! ✅', 'success');
       } else {
-        await axios.post(`${API_URL}/interventions`, dataToSend);
-        showMessage('Intervention créée avec succès !', 'success');
+        const res = await axios.post(`${API_URL}/interventions`, dataToSend);
+        savedIntervention = res.data;
+        showMessage('Intervention créée avec succès ! ✅', 'success');
       }
+      
+      // Sauvegarder les détails si présents
+      if (Object.keys(detailsData).length > 0) {
+        try {
+          await axios.post(`${API_URL}/interventions/${savedIntervention.id}/details`, detailsData);
+        } catch (detailError) {
+          console.error('⚠️ Erreur sauvegarde détails:', detailError);
+          showMessage('Intervention sauvegardée, mais erreur sur les détails ⚠️', 'warning');
+        }
+      }
+      
       loadData();
       closeModal();
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      showMessage('Erreur lors de la sauvegarde de l\'intervention', 'error');
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+      showMessage('Erreur lors de la sauvegarde de l\'intervention ❌', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
-
-  // Demander confirmation pour suppression
+  
   const askDelete = (intervention) => {
     setConfirmModal({
       type: 'delete',
       item: intervention,
       title: 'Supprimer l\'intervention',
-      message: `Voulez-vous vraiment supprimer cette intervention ? Cette action est irréversible.`,
+      message: 'Voulez-vous vraiment supprimer cette intervention ? Cette action est irréversible.',
       confirmText: 'Oui, supprimer',
       confirmColor: '#f44336'
     });
   };
-
-  // Exécuter la suppression
+  
   const doDelete = async (intervention) => {
     setIsProcessing(true);
     setConfirmModal(null);
     
     try {
       await axios.delete(`${API_URL}/interventions/${intervention.id}`);
-      showMessage('Intervention supprimée', 'success');
+      showMessage('Intervention supprimée ✅', 'success');
       loadData();
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      showMessage('Erreur lors de la suppression', 'error');
+      console.error('❌ Erreur lors de la suppression:', error);
+      showMessage('Erreur lors de la suppression ❌', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
-
-  // Gérer la confirmation selon le type
+  
   const handleConfirm = () => {
     if (!confirmModal) return;
     
@@ -1116,12 +1089,12 @@ function Interventions() {
         setConfirmModal(null);
     }
   };
-
+  
   // Export PDF
   const handleExportPDF = () => {
     exportInterventionsPDF(filteredInterventions, null, colonnesExport);
   };
-
+  
   // Import CSV
   const handleImportCSV = async (validData) => {
     try {
@@ -1129,57 +1102,51 @@ function Interventions() {
         await axios.post(`${API_URL}/interventions`, intervention);
       }
       loadData();
-      showMessage(`${validData.length} intervention(s) importée(s) avec succès !`, 'success');
+      showMessage(`${validData.length} interventions importées avec succès ! ✅`, 'success');
     } catch (error) {
-      console.error('Erreur lors de l\'import:', error);
+      console.error('❌ Erreur lors de l\'import:', error);
       throw new Error('Erreur lors de l\'import des interventions');
     }
   };
-
+  
   // Sélection rapide de produit phyto
   const handleSelectProduitPhyto = (produit) => {
-    setFormData(prev => ({
+    setDetailsData(prev => ({
       ...prev,
-      details: {
-        ...prev.details,
-        nom_commercial: produit.nom_commercial,
-        matiere_active: produit.matiere_active,
-        numero_amm: produit.numero_amm,
-        fabricant: produit.fabricant,
-        categorie_traitement: produit.categorie,
-        delai_avant_recolte_jours: produit.dar_jours
-      }
+      nomCommercial: produit.nomCommercial,
+      matiereActive: produit.matiereActive,
+      numeroAmm: produit.numeroAmm,
+      fabricant: produit.fabricant,
+      categorieTraitement: produit.categorie,
+      delaiAvantRecolteJours: produit.darJours
     }));
   };
-
+  
   // Sélection rapide d'amendement
   const handleSelectAmendement = (amendement) => {
-    setFormData(prev => ({
+    setDetailsData(prev => ({
       ...prev,
-      details: {
-        ...prev.details,
-        type_amendement: amendement.type_amendement,
-        nom_produit_amendement: amendement.nom,
-        composition_npk: amendement.npk,
-        composition_cao: amendement.cao,
-        certification_bio: amendement.utilisable_bio
-      }
+      typeAmendement: amendement.typeAmendement,
+      nomProduitAmendement: amendement.nom,
+      compositionNpk: amendement.npk,
+      compositionCao: amendement.cao,
+      certificationBio: amendement.utilisableBio
     }));
   };
-
+  
   // Obtenir la configuration des champs pour le type sélectionné
   const getFieldsConfig = () => {
-    const typeName = getTypeName(parseInt(formData.type_intervention_id));
+    const typeName = getTypeName(parseInt(formData.typeInterventionId));
     return CHAMPS_PAR_TYPE[typeName] || null;
   };
-
+  
   const getSelectedTypeName = () => {
-    return getTypeName(parseInt(formData.type_intervention_id));
+    return getTypeName(parseInt(formData.typeInterventionId));
   };
-
+  
   // Rendu d'un champ du formulaire détaillé
   const renderField = (champ) => {
-    const value = formData.details[champ.name] || '';
+    const value = detailsData[champ.name] || '';
     
     if (champ.type === 'select') {
       return (
@@ -1237,12 +1204,13 @@ function Interventions() {
       />
     );
   };
-
-  if (loading || loadingSettings) return <div className="loading">Chargement des interventions...</div>;
-
+  
+  if (loading || loadingSettings) {
+    return <div className="loading">⏳ Chargement des interventions...</div>;
+  }
+  
   const fieldsConfig = getFieldsConfig();
-  const selectedTypeName = getSelectedTypeName();
-
+  
   return (
     <div className="page-container">
       {/* Modal de confirmation */}
@@ -1268,22 +1236,20 @@ function Interventions() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
           }}>
             <h3 style={{ marginBottom: '1rem', color: '#333' }}>{confirmModal.title}</h3>
-            <p style={{ marginBottom: '1.5rem', color: '#666', lineHeight: '1.5' }}>
-              {confirmModal.message}
-            </p>
+            <p style={{ marginBottom: '1.5rem', color: '#666', lineHeight: 1.5 }}>{confirmModal.message}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
-                className="btn btn-secondary" 
+              <button
+                className="btn btn-secondary"
                 onClick={() => setConfirmModal(null)}
                 style={{ padding: '0.75rem 1.5rem' }}
               >
                 Annuler
               </button>
-              <button 
-                className="btn" 
+              <button
+                className="btn"
                 onClick={handleConfirm}
                 disabled={isProcessing}
-                style={{ 
+                style={{
                   padding: '0.75rem 1.5rem',
                   background: confirmModal.confirmColor || '#f44336',
                   color: 'white',
@@ -1299,7 +1265,7 @@ function Interventions() {
           </div>
         </div>
       )}
-
+      
       {/* Message de notification */}
       {message && (
         <div style={{
@@ -1318,9 +1284,9 @@ function Interventions() {
           {message.text}
         </div>
       )}
-
+      
       <div className="page-header">
-        <h2>🗓 Gestion des Interventions</h2>
+        <h2>📋 Gestion des Interventions</h2>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
             📥 Importer CSV
@@ -1333,7 +1299,7 @@ function Interventions() {
           </button>
         </div>
       </div>
-
+      
       {/* Statistiques */}
       <div className="stats-grid">
         <div className="card">
@@ -1341,27 +1307,29 @@ function Interventions() {
           <div className="card-value">{stats.total}</div>
         </div>
         <div className="card" style={{ background: '#fff3cd' }}>
-          <div className="card-title">📋 Planifiées</div>
+          <div className="card-title">Planifiées</div>
           <div className="card-value" style={{ color: '#856404' }}>{stats.planifiees}</div>
         </div>
         <div className="card" style={{ background: '#cce5ff' }}>
-          <div className="card-title">🔄 En cours</div>
+          <div className="card-title">En cours</div>
           <div className="card-value" style={{ color: '#004085' }}>{stats.enCours}</div>
         </div>
         <div className="card" style={{ background: '#d4edda' }}>
-          <div className="card-title">✅ Terminées</div>
+          <div className="card-title">Terminées</div>
           <div className="card-value" style={{ color: '#155724' }}>{stats.terminees}</div>
         </div>
         <div className="card">
-          <div className="card-title">💰 Coût total</div>
+          <div className="card-title">Coût total</div>
           <div className="card-value">{stats.coutTotal.toFixed(0)} €</div>
         </div>
         <div className="card">
-          <div className="card-title">⏱️ Durée totale</div>
-          <div className="card-value">{Math.floor(stats.dureeTotale / 60)}h{stats.dureeTotale % 60 > 0 ? (stats.dureeTotale % 60) : ''}</div>
+          <div className="card-title">Durée totale</div>
+          <div className="card-value">
+            {Math.floor(stats.dureeTotale / 60)}h{stats.dureeTotale % 60 > 0 ? ` ${stats.dureeTotale % 60}min` : ''}
+          </div>
         </div>
       </div>
-
+      
       {/* Barre de sélection groupée */}
       {selectedInterventions.size > 0 && (
         <div style={{
@@ -1378,7 +1346,7 @@ function Interventions() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
-              ✅ {selectedInterventions.size} intervention(s) sélectionnée(s)
+              {selectedInterventions.size} intervention{selectedInterventions.size > 1 ? 's' : ''} sélectionnée{selectedInterventions.size > 1 ? 's' : ''}
             </span>
             <button
               onClick={handleDeselectAll}
@@ -1427,26 +1395,24 @@ function Interventions() {
           </div>
         </div>
       )}
-
+      
       {/* Graphique d'activité temporel */}
-      <div style={{ 
-        background: 'white', 
-        borderRadius: '12px', 
-        padding: '1.5rem', 
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
         marginBottom: '1.5rem',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         border: '1px solid #e9ecef'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0, color: '#2c5f2d', fontSize: '1.1rem' }}>
-            📊 Activité des 6 derniers mois
-          </h3>
-          <button 
+          <h3 style={{ margin: 0, color: '#2c5f2d', fontSize: '1.1rem' }}>📊 Activité des 6 derniers mois</h3>
+          <button
             onClick={() => setShowGraphique(!showGraphique)}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer', 
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
               fontSize: '1.2rem',
               color: '#666'
             }}
@@ -1456,51 +1422,44 @@ function Interventions() {
         </div>
         
         {showGraphique && (
-          <>
+          <div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '180px', padding: '0.5rem 0' }}>
               {graphiqueData.map((data, index) => (
                 <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: '100%', gap: '2px' }}>
-                    {/* Barre terminées */}
                     {data.terminees > 0 && (
-                      <div 
-                        style={{ 
-                          height: `${(data.terminees / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #28a745 0%, #218838 100%)',
-                          borderRadius: '4px 4px 0 0',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.terminees} terminée(s)`}
-                      />
+                      <div style={{
+                        height: `${(data.terminees / maxInterventions) * 140}px`,
+                        background: 'linear-gradient(180deg, #28a745 0%, #218838 100%)',
+                        borderRadius: '4px 4px 0 0',
+                        minHeight: '8px',
+                        transition: 'height 0.3s ease'
+                      }} title={`${data.terminees} terminées`} />
                     )}
-                    {/* Barre en cours */}
                     {data.enCours > 0 && (
-                      <div 
-                        style={{ 
-                          height: `${(data.enCours / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #007bff 0%, #0056b3 100%)',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.enCours} en cours`}
-                      />
+                      <div style={{
+                        height: `${(data.enCours / maxInterventions) * 140}px`,
+                        background: 'linear-gradient(180deg, #007bff 0%, #0056b3 100%)',
+                        minHeight: '8px',
+                        transition: 'height 0.3s ease'
+                      }} title={`${data.enCours} en cours`} />
                     )}
-                    {/* Barre planifiées */}
                     {data.planifiees > 0 && (
-                      <div 
-                        style={{ 
-                          height: `${(data.planifiees / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #ffc107 0%, #e0a800 100%)',
-                          borderRadius: '0 0 4px 4px',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.planifiees} planifiée(s)`}
-                      />
+                      <div style={{
+                        height: `${(data.planifiees / maxInterventions) * 140}px`,
+                        background: 'linear-gradient(180deg, #ffc107 0%, #e0a800 100%)',
+                        borderRadius: '0 0 4px 4px',
+                        minHeight: '8px',
+                        transition: 'height 0.3s ease'
+                      }} title={`${data.planifiees} planifiées`} />
                     )}
                     {data.total === 0 && (
-                      <div style={{ height: '8px', background: '#e9ecef', borderRadius: '4px', width: '100%' }} />
+                      <div style={{
+                        height: '8px',
+                        background: '#e9ecef',
+                        borderRadius: '4px',
+                        width: '100%'
+                      }} />
                     )}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.5rem', textAlign: 'center' }}>
@@ -1528,41 +1487,41 @@ function Interventions() {
                 <span style={{ fontSize: '0.85rem', color: '#666' }}>Terminées</span>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
-
+      
       {/* Barre de recherche et filtres */}
-      <div style={{ 
-        background: 'white', 
-        borderRadius: '12px', 
-        padding: '1rem 1.5rem', 
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1rem 1.5rem',
         marginBottom: '1.5rem',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         border: '1px solid #e9ecef'
       }}>
-        {/* Ligne principale : recherche + bouton filtres */}
+        {/* Ligne principale: recherche + bouton filtres */}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
             <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem' }}>🔍</span>
-            <input 
+            <input
               type="text"
               placeholder="Rechercher une intervention..."
               value={searchText}
               onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
-              style={{ 
-                width: '100%', 
-                padding: '0.75rem 0.75rem 0.75rem 2.5rem', 
-                borderRadius: '8px', 
+              style={{
+                width: '100%',
+                padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                borderRadius: '8px',
                 border: '1px solid #ddd',
                 fontSize: '0.95rem'
               }}
             />
           </div>
           
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
-            style={{ 
+            style={{
               padding: '0.75rem 1rem',
               borderRadius: '8px',
               border: '1px solid #ddd',
@@ -1575,7 +1534,7 @@ function Interventions() {
               fontSize: '0.95rem'
             }}
           >
-            🏷️ Filtres
+            🔽 Filtres
             {activeFiltersCount > 0 && (
               <span style={{
                 background: '#e74c3c',
@@ -1595,9 +1554,9 @@ function Interventions() {
           </button>
           
           {activeFiltersCount > 0 && (
-            <button 
+            <button
               onClick={resetFilters}
-              style={{ 
+              style={{
                 padding: '0.75rem 1rem',
                 borderRadius: '8px',
                 border: 'none',
@@ -1607,396 +1566,355 @@ function Interventions() {
                 fontSize: '0.95rem'
               }}
             >
-              ✖ Réinitialiser
+              ❌ Réinitialiser
             </button>
           )}
         </div>
         
         {/* Panneau de filtres */}
         {showFilters && (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-            gap: '1rem', 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '1rem',
             marginTop: '1rem',
             paddingTop: '1rem',
-            borderTop: '1px solid #eee'
+            borderTop: '1px solid #e9ecef'
           }}>
-            {/* Filtre par statut */}
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                📊 Statut
-              </label>
-              <select 
-                value={filterStatut} 
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Statut</label>
+              <select
+                value={filterStatut}
                 onChange={(e) => { setFilterStatut(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               >
-                <option value="all">Tous les statuts</option>
-                <option value="Planifié">📋 Planifié</option>
-                <option value="En cours">🔄 En cours</option>
-                <option value="Terminé">✅ Terminé</option>
-                <option value="Annulé">❌ Annulé</option>
+                <option value="all">Tous</option>
+                <option value="Planifié">Planifié</option>
+                <option value="En cours">En cours</option>
+                <option value="Terminé">Terminé</option>
+                <option value="Annulé">Annulé</option>
               </select>
             </div>
             
-            {/* Filtre par type */}
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                🏷️ Type
-              </label>
-              <select 
-                value={filterType} 
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Type</label>
+              <select
+                value={filterType}
                 onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               >
-                <option value="all">Tous les types</option>
+                <option value="all">Tous types</option>
                 {typesIntervention.map(type => (
                   <option key={type.id} value={type.id}>
-                    {CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
+                    {getTypeIcon(type.nom)} {type.nom}
                   </option>
                 ))}
               </select>
             </div>
             
-            {/* Filtre par période */}
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                📅 Période
-              </label>
-              <select 
-                value={filterPeriode} 
-                onChange={(e) => { setFilterPeriode(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Parcelle</label>
+              <select
+                value={filterParcelle}
+                onChange={(e) => { setFilterParcelle(e.target.value); setCurrentPage(1); }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               >
-                <option value="all">Toutes périodes</option>
+                <option value="all">Toutes</option>
+                {parcelles.map(p => (
+                  <option key={p.id} value={p.id}>{p.nom}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Période</label>
+              <select
+                value={filterPeriode}
+                onChange={(e) => { setFilterPeriode(e.target.value); setCurrentPage(1); }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
+              >
+                <option value="all">Toutes</option>
                 <option value="today">Aujourd'hui</option>
                 <option value="week">Cette semaine</option>
-                <option value="month">Ce mois</option>
+                <option value="month">Ce mois-ci</option>
               </select>
             </div>
             
-            {/* Filtre par parcelle */}
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                🗺️ Parcelle
-              </label>
-              <select 
-                value={filterParcelle} 
-                onChange={(e) => { setFilterParcelle(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="all">Toutes les parcelles</option>
-                {parcelles.map(parcelle => (
-                  <option key={parcelle.id} value={parcelle.id}>
-                    {parcelle.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Filtre par date début */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                📅 Date début
-              </label>
-              <input 
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Date début</label>
+              <input
                 type="date"
                 value={filterDateDebut}
                 onChange={(e) => { setFilterDateDebut(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               />
             </div>
             
-            {/* Filtre par date fin */}
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', display: 'block' }}>
-                📅 Date fin
-              </label>
-              <input 
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Date fin</label>
+              <input
                 type="date"
                 value={filterDateFin}
                 onChange={(e) => { setFilterDateFin(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #ddd' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               />
             </div>
           </div>
         )}
-        
-        {/* Résultat du filtrage */}
-        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ color: '#666', fontSize: '0.9rem' }}>
-            {filteredInterventions.length} intervention{filteredInterventions.length > 1 ? 's' : ''} trouvée{filteredInterventions.length > 1 ? 's' : ''}
-            {activeFiltersCount > 0 && ` (${activeFiltersCount} filtre${activeFiltersCount > 1 ? 's' : ''} actif${activeFiltersCount > 1 ? 's' : ''})`}
-          </span>
-        </div>
       </div>
-
-      {/* Contrôles de pagination */}
-      {filteredInterventions.length > 0 && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: '500', color: '#666' }}>Afficher :</span>
-            {PAGINATION_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                onClick={() => handleItemsPerPageChange(option.value)}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  border: itemsPerPage === option.value ? '2px solid #2c5f2d' : '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: itemsPerPage === option.value ? '#e8f5e9' : 'white',
-                  color: itemsPerPage === option.value ? '#2c5f2d' : '#666',
-                  fontWeight: itemsPerPage === option.value ? 'bold' : 'normal',
-                  cursor: 'pointer'
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          
-          {itemsPerPage !== 'all' && (
-            <div style={{ color: '#666', fontSize: '0.9rem' }}>
-              Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, totalInterventions)} sur {totalInterventions} interventions
-            </div>
-          )}
-        </div>
-      )}
-
-      {filteredInterventions.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">🗓</div>
-          <p>Aucune intervention trouvée</p>
-          {activeFiltersCount > 0 ? (
-            <button className="btn btn-secondary" onClick={resetFilters} style={{ marginTop: '1rem' }}>
-              Effacer les filtres
-            </button>
-          ) : (
-            <button className="btn btn-primary" onClick={openNewModal} style={{ marginTop: '1rem' }}>
-              Planifier une intervention
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
-          <table>
-            <thead>
+      
+      {/* Tableau des interventions */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '1.5rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        border: '1px solid #e9ecef',
+        overflowX: 'auto'
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e9ecef' }}>
+              <th style={{ padding: '0.75rem', textAlign: 'left', width: '40px' }}>
+                <input
+                  type="checkbox"
+                  checked={isAllPageSelected}
+                  ref={input => {
+                    if (input) input.indeterminate = !isAllPageSelected && isSomePageSelected;
+                  }}
+                  onChange={handleSelectAllPage}
+                  style={{ cursor: 'pointer' }}
+                />
+              </th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Type</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Parcelle</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Arbre</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Date prévue</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Statut</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Description</th>
+              <th style={{ padding: '0.75rem', textAlign: 'center' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedInterventions.length === 0 ? (
               <tr>
-                <th style={{ width: '40px', textAlign: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={isAllPageSelected}
-                    ref={el => {
-                      if (el) el.indeterminate = isSomePageSelected && !isAllPageSelected;
-                    }}
-                    onChange={handleSelectAllPage}
-                    title={isAllPageSelected ? 'Désélectionner tous' : 'Sélectionner tous'}
-                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                  />
-                </th>
-                {colonnesValides.map(col => (
-                  <th key={col} style={{ textAlign: config[col]?.align || 'left' }}>
-                    {config[col]?.label || col}
-                  </th>
-                ))}
-                <th>Actions</th>
+                <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                  Aucune intervention trouvée
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {paginatedInterventions.map(intervention => (
-                <tr 
-                  key={intervention.id}
-                  style={{ background: selectedInterventions.has(intervention.id) ? '#e3f2fd' : 'transparent' }}
-                >
-                  <td style={{ textAlign: 'center' }}>
+            ) : (
+              paginatedInterventions.map((intervention) => (
+                <tr key={intervention.id} style={{ borderBottom: '1px solid #e9ecef' }}>
+                  <td style={{ padding: '0.75rem' }}>
                     <input
                       type="checkbox"
                       checked={selectedInterventions.has(intervention.id)}
                       onChange={() => handleSelectIntervention(intervention.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   </td>
-                  {colonnesValides.map(col => (
-                    <td key={col} style={{ textAlign: config[col]?.align || 'left' }}>
-                      {renderCell(intervention, col)}
-                    </td>
-                  ))}
-                  <td>
-                    <button className="btn btn-secondary" onClick={() => handleEdit(intervention)} style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}>
+                  <td style={{ padding: '0.75rem' }}>
+                    {renderCell(intervention, 'typenom')}
+                  </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {intervention.parcelleNom || intervention.parcelle_nom || '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {intervention.arbreNumero || intervention.arbre_numero || '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {renderCell(intervention, 'dateprevue')}
+                  </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {renderCell(intervention, 'statut')}
+                  </td>
+                  <td style={{ padding: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {intervention.description || '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    <button
+                      onClick={() => handleEdit(intervention)}
+                      style={{
+                        padding: '0.25rem 0.75rem',
+                        marginRight: '0.5rem',
+                        background: '#2c5f2d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
                       ✏️
                     </button>
-                    <button className="btn btn-danger" onClick={() => askDelete(intervention)} style={{ padding: '0.4rem 0.8rem' }}>
+                    <button
+                      onClick={() => askDelete(intervention)}
+                      style={{
+                        padding: '0.25rem 0.75rem',
+                        background: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
                       🗑️
                     </button>
                   </td>
                 </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Pagination */}
+      {itemsPerPage !== 'all' && totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', color: '#666' }}>Lignes par page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+              style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
+            >
+              {PAGINATION_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          {itemsPerPage !== 'all' && totalPages > 1 && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              marginTop: '1.5rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid #eee'
-            }}>
-              <button 
-                onClick={() => setCurrentPage(1)} 
-                disabled={currentPage === 1}
-                style={{ 
-                  padding: '0.5rem 0.75rem', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '6px', 
-                  background: currentPage === 1 ? '#f5f5f5' : 'white', 
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer' 
-                }}
-              >
-                ⏮
-              </button>
-              <button 
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
-                disabled={currentPage === 1}
-                style={{ 
-                  padding: '0.5rem 0.75rem', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '6px', 
-                  background: currentPage === 1 ? '#f5f5f5' : 'white', 
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer' 
-                }}
-              >
-                ◀️
-              </button>
-              
-              {getPageNumbers().map((page, idx) => (
-                <button 
-                  key={idx} 
-                  onClick={() => page !== '...' && setCurrentPage(page)} 
-                  disabled={page === '...'}
-                  style={{ 
-                    padding: '0.5rem 0.9rem', 
-                    border: currentPage === page ? '2px solid #2c5f2d' : '1px solid #ddd', 
-                    borderRadius: '6px', 
-                    background: currentPage === page ? '#2c5f2d' : 'white', 
-                    color: currentPage === page ? 'white' : (page === '...' ? '#999' : '#333'), 
-                    fontWeight: currentPage === page ? 'bold' : 'normal', 
-                    cursor: page === '...' ? 'default' : 'pointer', 
-                    minWidth: '40px' 
+            </select>
+            <span style={{ fontSize: '0.9rem', color: '#666', marginLeft: '1rem' }}>
+              {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalInterventions)} sur {totalInterventions}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                background: currentPage === 1 ? '#f5f5f5' : 'white',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ⏮️
+            </button>
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                background: currentPage === 1 ? '#f5f5f5' : 'white',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ◀️
+            </button>
+            
+            {getPageNumbers().map((page, idx) => (
+              page === '...' ? (
+                <span key={idx} style={{ padding: '0.5rem', color: '#999' }}>...</span>
+              ) : (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentPage(page)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    border: '1px solid #ddd',
+                    background: currentPage === page ? '#2c5f2d' : 'white',
+                    color: currentPage === page ? 'white' : '#333',
+                    cursor: 'pointer'
                   }}
                 >
                   {page}
                 </button>
-              ))}
-              
-              <button 
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
-                disabled={currentPage === totalPages}
-                style={{ 
-                  padding: '0.5rem 0.75rem', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '6px', 
-                  background: currentPage === totalPages ? '#f5f5f5' : 'white', 
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' 
-                }}
-              >
-                ▶️
-              </button>
-              <button 
-                onClick={() => setCurrentPage(totalPages)} 
-                disabled={currentPage === totalPages}
-                style={{ 
-                  padding: '0.5rem 0.75rem', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '6px', 
-                  background: currentPage === totalPages ? '#f5f5f5' : 'white', 
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' 
-                }}
-              >
-                ⏭
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Modal de modification groupée */}
-      {showBulkEditModal && (
-        <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3>✏️ Modifier {selectedInterventions.size} intervention(s)</h3>
-              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>✖</button>
-            </div>
+              )
+            ))}
             
-            <div style={{ padding: '1rem', background: '#fff3e0', borderRadius: '8px', marginBottom: '1rem' }}>
-              <p style={{ margin: 0, color: '#e65100' }}>
-                <strong>⚠️ Attention :</strong> Seuls les champs remplis seront modifiés. Les champs vides seront ignorés.
-              </p>
-            </div>
-
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Statut</label>
-                <select name="statut" value={bulkEditData.statut} onChange={handleBulkEditChange}>
-                  <option value="">-- Ne pas modifier --</option>
-                  <option value="Planifié">📋 Planifié</option>
-                  <option value="En cours">🔄 En cours</option>
-                  <option value="Terminé">✅ Terminé</option>
-                  <option value="Annulé">❌ Annulé</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Date de réalisation</label>
-                <input 
-                  type="date" 
-                  name="date_realisee" 
-                  value={bulkEditData.date_realisee} 
-                  onChange={handleBulkEditChange}
-                />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowBulkEditModal(false)}>
-                Annuler
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                onClick={handleBulkEditSubmit}
-                disabled={isProcessing}
-              >
-                {isProcessing ? 'En cours...' : `Appliquer à ${selectedInterventions.size} intervention(s)`}
-              </button>
-            </div>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                background: currentPage === totalPages ? '#f5f5f5' : 'white',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ▶️
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                background: currentPage === totalPages ? '#f5f5f5' : 'white',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ⏭️
+            </button>
           </div>
         </div>
       )}
-
-      {/* Modal de création/édition */}
+      
+      {/* Modal de création/édition - VOIR PARTIE 2 CI-DESSOUS */}
+	        {/* Modal de création/édition */}
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header">
-              <h3>
-                {fieldsConfig?.icon || '📋'} {editingIntervention ? 'Modifier l\'intervention' : 'Nouvelle intervention'}
-                {selectedTypeName && ` - ${selectedTypeName}`}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          overflowY: 'auto',
+          padding: '2rem'
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0 }}>
+                {editingIntervention ? '✏️ Modifier l\'intervention' : '➕ Nouvelle intervention'}
               </h3>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <button
+                onClick={closeModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#999'
+                }}
+              >
+                ✕
+              </button>
             </div>
             
             {/* Avertissement doublon */}
@@ -2007,319 +1925,525 @@ function Interventions() {
                 borderRadius: '8px',
                 padding: '1rem',
                 marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem'
+                color: '#856404'
               }}>
-                <span style={{ fontSize: '1.5rem' }}>⚠</span>
-                <div>
-                  <strong>Attention - Intervention similaire existante</strong>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#856404' }}>
-                    Une intervention "{doublonWarning.type}" est déjà prévue pour l'arbre {doublonWarning.arbre} le {doublonWarning.date}.
-                  </p>
-                </div>
+                <strong>⚠️ Attention :</strong> {doublonWarning}
               </div>
             )}
             
             <form onSubmit={handleSubmit}>
-              {/* Section 1: Type et localisation */}
-              <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                📋 Type et localisation
-              </h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Type d'intervention *</label>
-                  <select name="type_intervention_id" value={formData.type_intervention_id} onChange={handleInputChange} required>
-                    <option value="">Sélectionner...</option>
-                    {typesIntervention.map(type => (
-                      <option key={type.id} value={type.id}>
-                        {CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Détails spécifiques au type sélectionné */}
-              {fieldsConfig && (
-                <>
-                  <div style={{ 
-                    marginTop: '1.5rem', 
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderBottom: '2px solid #e0e0e0',
-                    paddingBottom: '0.5rem'
-                  }}>
-                    <h4 style={{ color: '#2c5f2d', margin: 0 }}>
-                      {fieldsConfig.icon} Détails {selectedTypeName}
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedFields(!showAdvancedFields)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: showAdvancedFields ? '#2c5f2d' : '#f0f0f0',
-                        color: showAdvancedFields ? 'white' : '#333',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem'
-                      }}
+              {/* SECTION 1 : Informations principales */}
+              <div style={{
+                background: '#f8f9fa',
+                padding: '1.5rem',
+                borderRadius: '8px',
+                marginBottom: '1.5rem'
+              }}>
+                <h4 style={{ marginTop: 0, marginBottom: '1rem', color: '#2c5f2d' }}>
+                  📋 Informations principales
+                </h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                      Type d'intervention *
+                    </label>
+                    <select
+                      name="typeInterventionId"
+                      value={formData.typeInterventionId}
+                      onChange={handleInputChange}
+                      required
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                     >
-                      {showAdvancedFields ? '➖ Masquer' : '➕ Afficher les détails'}
-                    </button>
-                  </div>
-
-                  {showAdvancedFields && (
-                    <div style={{ background: '#f9f9f9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                      {/* Sélection rapide pour traitements */}
-                      {selectedTypeName === 'Traitement' && produitsPhyto.length > 0 && (
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#e8f5e9', borderRadius: '4px' }}>
-                          <label style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'block' }}>
-                            📦 Sélection rapide depuis le référentiel
-                          </label>
-                          <select 
-                            onChange={(e) => {
-                              const produit = produitsPhyto.find(p => p.id === parseInt(e.target.value));
-                              if (produit) handleSelectProduitPhyto(produit);
-                            }}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                          >
-                            <option value="">Choisir un produit...</option>
-                            {produitsPhyto.map(p => (
-                              <option key={p.id} value={p.id}>
-                                {p.nom_commercial} ({p.categorie}) {p.utilisable_bio && '🌿 Bio'}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      
-                      {/* Sélection rapide pour amendements */}
-                      {selectedTypeName === 'Amendement' && amendementsRef.length > 0 && (
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#e8f5e9', borderRadius: '4px' }}>
-                          <label style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'block' }}>
-                            📦 Sélection rapide depuis le référentiel
-                          </label>
-                          <select 
-                            onChange={(e) => {
-                              const amendement = amendementsRef.find(a => a.id === parseInt(e.target.value));
-                              if (amendement) handleSelectAmendement(amendement);
-                            }}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                          >
-                            <option value="">Choisir un amendement...</option>
-                            {amendementsRef.map(a => (
-                              <option key={a.id} value={a.id}>
-                                {a.nom} ({a.type_amendement}) {a.utilisable_bio && '🌿 Bio'}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {fieldsConfig.sections.map((section, sectionIndex) => (
-                        <div key={sectionIndex} style={{ marginBottom: '1rem' }}>
-                          <h5 style={{ color: '#555', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
-                            {section.titre}
-                          </h5>
-                          <div className="form-grid">
-                            {section.champs.map((champ, champIndex) => (
-                              <div key={champIndex} className="form-group">
-                                <label>
-                                  {champ.label}
-                                  {champ.help && (
-                                    <span style={{ fontSize: '0.8rem', color: '#888', marginLeft: '0.5rem' }}>
-                                      ℹ {champ.help}
-                                    </span>
-                                  )}
-                                </label>
-                                {renderField(champ)}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-
-
-              {/* Suite: Localisation */}
-              <div className="form-grid">
-
-                <div className="form-group">
-                  <label>Parcelle *</label>
-                  <select name="parcelle_id" value={formData.parcelle_id} onChange={handleInputChange} required>
-                    <option value="">Sélectionner...</option>
-                    {parcelles.map(parcelle => (
-                      <option key={parcelle.id} value={parcelle.id}>{parcelle.nom}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label>
-                    Arbres concernés 
-                    <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
-                      (Ctrl+clic pour sélection multiple)
-                    </span>
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="🔍 Rechercher un arbre (numéro, espèce, variété, état)..." 
-                    value={arbreSearchText}
-                    onChange={(e) => setArbreSearchText(e.target.value)}
-                    style={{ 
-                      marginBottom: '0.5rem', 
-                      padding: '0.5rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '4px',
-                      width: '100%'
-                    }}
-                  />
-                  <select multiple value={formData.arbre_ids} onChange={handleArbresChange} style={{ height: '100px' }}>
-                    {arbresFiltered.map(arbre => (
-                      <option key={arbre.id} value={arbre.id}>
-                        {arbre.numero} - {arbre.espece} ({arbre.etat})
-                      </option>
-                    ))}
-                  </select>
-                  {formData.parcelle_id && arbresFiltered.length > 0 && (
-                    <small style={{ color: '#27ae60' }}>
-                      {arbresFiltered.length} arbre(s) disponible(s)
-                      {formData.arbre_ids.length > 0 && ` - ${formData.arbre_ids.length} sélectionné(s)`}
-                    </small>
-                  )}
-                </div>
-              </div>
-
-              {/* Section 2: Planification */}
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                📅 Planification
-              </h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Date prévue *</label>
-                  <input type="date" name="date_prevue" value={formData.date_prevue} onChange={handleInputChange} required />
-                </div>
-
-                <div className="form-group">
-                  <label>Date de réalisation</label>
-                  <input type="date" name="date_realisee" value={formData.date_realisee} onChange={handleInputChange} />
-                </div>
-
-                <div className="form-group">
-                  <label>Statut *</label>
-                  <select name="statut" value={formData.statut} onChange={handleInputChange} required>
-                    <option value="Planifié">📋 Planifié</option>
-                    <option value="En cours">🔄 En cours</option>
-                    <option value="Terminé">✅ Terminé</option>
-                    <option value="Annulé">❌ Annulé</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Durée (minutes)</label>
-                  <input type="number" name="duree_minutes" value={formData.duree_minutes} onChange={handleInputChange} placeholder="Ex: 120" />
-                </div>
-              </div>
-
-              {/* Section 3: Équipe et coûts */}
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                👷 Équipe et coûts
-              </h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Caveur / Personnel</label>
-                  {caveurs.length > 0 ? (
-                    <select name="caveur_id" value={formData.caveur_id} onChange={handleInputChange}>
-                      <option value="">Sélectionner un caveur...</option>
-                      {caveurs.map(caveur => (
-                        <option key={caveur.id} value={caveur.id}>
-                          {caveur.nom} {caveur.specialite ? `(${caveur.specialite})` : ''}
+                      <option value="">Sélectionner...</option>
+                      {typesIntervention.map(type => (
+                        <option key={type.id} value={type.id}>
+                          {getTypeIcon(type.nom)} {type.nom}
                         </option>
                       ))}
                     </select>
-                  ) : (
-                    <input 
-                      type="text" 
-                      name="personnel" 
-                      value={formData.personnel} 
-                      onChange={handleInputChange} 
-                      placeholder="Nom(s) des personnes" 
-                    />
-                  )}
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                      Statut *
+                    </label>
+                    <select
+                      name="statut"
+                      value={formData.statut}
+                      onChange={handleInputChange}
+                      required
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="Planifié">Planifié</option>
+                      <option value="En cours">En cours</option>
+                      <option value="Terminé">Terminé</option>
+                      <option value="Annulé">Annulé</option>
+                    </select>
+                  </div>
                 </div>
-
-                <div className="form-group">
-                  <label>Coût (€)</label>
-                  <input type="number" name="cout" value={formData.cout} onChange={handleInputChange} step="0.01" placeholder="Ex: 150.00" />
-                </div>
-
-                <div className="form-group">
-                  <label>Conditions météo</label>
-                  <select name="meteo" value={formData.meteo} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
-                    <option value="Ensoleillé">☀ Ensoleillé</option>
-                    <option value="Nuageux">⛅ Nuageux</option>
-                    <option value="Pluvieux">🌧️ Pluvieux</option>
-                    <option value="Orageux">⛈ Orageux</option>
-                    <option value="Neigeux">❄ Neigeux</option>
-                    <option value="Venteux">💨 Venteux</option>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Parcelle
+                  </label>
+                  <select
+                    name="parcelleId"
+                    value={formData.parcelleId}
+                    onChange={handleInputChange}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                  >
+                    <option value="">Toutes les parcelles</option>
+                    {parcelles.map(p => (
+                      <option key={p.id} value={p.id}>{p.nom}</option>
+                    ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-                <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Détails de l'intervention..." rows="2" />
-              </div>
-
-              <div className="form-group">
-                <label>Notes</label>
-                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Remarques, observations..." rows="2" />
-              </div>
-
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: editingIntervention ? 'space-between' : 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                {editingIntervention && (
-                  <button 
-                    type="button" 
-                    className="btn btn-danger" 
-                    onClick={() => {
-                      closeModal();
-                      askDelete(editingIntervention);
+                
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Arbre(s) concerné(s)
+                  </label>
+                  {formData.parcelleId && (
+                    <input
+                      type="text"
+                      placeholder="🔍 Rechercher un arbre..."
+                      value={arbreSearchText}
+                      onChange={(e) => setArbreSearchText(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ddd',
+                        marginBottom: '0.5rem'
+                      }}
+                    />
+                  )}
+                  <select
+                    name="arbreIds"
+                    multiple
+                    value={formData.arbreIds}
+                    onChange={handleArbresChange}
+                    size={5}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
                     }}
-                    disabled={isProcessing}
-                    style={{ marginRight: 'auto' }}
                   >
-                    🗑️ Supprimer
-                  </button>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
-                  <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                    {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Planifier')}
-                  </button>
+                    <option value="">Tous les arbres</option>
+                    {arbresFiltered.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.numero} - {a.espece} {a.varieteTruffe ? `(${a.varieteTruffe})` : ''} - {a.etat || 'État non défini'}
+                      </option>
+                    ))}
+                  </select>
+                  <small style={{ color: '#666', fontSize: '0.85rem' }}>
+                    💡 Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs arbres
+                  </small>
                 </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                      Date prévue *
+                    </label>
+                    <input
+                      type="date"
+                      name="datePrevue"
+                      value={formData.datePrevue}
+                      onChange={handleInputChange}
+                      required
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                      Date réalisée
+                    </label>
+                    <input
+                      type="date"
+                      name="dateRealisee"
+                      value={formData.dateRealisee}
+                      onChange={handleInputChange}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Décrivez brièvement l'intervention..."
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+                
+                {/* Bouton pour afficher les champs avancés */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    border: '1px solid #2c5f2d',
+                    background: showAdvancedFields ? '#2c5f2d' : 'white',
+                    color: showAdvancedFields ? 'white' : '#2c5f2d',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {showAdvancedFields ? '▼' : '▶'} Champs avancés (coût, durée, météo, personnel...)
+                </button>
+                
+                {/* Champs avancés (repliables) */}
+                {showAdvancedFields && (
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #ddd' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                          Coût estimé (€)
+                        </label>
+                        <input
+                          type="number"
+                          name="cout"
+                          value={formData.cout}
+                          onChange={handleInputChange}
+                          step="0.01"
+                          placeholder="Ex: 150.50"
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                          Durée (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          name="dureeMinutes"
+                          value={formData.dureeMinutes}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 120"
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                        Météo
+                      </label>
+                      <input
+                        type="text"
+                        name="meteo"
+                        value={formData.meteo}
+                        onChange={handleInputChange}
+                        placeholder="Ex: Ensoleillé, 22°C, vent léger"
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                    
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                        Personnel
+                      </label>
+                      <input
+                        type="text"
+                        name="personnel"
+                        value={formData.personnel}
+                        onChange={handleInputChange}
+                        placeholder="Ex: Jean, Marie"
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                    
+                    {caveurs.length > 0 && (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                          Caveur
+                        </label>
+                        <select
+                          name="caveurId"
+                          value={formData.caveurId}
+                          onChange={handleInputChange}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                        >
+                          <option value="">Aucun</option>
+                          {caveurs.map(c => (
+                            <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                        Notes complémentaires
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        rows={3}
+                        placeholder="Observations, remarques..."
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* SECTION 2 : Détails spécifiques selon le type */}
+              {fieldsConfig && (
+                <div style={{
+                  background: '#f0f8f0',
+                  padding: '1.5rem',
+                  borderRadius: '8px',
+                  marginBottom: '1.5rem'
+                }}>
+                  <h4 style={{ marginTop: 0, marginBottom: '1rem', color: '#2c5f2d' }}>
+                    {fieldsConfig.icon} Détails spécifiques - {getSelectedTypeName()}
+                  </h4>
+                  
+                  {/* Sélection rapide de produits (pour Traitement) */}
+                  {getSelectedTypeName() === 'Traitement' && produitsPhyto.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                        🚀 Sélection rapide de produit
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const produit = produitsPhyto.find(p => p.id === parseInt(e.target.value));
+                          if (produit) handleSelectProduitPhyto(produit);
+                        }}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      >
+                        <option value="">Choisir un produit enregistré...</option>
+                        {produitsPhyto.map(p => (
+                          <option key={p.id} value={p.id}>{p.nomCommercial || p.nom_commercial}</option>
+                        ))}
+                      </select>
+                      <small style={{ color: '#666', fontSize: '0.85rem' }}>
+                        💡 Prérempli automatiquement les champs du produit
+                      </small>
+                    </div>
+                  )}
+                  
+                  {/* Sélection rapide d'amendement */}
+                  {getSelectedTypeName() === 'Amendement' && amendementsRef.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                        🚀 Sélection rapide d'amendement
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const amendement = amendementsRef.find(a => a.id === parseInt(e.target.value));
+                          if (amendement) handleSelectAmendement(amendement);
+                        }}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      >
+                        <option value="">Choisir un amendement enregistré...</option>
+                        {amendementsRef.map(a => (
+                          <option key={a.id} value={a.id}>{a.nom}</option>
+                        ))}
+                      </select>
+                      <small style={{ color: '#666', fontSize: '0.85rem' }}>
+                        💡 Prérempli automatiquement les champs de l'amendement
+                      </small>
+                    </div>
+                  )}
+                  
+                  {/* Sections de champs détaillés */}
+                  {fieldsConfig.sections.map((section, sIdx) => (
+                    <div key={sIdx} style={{ marginBottom: sIdx < fieldsConfig.sections.length - 1 ? '1.5rem' : 0 }}>
+                      <h5 style={{
+                        marginBottom: '1rem',
+                        color: '#555',
+                        borderBottom: '2px solid #2c5f2d',
+                        paddingBottom: '0.5rem',
+                        fontSize: '1rem'
+                      }}>
+                        {section.titre}
+                      </h5>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                        gap: '1rem'
+                      }}>
+                        {section.champs.map((champ, cIdx) => (
+                          <div key={cIdx}>
+                            <label style={{
+                              display: 'block',
+                              marginBottom: '0.25rem',
+                              fontSize: '0.9rem',
+                              fontWeight: '500',
+                              color: '#333'
+                            }}>
+                              {champ.label}
+                              {champ.help && (
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  color: '#666',
+                                  marginLeft: '0.5rem',
+                                  fontWeight: 'normal'
+                                }}>
+                                  ℹ️ {champ.help}
+                                </span>
+                              )}
+                            </label>
+                            {renderField(champ)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Boutons d'action */}
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    border: '1px solid #ddd',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  ❌ Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: isProcessing ? '#ccc' : '#2c5f2d',
+                    color: 'white',
+                    cursor: isProcessing ? 'wait' : 'pointer',
+                    fontSize: '0.95rem',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {isProcessing ? '⏳ Enregistrement...' : editingIntervention ? '💾 Modifier' : '➕ Créer'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      <CSVImportModal
-        show={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImportCSV}
-        validateFunction={validateInterventionsCSV}
-        type="interventions"
-        title="Importer des interventions depuis CSV"
-        dependencies={{ parcelles, typesIntervention, arbres }}
-      />
+      
+      {/* Modal de modification groupée */}
+      {showBulkEditModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>
+              ✏️ Modification groupée ({selectedInterventions.size} interventions)
+            </h3>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Nouveau statut
+              </label>
+              <select
+                name="statut"
+                value={bulkEditData.statut}
+                onChange={handleBulkEditChange}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+              >
+                <option value="">Ne pas modifier</option>
+                <option value="Planifié">Planifié</option>
+                <option value="En cours">En cours</option>
+                <option value="Terminé">Terminé</option>
+                <option value="Annulé">Annulé</option>
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Date réalisée
+              </label>
+              <input
+                type="date"
+                name="daterealisee"
+                value={bulkEditData.daterealisee}
+                onChange={handleBulkEditChange}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowBulkEditModal(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBulkEditSubmit}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#2c5f2d',
+                  color: 'white',
+                  cursor: isProcessing ? 'wait' : 'pointer',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Modification...' : 'Appliquer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal d'import CSV */}
+      {showImportModal && (
+        <CSVImportModal
+          onClose={() => setShowImportModal(false)}
+          onImport={handleImportCSV}
+          validateData={validateInterventionsCSV}
+          title="Importer des interventions"
+          templateHeaders={['type', 'parcelle', 'date_prevue', 'statut', 'description']}
+        />
+      )}
     </div>
   );
 }
