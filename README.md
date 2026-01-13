@@ -1,406 +1,386 @@
-# 🍄 Gestion de Truffière
-
-Application complète de gestion de truffière avec Docker, PostgreSQL/PostGIS, Node.js/Express et React.
-
-## 📋 Fonctionnalités
-
-### Gestion de la Culture
-- 🗺️ Cartographie interactive des parcelles (avec Leaflet + PostGIS)
-- 🌳 Suivi des arbres truffiers (espèce, âge, état)
-- 🛠️ Planning des interventions (irrigation, taille, travail du sol)
-
-### Gestion de la Production
-- 🍄 Enregistrement des récoltes (poids, qualité, localisation)
-- 💰 Suivi des ventes
-- 👥 Gestion des clients
-
-### Analyse et Statistiques
-- 📊 Tableaux de bord interactifs
-- 📈 Statistiques par parcelle, arbre, période
-- 📉 Graphiques de production et ventes (Recharts)
-- 🔍 Traçabilité complète (triggers automatiques)
-- 🔮 Prévisions météo intégrées
-
-## 🚀 Installation et lancement
-
-### Prérequis
-- Docker et Docker Compose installés
-- Ports 3000, 3001 et 5432 disponibles
-
-### Installation rapide
-
-```bash
-# 1. Cloner ou télécharger le projet
-cd truffiere-project
-
-# 2. Lancer l'application
-docker-compose up --build
-
-# Ou en arrière-plan
-docker-compose up -d --build
-```
-
-### Accès à l'application
-
-Une fois démarré, accédez à :
-- 🌐 **Frontend** : http://localhost:3000
-- 🔌 **API Backend** : http://localhost:3001/api
-- 🗄️ **PostgreSQL** : localhost:5432
-
-### Test rapide
-
-```bash
-# Vérifier que l'API fonctionne
-curl http://localhost:3001/api/health
-
-# Récupérer les parcelles
-curl http://localhost:3001/api/parcelles
-```
-
-## 📁 Structure du projet
-
-📁 TruffeGestion/
-│
-├── 🎨 FRONTEND (React)
-│   ├── index.html              (1.0K)   - Point d'entrée HTML
-│   ├── index.js                (512B)   - Point d'entrée React
-│   ├── App.js                  (12K)    - Composant principal & routing
-│   ├── App.css                 (12K)    - Styles globaux
-│   ├── Login.js                (3.5K)   - Page de connexion
-│   ├── Login.css               (7.0K)   - Styles de connexion
-│   │
-│   ├── 📊 MODULES PRINCIPAUX
-│   │   ├── Dashboard.js        (47K)    - Tableau de bord
-│   │   ├── Parcelles.js        (52K)    - Gestion des parcelles
-│   │   ├── Arbres.js           (70K)    - Gestion des arbres
-│   │   ├── Interventions.js    (94K)    - Gestion des interventions
-│   │   ├── Recoltes.js         (81K)    - Gestion des récoltes
-│   │   ├── Commercial.js       (70K)    - Gestion commerciale
-│   │   ├── Statistiques.js     (47K)    - Statistiques & graphiques
-│   │   ├── Historique.js       (65K)    - Historique des opérations
-│   │   ├── Carte.js            (32K)    - Cartographie interactive
-│   │   ├── Previsions.js       (17K)    - Prévisions de récolte
-│   │   └── Parametres.js       (67K)    - Paramètres & configuration
-│   │
-│   ├── 🧩 COMPOSANTS PARTAGÉS
-│   │   ├── GlobalSearch.js     (9.5K)   - Recherche globale
-│   │   ├── CSVImportModal.js   (11K)    - Modal d'import CSV
-│   │   └── ChangePassword.js   (7.0K)   - Changement de mot de passe
-│   │
-│   └── 🔧 UTILITAIRES FRONTEND
-│       ├── AuthContext.js      (4.0K)   - Contexte d'authentification
-│       ├── axiosConfig.js      (4.5K)   - Configuration Axios
-│       ├── useColumnSettings.js(12K)    - Hook colonnes personnalisées
-│       ├── csvImport.js        (52K)    - Logique d'import CSV
-│       └── pdfExport.js        (27K)    - Export PDF
-│
-├── ⚙️ BACKEND (Node.js/Express)
-│   ├── server.js               (114K)   - Serveur principal & API
-│   ├── auth.js                 (5.5K)   - Middleware authentification
-│   ├── tokens.js               (5.0K)   - Gestion des tokens JWT
-│   ├── security.js             (5.0K)   - Utilitaires sécurité
-│   ├── validation.js           (7.0K)   - Validation des données
-│   └── api.js                  (8.0K)   - Helpers API
-│
-├── 🗄️ BASE DE DONNÉES
-│   └── init-db.sql             (159K)   - Script initialisation PostgreSQL
-│
-├── 🐳 CONFIGURATION
-│   ├── Dockerfile              (512B)   - Configuration Docker
-│   ├── package.json            (1.0K)   - Dépendances npm
-│   ├── package-lock.json       (376K)   - Versions figées
-│   ├── _env                    (512B)   - Variables d'environnement
-│   ├── _editorconfig           (512B)   - Configuration éditeur
-│   └── _gitignore              (512B)   - Fichiers ignorés Git
-│
-└── 🖼️ ASSETS
-    └── truffeicon.png          (52K)    - Icône de l'application
-
-## 🛠️ Commandes utiles
-
-### Docker
-
-```bash
-# Voir les logs
-docker-compose logs -f
-
-# Logs d'un service spécifique
-docker-compose logs -f backend
-
-# Arrêter l'application
-docker-compose down
-
-# Arrêter et supprimer les volumes (⚠️ efface les données)
-docker-compose down -v
-
-# Redémarrer un service
-docker-compose restart backend
-
-# Voir l'état des services
-docker-compose ps
-```
-
-### Base de données
-
-```bash
-# Accéder à PostgreSQL
-docker exec -it truffiere_db psql -U unstuffed1004 -d truffiere
-
-# Commandes psql utiles
-\dt                    # Lister les tables
-\d+ parcelles         # Structure d'une table
-SELECT * FROM arbres; # Requête SQL
-\q                    # Quitter
-
-# Sauvegarder la base
-docker exec truffiere_db pg_dump -U unstuffed1004 truffiere > backup_$(date +%Y%m%d).sql
-
-# Restaurer la base
-docker exec -i truffiere_db psql -U unstuffed1004 truffiere < backup.sql
-```
-
-## 🗄️ Architecture de la base de données
-
-### Tables principales
-- **parcelles** : Informations sur les parcelles avec géométrie PostGIS
-- **arbres** : Inventaire des arbres truffiers
-- **types_intervention** : Catalogue des types d'interventions
-- **interventions** : Planning et historique des travaux
-- **recoltes** : Enregistrement des récoltes
-- **clients** : Gestion des clients (particuliers et professionnels)
-- **ventes** : Suivi des ventes
-- **historique** : Audit trail automatique (via triggers)
-
-### Vues statistiques
-- **stats_production_parcelle** : Production par parcelle et année
-- **stats_production_arbre** : Production par arbre
-- **stats_ventes** : Chiffre d'affaires mensuel
-
-## 🔧 Configuration
-
-### Variables d'environnement Backend
-
-Modifiez `backend/.env` pour la production :
-
-```env
-NODE_ENV=production
-PORT=3001
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=truffiere
-DB_USER=votre_utilisateur
-DB_PASSWORD=votre_mot_de_passe_securise
-```
-
-### Configuration réseau Frontend
-
-Pour accéder depuis d'autres machines du réseau :
-
-1. Créez `frontend/.env` :
-```env
-REACT_APP_API_URL=http://VOTRE_IP:3001/api
-```
-
-2. Ou modifiez directement dans `docker-compose.yml` :
-```yaml
-frontend:
-  environment:
-    - REACT_APP_API_URL=http://192.168.1.X:3001/api
-```
-
-## 🔒 Sécurité (TODO pour la production)
-
-- [ ] Changer les mots de passe par défaut dans `backend/.env` et `docker-compose.yml`
-- [ ] Ajouter l'authentification JWT
-- [ ] Configurer HTTPS avec certificats SSL
-- [ ] Limiter les CORS aux domaines autorisés
-- [ ] Ajouter la validation des entrées côté backend
-- [ ] Implémenter les rôles utilisateurs
-- [ ] Mettre en place des backups automatiques
-- [ ] Configurer un reverse proxy (Nginx)
-
-## 🐛 Dépannage
-
-### Port déjà utilisé
-```bash
-# Modifier les ports dans docker-compose.yml
-ports:
-  - "3002:3001"  # Backend sur port 3002 au lieu de 3001
-  - "3001:3000"  # Frontend sur port 3001 au lieu de 3000
-```
-
-### Base de données non accessible
-```bash
-# Vérifier les logs PostgreSQL
-docker-compose logs postgres
-
-# Vérifier que le healthcheck passe
-docker-compose ps
-
-# Recréer complètement
-docker-compose down -v
-docker-compose up --build
-```
-
-### Module not found (npm)
-```bash
-# Supprimer node_modules et réinstaller
-docker-compose down
-rm -rf backend/node_modules frontend/node_modules
-docker-compose up --build
-```
-
-### Problème de connexion API depuis le frontend
-```bash
-# Vérifier que l'API répond
-curl http://localhost:3001/api/health
-
-# Vérifier les logs du backend
-docker-compose logs -f backend
-
-# Vérifier la variable REACT_APP_API_URL
-docker-compose logs frontend | grep API_URL
-```
-
-## 📊 API Endpoints
-
-### Parcelles
-- `GET /api/parcelles` - Liste des parcelles (avec géométrie)
-- `GET /api/parcelles/:id` - Détail d'une parcelle
-- `POST /api/parcelles` - Créer une parcelle
-- `PUT /api/parcelles/:id` - Modifier une parcelle (avec coordonnées)
-- `DELETE /api/parcelles/:id` - Supprimer une parcelle
-
-### Arbres
-- `GET /api/arbres?parcelle_id=X` - Liste des arbres (optionnel : filtrer par parcelle)
-- `POST /api/arbres` - Créer un arbre
-- `PUT /api/arbres/:id` - Modifier un arbre (avec position GPS)
-- `DELETE /api/arbres/:id` - Supprimer un arbre
-
-### Interventions
-- `GET /api/interventions?debut=YYYY-MM-DD&fin=YYYY-MM-DD` - Liste des interventions
-- `GET /api/types-intervention` - Types d'interventions disponibles
-- `POST /api/interventions` - Créer une intervention
-- `PUT /api/interventions/:id` - Modifier une intervention
-- `DELETE /api/interventions/:id` - Supprimer une intervention
-
-### Récoltes
-- `GET /api/recoltes?annee=YYYY` - Liste des récoltes (optionnel : filtrer par année)
-- `POST /api/recoltes` - Enregistrer une récolte
-- `PUT /api/recoltes/:id` - Modifier une récolte
-- `DELETE /api/recoltes/:id` - Supprimer une récolte
-
-### Clients et Ventes
-- `GET /api/clients` - Liste des clients
-- `POST /api/clients` - Créer un client
-- `PUT /api/clients/:id` - Modifier un client
-- `DELETE /api/clients/:id` - Supprimer un client
-- `GET /api/ventes` - Liste des ventes
-- `POST /api/ventes` - Enregistrer une vente
-- `PUT /api/ventes/:id` - Modifier une vente
-- `DELETE /api/ventes/:id` - Supprimer une vente
-
-### Statistiques
-- `GET /api/stats/production-parcelle` - Production par parcelle et année
-- `GET /api/stats/production-arbre` - Production par arbre (top producteurs)
-- `GET /api/stats/ventes` - Chiffre d'affaires mensuel
-
-### Historique
-- `GET /api/historique?table_name=X&record_id=Y&limit=50` - Historique des modifications
-
-### Santé
-- `GET /api/health` - Vérifier que l'API fonctionne
-
-## 📝 Technologies utilisées
-
-### Backend
-- Node.js 18 (Alpine)
-- Express.js 4.18
-- PostgreSQL 16 + PostGIS 3.4
-- pg (node-postgres) 8.11
-- CORS, dotenv, morgan
-
-### Frontend
-- React 18
-- Axios (requêtes HTTP)
-- Leaflet + React-Leaflet (cartographie interactive)
-- Recharts (graphiques et statistiques)
-- React Router DOM (navigation)
-
-### Infrastructure
-- Docker & Docker Compose
-- PostGIS (extension spatiale PostgreSQL)
-- Nginx (optionnel pour production)
-
-## 🚀 Déploiement en production
-
-### 1. Préparer l'environnement
-
-```bash
-# Modifier les mots de passe
-nano backend/.env
-nano docker-compose.yml
-
-# Créer les certificats SSL (optionnel)
-mkdir -p nginx/ssl
-# ... générer les certificats
-```
-
-### 2. Build et démarrage
-
-```bash
-# Mode production
-docker-compose up -d --build
-
-# Vérifier les logs
-docker-compose logs -f
-```
-
-### 3. Configuration Nginx (recommandé)
-
-Décommenter la section nginx dans `docker-compose.yml` et configurer le reverse proxy.
-
-### 4. Backups automatiques
-
-```bash
-# Ajouter un cron job pour les backups quotidiens
-0 2 * * * docker exec truffiere_db pg_dump -U unstuffed1004 truffiere > /backups/truffiere_$(date +\%Y\%m\%d).sql
-```
-
-## 🌟 Améliorations futures
-
-### Court terme
-- [ ] Formulaires de modification pour tous les composants
-- [ ] Messages de confirmation pour les suppressions
-- [ ] Filtres et recherche avancée
-- [ ] Export PDF des rapports
-
-### Moyen terme
-- [ ] Authentification JWT multi-utilisateurs
-- [ ] Gestion des photos (upload et galerie)
-- [ ] Notifications par email
-- [ ] Application mobile (React Native)
-
-### Long terme
-- [ ] API publique documentée (Swagger)
-- [ ] Intégration IoT (capteurs d'humidité, météo)
-- [ ] Machine Learning pour prédictions de production
-- [ ] Marketplace pour vente directe
-
-## 📄 Licence
-
-Ce projet est sous licence MIT.
-
-## 👨‍💻 Auteur et Support
-
-Pour toute question ou problème :
-1. Consultez les logs : `docker-compose logs -f`
-2. Vérifiez la connexion à la base de données
-3. Assurez-vous que tous les ports sont disponibles
-4. Consultez la documentation dans `/docs` (si disponible)
+# 🍄 Gestion Truffière - Version 4
+
+![Version](https://img.shields.io/badge/version-4.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
+![React](https://img.shields.io/badge/react-18.2.0-61dafb)
+![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue)
+
+Application web complète de gestion d'exploitation truffière, développée en React et Node.js. Optimisez votre production de truffes grâce à un suivi précis de vos parcelles, arbres, interventions et récoltes.
 
 ---
 
-**Version** : 1.0.0  
-**Dernière mise à jour** : Décembre 2024  
-**Statut** : Production Ready ✅
+## 📋 Table des matières
+
+- [✨ Fonctionnalités](#-fonctionnalités)
+- [🏗️ Architecture](#️-architecture)
+- [🚀 Démarrage rapide](#-démarrage-rapide)
+- [📦 Installation détaillée](#-installation-détaillée)
+- [🔑 Authentification](#-authentification)
+- [📚 Documentation](#-documentation)
+- [🛠️ Technologies utilisées](#️-technologies-utilisées)
+- [🗺️ Roadmap](#️-roadmap)
+- [🤝 Contribution](#-contribution)
+
+---
+
+## ✨ Fonctionnalités
+
+### 🌳 Gestion de la culture
+- **Cartographie des parcelles** : Visualisation et organisation de vos zones de plantation
+- **Suivi des arbres truffiers** : Enregistrement détaillé (espèce, âge, état sanitaire, localisation GPS)
+- **Planning des interventions** : Gestion de l'irrigation, taille, travail du sol, traitements
+- **Calendrier intelligent** : Rappels et suggestions basés sur les meilleures pratiques
+
+### 📊 Gestion de la production
+- **Enregistrement des récoltes** : Poids, qualité (Extra, 1ère, 2ème), localisation par arbre
+- **Suivi des ventes** : Gestion clients, facturation, historique des transactions
+- **Statistiques avancées** : Rendement par parcelle, évolution pluriannuelle, comparaisons
+- **Tableaux de bord interactifs** : Visualisation en temps réel de vos KPIs
+
+### 👥 Gestion des utilisateurs
+- **Système d'authentification sécurisé** : JWT, refresh tokens, réinitialisation de mot de passe
+- **Gestion des rôles** :
+  - 🔵 **Propriétaire** : Accès complet (CRUD, gestion utilisateurs, finances)
+  - 🟢 **Employé** : Opérations quotidiennes (interventions, récoltes)
+  - 🟡 **Consultant** : Lecture seule (statistiques, rapports)
+- **Logs d'activité** : Traçabilité complète des actions
+
+### 📈 Analyse et reporting
+- **Historique complet** : Traçabilité de toutes les opérations
+- **Tableaux de bord personnalisables** : Graphiques, tendances, prévisions
+- **Export de rapports** : PDF, Excel, CSV pour comptabilité
+- **Analyse comparative** : Benchmark entre parcelles, essences, années
+
+---
+
+## 🏗️ Architecture
+
+```
+Gestion-Truffiere/
+├── backend/                    # API Node.js + Express
+│   ├── routes/                # Routes API (auth, parcelles, arbres, etc.)
+│   ├── controllers/           # Logique métier
+│   ├── middleware/            # Authentification, validation
+│   ├── models/               # Modèles de données
+│   ├── config/               # Configuration (DB, JWT, etc.)
+│   └── server.js             # Point d'entrée backend
+│
+├── frontend/                   # Application React
+│   ├── src/
+│   │   ├── components/       # Composants réutilisables
+│   │   │   ├── auth/        # Authentification
+│   │   │   ├── dashboard/   # Tableaux de bord
+│   │   │   ├── parcelles/   # Gestion parcelles
+│   │   │   ├── arbres/      # Gestion arbres
+│   │   │   └── recoltes/    # Gestion récoltes
+│   │   ├── hooks/           # Hooks personnalisés
+│   │   ├── services/        # Appels API
+│   │   ├── context/         # Context API (Auth, Theme)
+│   │   ├── utils/           # Fonctions utilitaires
+│   │   └── App.js           # Application principale
+│   └── public/
+│
+├── DEMARRAGE_RAPIDE.md         # Guide installation rapide
+├── README_NOUVELLES_FONCTIONNALITES.md
+├── Dashboard_Reorganisation.md
+├── analyse-authentification.md
+└── README.md                   # Ce fichier
+```
+
+### Stack technique
+
+#### Backend
+- **Node.js** (v18+) + **Express** : API REST
+- **PostgreSQL** (v15) : Base de données relationnelle
+- **JWT** : Authentification stateless
+- **bcryptjs** : Hashage sécurisé des mots de passe
+- **express-validator** : Validation des données
+- **nodemailer** : Envoi d'emails (reset password)
+
+#### Frontend
+- **React** (v18.2) : Interface utilisateur
+- **React Router** (v6) : Navigation SPA
+- **Context API** : Gestion d'état global
+- **Fetch API** : Communication avec backend
+- **CSS Modules** : Styles encapsulés
+
+#### Infrastructure
+- **Docker** + **Docker Compose** : Containerisation
+- **Nginx** : Reverse proxy (production)
+- **Git** : Contrôle de version
+
+---
+
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+- Node.js ≥ 18.0.0
+- PostgreSQL ≥ 15
+- npm ou yarn
+- Git
+
+### Installation express (5 minutes)
+
+```bash
+# 1. Cloner le dépôt
+git clone https://github.com/lepekinoi/Gestion-Truffiere.git
+cd Gestion-Truffiere
+
+# 2. Installer les dépendances
+cd backend && npm install
+cd ../frontend && npm install
+
+# 3. Configurer la base de données
+createdb gestion_truffiere
+psql -d gestion_truffiere -f backend/database/init.sql
+
+# 4. Configurer les variables d'environnement
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+# Éditer les fichiers .env avec vos paramètres
+
+# 5. Lancer l'application
+# Terminal 1 - Backend
+cd backend && npm start
+
+# Terminal 2 - Frontend
+cd frontend && npm start
+
+# 🎉 Application accessible sur http://localhost:3000
+```
+
+**📖 Pour une installation détaillée, consultez [DEMARRAGE_RAPIDE.md](./DEMARRAGE_RAPIDE.md)**
+
+---
+
+## 📦 Installation détaillée
+
+### Étape 1 : Configuration Backend
+
+```bash
+cd backend
+
+# Installation des dépendances
+npm install
+
+# Créer le fichier .env
+cat > .env << EOL
+# Base de données
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=gestion_truffiere
+DB_USER=postgres
+DB_PASSWORD=votre_mot_de_passe
+
+# JWT
+JWT_SECRET=votre_secret_super_securise_32_caracteres_minimum
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Email (optionnel pour reset password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre.email@gmail.com
+SMTP_PASS=votre_mot_de_passe_app
+
+# API
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+EOL
+
+# Initialiser la base de données
+psql -U postgres << SQL
+CREATE DATABASE gestion_truffiere;
+\c gestion_truffiere
+\i database/init.sql
+SQL
+
+# Lancer le serveur
+npm start
+# ✅ API disponible sur http://localhost:5000
+```
+
+### Étape 2 : Configuration Frontend
+
+```bash
+cd frontend
+
+# Installation des dépendances
+npm install
+
+# Créer le fichier .env
+cat > .env << EOL
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_VERSION=4.0.0
+EOL
+
+# Lancer l'application
+npm start
+# ✅ Interface disponible sur http://localhost:3000
+```
+
+### Étape 3 : Création du premier utilisateur
+
+Deux options :
+
+**Option A - Via l'interface web** :
+1. Accéder à http://localhost:3000
+2. Cliquer sur "S'inscrire"
+3. Remplir le formulaire avec le rôle "Propriétaire"
+
+**Option B - Via la base de données** :
+
+```sql
+-- Mot de passe: admin123
+INSERT INTO users (email, password_hash, nom, prenom, role_id)
+VALUES (
+    'admin@truffiere.fr',
+    '$2a$10$CwTycUXWue0Thq9StjUM0uJ8JnQBBN8T2OKhKm.xhzCN.sJZHKQsm',
+    'Admin',
+    'Système',
+    (SELECT id FROM roles WHERE nom = 'proprietaire')
+);
+```
+
+---
+
+## 🔑 Authentification
+
+### Système de rôles
+
+| Rôle | Accès | Permissions |
+|------|-------|-------------|
+| **Propriétaire** | Complet | CRUD sur tout, gestion utilisateurs, finances, exports |
+| **Employé** | Standard | Créer/modifier parcelles, arbres, interventions, récoltes |
+| **Consultant** | Lecture | Consulter données, statistiques, générer rapports |
+
+### Sécurité
+
+- ✅ Tokens JWT avec expiration (24h)
+- ✅ Refresh tokens (7 jours)
+- ✅ Mots de passe hashés (bcrypt, 10 rounds)
+- ✅ Protection CSRF
+- ✅ Rate limiting sur les routes sensibles
+- ✅ Logs de connexion (IP, user-agent)
+- ✅ Réinitialisation sécurisée par email
+
+**📖 Plus de détails : [analyse-authentification.md](./analyse-authentification.md)**
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [DEMARRAGE_RAPIDE.md](./DEMARRAGE_RAPIDE.md) | Guide d'installation et premier lancement |
+| [README_NOUVELLES_FONCTIONNALITES.md](./README_NOUVELLES_FONCTIONNALITES.md) | Détail des fonctionnalités V4 |
+| [Dashboard_Reorganisation.md](./Dashboard_Reorganisation.md) | Architecture du tableau de bord |
+| [analyse-authentification.md](./analyse-authentification.md) | Système d'authentification |
+| `backend/API.md` | Documentation des endpoints API |
+| `frontend/COMPONENTS.md` | Guide des composants React |
+
+---
+
+## 🛠️ Technologies utilisées
+
+### Backend
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
+
+### Frontend
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+
+### DevOps
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+
+---
+
+## 🗺️ Roadmap
+
+### Version 4.1 (En cours)
+- [ ] Module météo intégré (API Météo France)
+- [ ] Notifications push (PWA)
+- [ ] Export cartographique (GeoJSON, KML)
+- [ ] Mode hors-ligne progressif
+
+### Version 4.2 (Q2 2026)
+- [ ] Application mobile (React Native)
+- [ ] Intégration capteurs IoT (humidité sol)
+- [ ] Intelligence artificielle (prédiction récoltes)
+- [ ] Module de gestion financière avancée
+
+### Version 5.0 (Q4 2026)
+- [ ] Blockchain pour traçabilité
+- [ ] Marketplace intégrée
+- [ ] Multi-exploitation (groupements)
+- [ ] API publique pour intégrations tierces
+
+**💡 Proposez vos idées en ouvrant une [issue](https://github.com/lepekinoi/Gestion-Truffiere/issues) !**
+
+---
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! Voici comment participer :
+
+1. **Fork** le projet
+2. **Créer une branche** pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. **Commit** vos changements (`git commit -m 'Add AmazingFeature'`)
+4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
+5. **Ouvrir une Pull Request**
+
+### Guidelines
+
+- Suivre les conventions de code existantes
+- Écrire des tests pour les nouvelles fonctionnalités
+- Mettre à jour la documentation si nécessaire
+- Commenter le code pour les parties complexes
+
+---
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+
+## 👨‍💻 Auteur
+
+**lepekinoi**
+- GitHub: [@lepekinoi](https://github.com/lepekinoi)
+- Projet: [Gestion-Truffiere](https://github.com/lepekinoi/Gestion-Truffiere)
+
+---
+
+## 🙏 Remerciements
+
+- Communauté des trufficulteurs pour leurs retours
+- Contributeurs open-source
+- [INRAE](https://www.inrae.fr/) pour les recherches sur la trufficulture
+- [WETRUF](https://wetruf.com/) pour l'inspiration
+
+---
+
+## 📞 Support
+
+- 📧 Email: support@gestion-truffiere.fr
+- 🐛 Issues: [GitHub Issues](https://github.com/lepekinoi/Gestion-Truffiere/issues)
+- 📖 Documentation: [Wiki](https://github.com/lepekinoi/Gestion-Truffiere/wiki)
+
+---
+
+<div align="center">
+
+**⭐ Si ce projet vous est utile, n'hésitez pas à lui donner une étoile !**
+
+Made with 🍄 for truffle lovers
+
+</div>
