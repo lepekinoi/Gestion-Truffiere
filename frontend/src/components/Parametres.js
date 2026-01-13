@@ -77,7 +77,7 @@ const COLONNES_DISPONIBLES = {
     { key: 'client_nom', label: 'Client' },
     { key: 'commande_numero', label: 'N° Commande' },
     { key: 'quantite_grammes', label: 'Quantité (g)' },
-    { key: 'prix_unitaire_kg', label: 'Prix unitaire (â‚¬/kg)' },
+    { key: 'prix_unitaire_kg', label: 'Prix unitaire (€/kg)' },
     { key: 'montant_total', label: 'Montant total' },
     { key: 'mode_paiement', label: 'Mode de paiement' },
     { key: 'statut', label: 'Statut' },
@@ -94,6 +94,75 @@ const ENTITES = [
   { key: 'ventes', label: 'Ventes', icon: '💰' }
 ];
 
+// Configuration des paramètres par catégorie
+const PARAMETRES_CONFIG = {
+  entreprise: {
+    label: 'Informations Entreprise',
+    icon: '🏢',
+    description: 'Coordonnées de votre exploitation',
+    params: [
+      { key: 'entreprise_nom', label: 'Nom de l\'entreprise', type: 'text', placeholder: 'Ma Truffière' },
+      { key: 'entreprise_adresse', label: 'Adresse', type: 'text', placeholder: '123 Chemin des Chênes' },
+      { key: 'entreprise_code_postal', label: 'Code postal', type: 'text', placeholder: '84000' },
+      { key: 'entreprise_ville', label: 'Ville', type: 'text', placeholder: 'Avignon' },
+      { key: 'entreprise_telephone', label: 'Téléphone', type: 'tel', placeholder: '04 90 XX XX XX' },
+      { key: 'entreprise_email', label: 'Email', type: 'email', placeholder: 'contact@matruffiere.fr' },
+      { key: 'entreprise_siret', label: 'SIRET', type: 'text', placeholder: '123 456 789 00012' },
+      { key: 'entreprise_tva', label: 'N° TVA Intracommunautaire', type: 'text', placeholder: 'FR12345678901' }
+    ]
+  },
+  facturation: {
+    label: 'Facturation',
+    icon: '🧾',
+    description: 'Paramètres pour la génération des factures',
+    params: [
+      { key: 'facture_prefixe', label: 'Préfixe des factures', type: 'text', placeholder: 'FAC' },
+      { key: 'facture_tva_taux', label: 'Taux de TVA (%)', type: 'number', placeholder: '5.5' },
+      { key: 'facture_conditions_paiement', label: 'Conditions de paiement', type: 'text', placeholder: 'Paiement à réception' },
+      { key: 'facture_delai_paiement', label: 'Délai de paiement (jours)', type: 'number', placeholder: '30' },
+      { key: 'facture_iban', label: 'IBAN', type: 'text', placeholder: 'FR76 XXXX XXXX XXXX XXXX XXXX XXX' },
+      { key: 'facture_bic', label: 'BIC', type: 'text', placeholder: 'XXXXXXXX' },
+      { key: 'facture_mentions_legales', label: 'Mentions légales', type: 'textarea', placeholder: 'TVA non applicable, art. 293 B du CGI...' }
+    ]
+  },
+  stock: {
+    label: 'Stock & Alertes',
+    icon: '📦',
+    description: 'Seuils d\'alerte et paramètres de stock',
+    params: [
+      { key: 'stock_alerte_critique', label: 'Seuil critique (g)', type: 'number', placeholder: '100' },
+      { key: 'stock_alerte_faible', label: 'Seuil faible (g)', type: 'number', placeholder: '500' },
+      { key: 'stock_prix_moyen_defaut', label: 'Prix moyen par défaut (€/kg)', type: 'number', placeholder: '800' },
+      { key: 'commande_alerte_delai', label: 'Alerte commandes (jours avant livraison)', type: 'number', placeholder: '3' }
+    ]
+  },
+  production: {
+    label: 'Production',
+    icon: '🍄',
+    description: 'Paramètres liés aux récoltes',
+    params: [
+      { key: 'recolte_qualites', label: 'Qualités disponibles', type: 'tags', placeholder: 'Extra, 1er choix, 2ème choix, Brisures' },
+      { key: 'recolte_calibres', label: 'Calibres disponibles', type: 'tags', placeholder: 'Petit, Moyen, Gros, Très gros' },
+      { key: 'recolte_maturites', label: 'Maturités disponibles', type: 'tags', placeholder: 'Immature, À point, Mature, Très mature' },
+      { key: 'saison_debut_mois', label: 'Début de saison (mois)', type: 'number', placeholder: '11' },
+      { key: 'saison_fin_mois', label: 'Fin de saison (mois)', type: 'number', placeholder: '3' }
+    ]
+  },
+  application: {
+    label: 'Application',
+    icon: '⚙️',
+    description: 'Préférences générales de l\'application',
+    params: [
+      { key: 'app_theme', label: 'Thème couleur principal', type: 'color', placeholder: '#2c5f2d' },
+      { key: 'app_langue', label: 'Langue', type: 'select', options: ['fr', 'en'], placeholder: 'fr' },
+      { key: 'app_devise', label: 'Devise', type: 'select', options: ['EUR', 'USD', 'CHF'], placeholder: 'EUR' },
+      { key: 'app_date_format', label: 'Format de date', type: 'select', options: ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'], placeholder: 'DD/MM/YYYY' },
+      { key: 'dashboard_refresh_interval', label: 'Rafraîchissement dashboard (secondes)', type: 'number', placeholder: '60' },
+      { key: 'historique_retention_jours', label: 'Rétention historique (jours)', type: 'number', placeholder: '365' }
+    ]
+  }
+};
+
 // Helper pour parser JSON en toute sécurité
 const safeJsonParse = (value, defaultValue = {}) => {
   if (!value) return defaultValue;
@@ -104,6 +173,16 @@ const safeJsonParse = (value, defaultValue = {}) => {
     console.error('Erreur parsing JSON:', e);
     return defaultValue;
   }
+};
+
+// Helper pour extraire la valeur d'un paramètre JSONB
+const extractParamValue = (valeur) => {
+  if (valeur === null || valeur === undefined) return '';
+  if (typeof valeur === 'object') {
+    // Si c'est un objet JSONB avec une propriété "value" ou directement la valeur
+    return valeur.value !== undefined ? valeur.value : (typeof valeur === 'string' ? valeur : JSON.stringify(valeur));
+  }
+  return valeur;
 };
 
 function Parametres() {
@@ -131,7 +210,7 @@ function Parametres() {
   const [editingCaveur, setEditingCaveur] = useState(null);
   const [editingChien, setEditingChien] = useState(null);
   
-  // Paramètres globaux
+  // Paramètres globaux (colonnes)
   const [parametresGlobaux, setParametresGlobaux] = useState({
     colonnes_affichees: {},
     colonnes_export: {}
@@ -142,6 +221,15 @@ function Parametres() {
     colonnes_affichees: {},
     colonnes_export: {}
   });
+
+  // NOUVEAU: Paramètres application/entreprise
+  const [parametresApp, setParametresApp] = useState({});
+  const [activeParamCategory, setActiveParamCategory] = useState('entreprise');
+
+  // NOUVEAU: Tous les paramètres bruts de la BDD
+  const [allParametres, setAllParametres] = useState([]);
+  const [newParam, setNewParam] = useState({ cle: '', valeur: '', description: '' });
+  const [editingParam, setEditingParam] = useState(null);
 
   useEffect(() => {
     loadAllData();
@@ -168,6 +256,8 @@ function Parametres() {
       
       // Paramètres globaux
       const globalData = { colonnes_affichees: {}, colonnes_export: {} };
+      const appParams = {};
+      
       globalRes.data.forEach(param => {
         if (param.cle.startsWith('colonnes_affichees_')) {
           const entite = param.cle.replace('colonnes_affichees_', '');
@@ -175,9 +265,14 @@ function Parametres() {
         } else if (param.cle.startsWith('colonnes_export_')) {
           const entite = param.cle.replace('colonnes_export_', '');
           globalData.colonnes_export[entite] = safeJsonParse(param.valeur, []);
+        } else {
+          // Autres paramètres (entreprise, facturation, etc.)
+          appParams[param.cle] = extractParamValue(param.valeur);
         }
       });
       setParametresGlobaux(globalData);
+      setParametresApp(appParams);
+      setAllParametres(globalRes.data); // Stocker tous les paramètres bruts
       
       // Préférences utilisateur
       if (userRes.data) {
@@ -197,7 +292,6 @@ function Parametres() {
   };
 
   const calculateStats = (caveursList, chiensList, recoltesList, interventionsList) => {
-    // Calculer la date d'il y a 6 mois
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
     const currentYear = now.getFullYear();
@@ -205,28 +299,20 @@ function Parametres() {
     // Stats caveurs
     const cavStats = {};
     caveursList.forEach(caveur => {
-      // Stats totales
       const recoltesTotal = recoltesList.filter(r => r.caveur === caveur.nom);
       const totalPoids = recoltesTotal.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0);
       const interventionsTotal = interventionsList.filter(i => i.personnel && i.personnel.includes(caveur.nom));
       
-      // Stats 6 derniers mois
-      const recoltes6Mois = recoltesTotal.filter(r => {
-        const dateRecolte = new Date(r.date_recolte);
-        return dateRecolte >= sixMonthsAgo;
-      });
+      const recoltes6Mois = recoltesTotal.filter(r => new Date(r.date_recolte) >= sixMonthsAgo);
       const poids6Mois = recoltes6Mois.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0);
-      const interventions6Mois = interventionsTotal.filter(i => {
-        const dateInt = new Date(i.date_realisee || i.date_prevue);
-        return dateInt >= sixMonthsAgo;
-      });
+      const interventions6Mois = interventionsTotal.filter(i => new Date(i.date_realisee || i.date_prevue) >= sixMonthsAgo);
       
       cavStats[caveur.id] = {
         nbRecoltes: recoltesTotal.length,
-        totalPoids: totalPoids,
+        totalPoids,
         nbInterventions: interventionsTotal.length,
         nbRecoltes6Mois: recoltes6Mois.length,
-        poids6Mois: poids6Mois,
+        poids6Mois,
         nbInterventions6Mois: interventions6Mois.length,
         annee: currentYear
       };
@@ -236,22 +322,16 @@ function Parametres() {
     // Stats chiens
     const chiStats = {};
     chiensList.forEach(chien => {
-      // Stats totales
       const recoltesTotal = recoltesList.filter(r => r.chien === chien.nom);
       const totalPoids = recoltesTotal.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0);
-      
-      // Stats 6 derniers mois
-      const recoltes6Mois = recoltesTotal.filter(r => {
-        const dateRecolte = new Date(r.date_recolte);
-        return dateRecolte >= sixMonthsAgo;
-      });
+      const recoltes6Mois = recoltesTotal.filter(r => new Date(r.date_recolte) >= sixMonthsAgo);
       const poids6Mois = recoltes6Mois.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0);
       
       chiStats[chien.id] = {
         nbRecoltes: recoltesTotal.length,
-        totalPoids: totalPoids,
+        totalPoids,
         nbRecoltes6Mois: recoltes6Mois.length,
-        poids6Mois: poids6Mois,
+        poids6Mois,
         annee: currentYear
       };
     });
@@ -398,53 +478,206 @@ function Parametres() {
 
   const saveParametresGlobaux = async () => {
     setSaving(true);
-    setMessage(null);
     try {
+      // Sauvegarder les colonnes affichées
       for (const [entite, colonnes] of Object.entries(parametresGlobaux.colonnes_affichees)) {
-        await axios.put(`${API_URL}/parametres/colonnes_affichees_${entite}`, { 
-          valeur: JSON.stringify(colonnes) 
+        await axios.post(`${API_URL}/parametres`, {
+          cle: `colonnes_affichees_${entite}`,
+          valeur: JSON.stringify(colonnes)
         });
       }
       
+      // Sauvegarder les colonnes export
       for (const [entite, colonnes] of Object.entries(parametresGlobaux.colonnes_export)) {
-        await axios.put(`${API_URL}/parametres/colonnes_export_${entite}`, { 
-          valeur: JSON.stringify(colonnes) 
+        await axios.post(`${API_URL}/parametres`, {
+          cle: `colonnes_export_${entite}`,
+          valeur: JSON.stringify(colonnes)
         });
       }
       
-      showMessage('âœ… Paramètres globaux sauvegardés avec succès !');
+      showMessage('Paramètres globaux sauvegardés !');
     } catch (error) {
       console.error('Erreur:', error);
-      showMessage('âŒ Erreur lors de la sauvegarde des paramètres.', 'error');
+      showMessage('Erreur lors de la sauvegarde', 'error');
     }
     setSaving(false);
   };
 
   const savePreferencesUtilisateur = async () => {
     setSaving(true);
-    setMessage(null);
     try {
       await axios.post(`${API_URL}/preferences-utilisateur`, {
         colonnes_affichees: JSON.stringify(preferencesUtilisateur.colonnes_affichees),
         colonnes_export: JSON.stringify(preferencesUtilisateur.colonnes_export)
       });
-      
-      showMessage('âœ… Préférences utilisateur sauvegardées avec succès !');
+      showMessage('Préférences sauvegardées !');
     } catch (error) {
       console.error('Erreur:', error);
-      showMessage('âŒ Erreur lors de la sauvegarde des préférences.', 'error');
+      showMessage('Erreur lors de la sauvegarde', 'error');
     }
     setSaving(false);
   };
 
+  // ==================== GESTION PARAMETRES APPLICATION ====================
+
+  const handleParamChange = (key, value) => {
+    setParametresApp(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const saveParametresApp = async () => {
+    setSaving(true);
+    try {
+      // Sauvegarder chaque paramètre modifié
+      for (const [key, value] of Object.entries(parametresApp)) {
+        // Ne pas sauvegarder les paramètres de colonnes (gérés ailleurs)
+        if (!key.startsWith('colonnes_')) {
+          await axios.post(`${API_URL}/parametres`, {
+            cle: key,
+            valeur: JSON.stringify(value)
+          });
+        }
+      }
+      showMessage('Paramètres sauvegardés avec succès !');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors de la sauvegarde des paramètres', 'error');
+    }
+    setSaving(false);
+  };
+
+  // ==================== GESTION TOUS LES PARAMETRES ====================
+
+  // Catégoriser les paramètres
+  const categorizeParams = (params) => {
+    const categories = {
+      colonnes_affichees: { label: '📊 Colonnes affichées', params: [] },
+      colonnes_export: { label: '📤 Colonnes export', params: [] },
+      entreprise: { label: '🏢 Entreprise', params: [] },
+      facturation: { label: '🧾 Facturation', params: [] },
+      stock: { label: '📦 Stock & Alertes', params: [] },
+      production: { label: '🍄 Production', params: [] },
+      application: { label: '⚙️ Application', params: [] },
+      autres: { label: '📁 Autres', params: [] }
+    };
+
+    params.forEach(param => {
+      if (param.cle.startsWith('colonnes_affichees_')) {
+        categories.colonnes_affichees.params.push(param);
+      } else if (param.cle.startsWith('colonnes_export_')) {
+        categories.colonnes_export.params.push(param);
+      } else if (param.cle.startsWith('entreprise_')) {
+        categories.entreprise.params.push(param);
+      } else if (param.cle.startsWith('facture_') || param.cle.startsWith('facturation_')) {
+        categories.facturation.params.push(param);
+      } else if (param.cle.startsWith('stock_') || param.cle.startsWith('alerte_') || param.cle.startsWith('commande_alerte')) {
+        categories.stock.params.push(param);
+      } else if (param.cle.startsWith('recolte_') || param.cle.startsWith('saison_')) {
+        categories.production.params.push(param);
+      } else if (param.cle.startsWith('app_') || param.cle.startsWith('dashboard_') || param.cle.startsWith('theme_') || param.cle.startsWith('historique_')) {
+        categories.application.params.push(param);
+      } else {
+        categories.autres.params.push(param);
+      }
+    });
+
+    return categories;
+  };
+
+  const handleAddParam = async (e) => {
+    e.preventDefault();
+    if (!newParam.cle.trim()) return;
+
+    setSaving(true);
+    try {
+      // Essayer de parser la valeur comme JSON, sinon la garder comme string
+      let valeurToSave = newParam.valeur;
+      try {
+        valeurToSave = JSON.parse(newParam.valeur);
+      } catch {
+        // Garder comme string
+      }
+
+      await axios.post(`${API_URL}/parametres`, {
+        cle: newParam.cle.trim(),
+        valeur: typeof valeurToSave === 'string' ? JSON.stringify(valeurToSave) : valeurToSave,
+        description: newParam.description.trim() || null
+      });
+      
+      setNewParam({ cle: '', valeur: '', description: '' });
+      showMessage('Paramètre ajouté avec succès !');
+      loadAllData();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage(error.response?.data?.error || 'Erreur lors de l\'ajout du paramètre', 'error');
+    }
+    setSaving(false);
+  };
+
+  const handleUpdateParam = async (id, cle, valeur, description) => {
+    setSaving(true);
+    try {
+      let valeurToSave = valeur;
+      try {
+        valeurToSave = JSON.parse(valeur);
+      } catch {
+        // Garder comme string
+      }
+
+      await axios.put(`${API_URL}/parametres/${id}`, {
+        cle,
+        valeur: typeof valeurToSave === 'string' ? JSON.stringify(valeurToSave) : valeurToSave,
+        description: description || null
+      });
+      
+      setEditingParam(null);
+      showMessage('Paramètre modifié avec succès !');
+      loadAllData();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors de la modification', 'error');
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteParam = async (id) => {
+    setSaving(true);
+    try {
+      await axios.delete(`${API_URL}/parametres/${id}`);
+      showMessage('Paramètre supprimé avec succès !');
+      loadAllData();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors de la suppression', 'error');
+    }
+    setSaving(false);
+    setConfirmModal(null);
+  };
+
+  // Formater la valeur pour l'affichage
+  const formatParamValue = (valeur) => {
+    if (valeur === null || valeur === undefined) return '';
+    if (typeof valeur === 'object') {
+      return JSON.stringify(valeur, null, 2);
+    }
+    return String(valeur);
+  };
+
+  // ==================== CONFIRMATION ====================
+
   const handleConfirm = () => {
-    if (!confirmModal) return;
-    if (confirmModal.action === 'deleteCaveur') {
+    if (confirmModal?.action === 'deleteCaveur') {
       handleDeleteCaveur(confirmModal.id);
-    } else if (confirmModal.action === 'deleteChien') {
+    } else if (confirmModal?.action === 'deleteChien') {
       handleDeleteChien(confirmModal.id);
+    } else if (confirmModal?.action === 'deleteParam') {
+      handleDeleteParam(confirmModal.id);
     }
   };
+
+  // ==================== RENDU ====================
 
   if (loading) {
     return (
@@ -531,6 +764,100 @@ function Parametres() {
     </div>
   );
 
+  // Rendu d'un champ de paramètre
+  const renderParamField = (param) => {
+    const value = parametresApp[param.key] || '';
+    
+    const baseStyle = {
+      width: '100%',
+      padding: '0.75rem',
+      borderRadius: '6px',
+      border: '1px solid #ddd',
+      fontSize: '0.95rem',
+      transition: 'border-color 0.2s'
+    };
+
+    switch (param.type) {
+      case 'textarea':
+        return (
+          <textarea
+            value={value}
+            onChange={(e) => handleParamChange(param.key, e.target.value)}
+            placeholder={param.placeholder}
+            rows={3}
+            style={{ ...baseStyle, resize: 'vertical' }}
+          />
+        );
+      
+      case 'select':
+        return (
+          <select
+            value={value}
+            onChange={(e) => handleParamChange(param.key, e.target.value)}
+            style={baseStyle}
+          >
+            <option value="">-- Sélectionner --</option>
+            {param.options?.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+      
+      case 'color':
+        return (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="color"
+              value={value || '#2c5f2d'}
+              onChange={(e) => handleParamChange(param.key, e.target.value)}
+              style={{ width: '50px', height: '40px', border: 'none', cursor: 'pointer' }}
+            />
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => handleParamChange(param.key, e.target.value)}
+              placeholder={param.placeholder}
+              style={{ ...baseStyle, flex: 1 }}
+            />
+          </div>
+        );
+      
+      case 'tags':
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleParamChange(param.key, e.target.value)}
+            placeholder={param.placeholder}
+            style={baseStyle}
+            title="Séparez les valeurs par des virgules"
+          />
+        );
+      
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleParamChange(param.key, e.target.value)}
+            placeholder={param.placeholder}
+            style={{ ...baseStyle, maxWidth: '200px' }}
+          />
+        );
+      
+      default:
+        return (
+          <input
+            type={param.type || 'text'}
+            value={value}
+            onChange={(e) => handleParamChange(param.key, e.target.value)}
+            placeholder={param.placeholder}
+            style={baseStyle}
+          />
+        );
+    }
+  };
+
   return (
     <div className="page-container">
       {/* Modal de confirmation */}
@@ -605,63 +932,45 @@ function Parametres() {
       )}
 
       {/* Onglets */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '2rem', borderBottom: '2px solid #e0e0e0' }}>
-        <button
-          onClick={() => setActiveTab('equipe')}
-          style={{
-            padding: '1rem 2rem',
-            background: activeTab === 'equipe' ? '#2c5f2d' : 'transparent',
-            color: activeTab === 'equipe' ? 'white' : '#2c5f2d',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: activeTab === 'equipe' ? 'bold' : 'normal',
-            borderTopLeftRadius: '8px',
-            borderTopRightRadius: '8px',
-            transition: 'all 0.2s'
-          }}
-        >
-          👥 Équipe (Caveurs & Chiens)
-        </button>
-        <button
-          onClick={() => setActiveTab('global')}
-          style={{
-            padding: '1rem 2rem',
-            background: activeTab === 'global' ? '#2c5f2d' : 'transparent',
-            color: activeTab === 'global' ? 'white' : '#2c5f2d',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: activeTab === 'global' ? 'bold' : 'normal',
-            borderTopLeftRadius: '8px',
-            borderTopRightRadius: '8px',
-            transition: 'all 0.2s'
-          }}
-        >
-          🌐 Paramètres globaux
-        </button>
-        <button
-          onClick={() => setActiveTab('utilisateur')}
-          style={{
-            padding: '1rem 2rem',
-            background: activeTab === 'utilisateur' ? '#2c5f2d' : 'transparent',
-            color: activeTab === 'utilisateur' ? 'white' : '#2c5f2d',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: activeTab === 'utilisateur' ? 'bold' : 'normal',
-            borderTopLeftRadius: '8px',
-            borderTopRightRadius: '8px',
-            transition: 'all 0.2s'
-          }}
-        >
-          🐕¤ Préférences utilisateur
-        </button>
+      <div style={{ display: 'flex', gap: '0', marginBottom: '2rem', borderBottom: '2px solid #e0e0e0', flexWrap: 'wrap' }}>
+        {[
+          { key: 'equipe', label: '👥 Équipe', sublabel: 'Caveurs & Chiens' },
+          { key: 'entreprise', label: '🏢 Entreprise', sublabel: 'Facturation' },
+          { key: 'config', label: '🗄️ Configuration', sublabel: 'Tous les paramètres' },
+          { key: 'global', label: '🌐 Colonnes', sublabel: 'Globales' },
+          { key: 'utilisateur', label: '👤 Mes préférences', sublabel: '' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '1rem 1.5rem',
+              background: activeTab === tab.key ? '#2c5f2d' : 'transparent',
+              color: activeTab === tab.key ? 'white' : '#2c5f2d',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: activeTab === tab.key ? 'bold' : 'normal',
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px'
+            }}
+          >
+            <span>{tab.label}</span>
+            {tab.sublabel && (
+              <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{tab.sublabel}</span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Contenu ÉQUIPE */}
       {activeTab === 'equipe' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
           
           {/* Section Caveurs */}
           <div style={{ 
@@ -713,23 +1022,33 @@ function Parametres() {
                         borderRadius: '8px',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center',
-                        position: 'relative'
+                        alignItems: 'center'
                       }}
-                      title={`📊 Statistiques ${stats.annee || new Date().getFullYear()}\n━━━━━━━━━━━━━━━━━━━━━━━━\n🍄 Total : ${stats.nbRecoltes} récolte(s) (${(stats.totalPoids / 1000).toFixed(2)} kg)\n🛠️ Total : ${stats.nbInterventions} intervention(s)\n━━━━━━━━━━━━━━━━━━━━━━━━\n📅 6 derniers mois :\n   • ${stats.nbRecoltes6Mois || 0} récolte(s) (${((stats.poids6Mois || 0) / 1000).toFixed(2)} kg)\n   • ${stats.nbInterventions6Mois || 0} intervention(s)`}
+                      title={`📊 Statistiques ${stats.annee || new Date().getFullYear()}\n━━━━━━━━━━━━━━━━━━━━━━━\n🍄 Récoltes: ${stats.nbRecoltes} (${(stats.totalPoids / 1000).toFixed(2)} kg)\n🛠️ Interventions: ${stats.nbInterventions}`}
                     >
                       {editingCaveur === caveur.id ? (
-                        <input 
-                          type="text" 
-                          defaultValue={caveur.nom}
-                          onBlur={(e) => handleUpdateCaveur(caveur.id, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateCaveur(caveur.id, e.target.value);
-                            if (e.key === 'Escape') setEditingCaveur(null);
-                          }}
-                          autoFocus
-                          style={{ flex: 1, padding: '0.25rem', borderRadius: '4px', border: '1px solid #2c5f2d' }}
-                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+                          <input 
+                            type="text" 
+                            defaultValue={caveur.nom}
+                            id={`caveur-${caveur.id}`}
+                            style={{ flex: 1, padding: '0.25rem', borderRadius: '4px', border: '1px solid #2c5f2d' }}
+                          />
+                          <button 
+                            onClick={() => handleUpdateCaveur(caveur.id, document.getElementById(`caveur-${caveur.id}`).value)}
+                            className="btn btn-primary"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                          >
+                            ✓
+                          </button>
+                          <button 
+                            onClick={() => setEditingCaveur(null)}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <span style={{ fontWeight: '500' }}>{caveur.nom}</span>
@@ -740,39 +1059,41 @@ function Parametres() {
                             padding: '0.15rem 0.5rem',
                             borderRadius: '8px'
                           }}>
-                            {stats.nbRecoltes} réc. • {stats.nbInterventions} int.
+                            {stats.nbRecoltes} réc. • {(stats.totalPoids / 1000).toFixed(2)} kg
                           </span>
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: '0.25rem' }}>
-                        <button 
-                          onClick={() => setEditingCaveur(caveur.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
-                          title="Modifier"
-                        >
-                          ✏️
-                        </button>
-                        <button 
-                          onClick={() => setConfirmModal({
-                            action: 'deleteCaveur',
-                            id: caveur.id,
-                            title: 'Supprimer le caveur ?',
-                            message: `Êtes-vous sûr de vouloir supprimer "${caveur.nom}" ?`,
-                            confirmText: 'Supprimer'
-                          })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
-                          title="Supprimer"
-                        >
-                          🗑️
-                        </button>
-                      </div>
+                      {editingCaveur !== caveur.id && (
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button 
+                            onClick={() => setEditingCaveur(caveur.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                            title="Modifier"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => setConfirmModal({
+                              action: 'deleteCaveur',
+                              id: caveur.id,
+                              title: 'Supprimer le caveur ?',
+                              message: `Êtes-vous sûr de vouloir supprimer "${caveur.nom}" ?`,
+                              confirmText: 'Supprimer'
+                            })}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                            title="Supprimer"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
-
+          
           {/* Section Chiens */}
           <div style={{ 
             background: 'white', 
@@ -781,7 +1102,7 @@ function Parametres() {
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)' 
           }}>
             <h3 style={{ color: '#2c5f2d', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              🐕 Chiens truffiers
+              🐕 Chiens
               <span style={{ 
                 fontSize: '0.85rem', 
                 background: '#2c5f2d20', 
@@ -832,7 +1153,7 @@ function Parametres() {
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}
-                      title={`📊 Statistiques ${stats.annee || new Date().getFullYear()}\n━━━━━━━━━━━━━━━━━━━━━━━━\n🍄 Total : ${stats.nbRecoltes} récolte(s) (${(stats.totalPoids / 1000).toFixed(2)} kg)\n━━━━━━━━━━━━━━━━━━━━━━━━\n📅 6 derniers mois :\n   • ${stats.nbRecoltes6Mois || 0} récolte(s) (${((stats.poids6Mois || 0) / 1000).toFixed(2)} kg)`}
+                      title={`📊 Statistiques ${stats.annee || new Date().getFullYear()}\n━━━━━━━━━━━━━━━━━━━━━━━\n🍄 Total: ${stats.nbRecoltes} récolte(s) (${(stats.totalPoids / 1000).toFixed(2)} kg)`}
                     >
                       {editingChien === chien.id ? (
                         <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
@@ -858,7 +1179,7 @@ function Parametres() {
                             className="btn btn-primary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
                           >
-                            âœ“
+                            ✓
                           </button>
                           <button 
                             onClick={() => setEditingChien(null)}
@@ -918,7 +1239,361 @@ function Parametres() {
         </div>
       )}
 
-      {/* Contenu GLOBAL */}
+      {/* Contenu ENTREPRISE & FACTURATION */}
+      {activeTab === 'entreprise' && (
+        <div>
+          {/* Navigation par catégorie */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.5rem', 
+            marginBottom: '2rem',
+            flexWrap: 'wrap'
+          }}>
+            {Object.entries(PARAMETRES_CONFIG).map(([key, config]) => (
+              <button
+                key={key}
+                onClick={() => setActiveParamCategory(key)}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: activeParamCategory === key ? '#2c5f2d' : '#f5f5f5',
+                  color: activeParamCategory === key ? 'white' : '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span>{config.icon}</span>
+                <span>{config.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Contenu de la catégorie sélectionnée */}
+          {Object.entries(PARAMETRES_CONFIG).map(([key, config]) => (
+            activeParamCategory === key && (
+              <div key={key} style={{
+                background: 'white',
+                padding: '2rem',
+                borderRadius: '12px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+              }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ 
+                    color: '#2c5f2d', 
+                    marginBottom: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: '1.5rem' }}>{config.icon}</span>
+                    {config.label}
+                  </h3>
+                  <p style={{ color: '#666', fontSize: '0.9rem' }}>{config.description}</p>
+                </div>
+
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: '1.5rem'
+                }}>
+                  {config.params.map(param => (
+                    <div key={param.key}>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: '0.5rem', 
+                        fontWeight: '500',
+                        color: '#333',
+                        fontSize: '0.9rem'
+                      }}>
+                        {param.label}
+                      </label>
+                      {renderParamField(param)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ))}
+
+          {/* Bouton sauvegarder */}
+          <div style={{ 
+            marginTop: '2rem', 
+            padding: '1.5rem', 
+            background: '#f5f5f5', 
+            borderRadius: '8px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '1rem'
+          }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={loadAllData}
+              disabled={saving}
+              style={{ padding: '0.8rem 1.5rem', fontSize: '1rem' }}
+            >
+              🔄 Annuler les modifications
+            </button>
+            <button 
+              className="btn btn-primary"
+              onClick={saveParametresApp}
+              disabled={saving}
+              style={{ minWidth: '200px', padding: '0.8rem 1.5rem', fontSize: '1rem' }}
+            >
+              {saving ? '⏳ Sauvegarde...' : '💾 Sauvegarder'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contenu CONFIGURATION - Tous les paramètres */}
+      {activeTab === 'config' && (
+        <div>
+          <div style={{ 
+            background: '#e8f4fd', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginBottom: '1.5rem',
+            border: '1px solid #2196f3'
+          }}>
+            <strong>🗄️ Configuration complète</strong>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+              Cette section affiche tous les paramètres de l'application, organisés par catégorie.
+              Vous pouvez ajouter, modifier ou supprimer n'importe quel paramètre.
+            </p>
+          </div>
+
+          {/* Formulaire d'ajout */}
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '12px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+            marginBottom: '2rem'
+          }}>
+            <h3 style={{ color: '#2c5f2d', marginBottom: '1rem' }}>➕ Ajouter un paramètre</h3>
+            <form onSubmit={handleAddParam} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 2fr auto', gap: '1rem', alignItems: 'end' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem' }}>Clé</label>
+                <input 
+                  type="text" 
+                  value={newParam.cle}
+                  onChange={(e) => setNewParam(prev => ({ ...prev, cle: e.target.value }))}
+                  placeholder="ex: entreprise_logo"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem' }}>Valeur</label>
+                <input 
+                  type="text" 
+                  value={newParam.valeur}
+                  onChange={(e) => setNewParam(prev => ({ ...prev, valeur: e.target.value }))}
+                  placeholder="Valeur du paramètre"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem' }}>Description</label>
+                <input 
+                  type="text" 
+                  value={newParam.description}
+                  onChange={(e) => setNewParam(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Description (optionnel)"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={saving || !newParam.cle.trim()}>
+                Ajouter
+              </button>
+            </form>
+            <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.75rem' }}>
+              💡 Préfixes suggérés : <code>entreprise_</code>, <code>facture_</code>, <code>stock_</code>, <code>app_</code>
+            </p>
+          </div>
+
+          {/* Liste des paramètres par catégorie */}
+          {(() => {
+            const categories = categorizeParams(allParametres);
+            return Object.entries(categories).map(([catKey, category]) => {
+              if (category.params.length === 0) return null;
+              
+              return (
+                <div key={catKey} style={{
+                  background: 'white',
+                  padding: '1.5rem',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                  marginBottom: '1.5rem'
+                }}>
+                  <h3 style={{ 
+                    color: '#2c5f2d', 
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    {category.label}
+                    <span style={{
+                      fontSize: '0.8rem',
+                      background: '#2c5f2d20',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '12px',
+                      fontWeight: 'normal'
+                    }}>
+                      {category.params.length}
+                    </span>
+                  </h3>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {category.params.map(param => (
+                      <div 
+                        key={param.id}
+                        style={{
+                          padding: '1rem',
+                          background: '#f9f9f9',
+                          borderRadius: '8px',
+                          border: '1px solid #e0e0e0'
+                        }}
+                      >
+                        {editingParam === param.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem' }}>
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#666' }}>Clé</label>
+                                <input 
+                                  type="text"
+                                  id={`param-cle-${param.id}`}
+                                  defaultValue={param.cle}
+                                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #2c5f2d' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#666' }}>Valeur</label>
+                                <textarea 
+                                  id={`param-valeur-${param.id}`}
+                                  defaultValue={formatParamValue(param.valeur)}
+                                  rows={3}
+                                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #2c5f2d', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.8rem', color: '#666' }}>Description</label>
+                              <input 
+                                type="text"
+                                id={`param-desc-${param.id}`}
+                                defaultValue={param.description || ''}
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #2c5f2d' }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                              <button 
+                                onClick={() => setEditingParam(null)}
+                                className="btn btn-secondary"
+                                style={{ padding: '0.5rem 1rem' }}
+                              >
+                                Annuler
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateParam(
+                                  param.id,
+                                  document.getElementById(`param-cle-${param.id}`).value,
+                                  document.getElementById(`param-valeur-${param.id}`).value,
+                                  document.getElementById(`param-desc-${param.id}`).value
+                                )}
+                                className="btn btn-primary"
+                                style={{ padding: '0.5rem 1rem' }}
+                              >
+                                💾 Sauvegarder
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                              <div>
+                                <code style={{ 
+                                  background: '#e8f5e9', 
+                                  padding: '0.2rem 0.5rem', 
+                                  borderRadius: '4px',
+                                  fontSize: '0.9rem',
+                                  fontWeight: '600'
+                                }}>
+                                  {param.cle}
+                                </code>
+                                {param.description && (
+                                  <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem', marginBottom: 0 }}>
+                                    {param.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button 
+                                  onClick={() => setEditingParam(param.id)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                                  title="Modifier"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  onClick={() => setConfirmModal({
+                                    action: 'deleteParam',
+                                    id: param.id,
+                                    title: 'Supprimer ce paramètre ?',
+                                    message: `Êtes-vous sûr de vouloir supprimer "${param.cle}" ? Cette action est irréversible.`,
+                                    confirmText: 'Supprimer'
+                                  })}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                                  title="Supprimer"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                            <div style={{ 
+                              background: '#fff', 
+                              padding: '0.75rem', 
+                              borderRadius: '4px',
+                              border: '1px solid #e0e0e0',
+                              fontFamily: 'monospace',
+                              fontSize: '0.85rem',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxHeight: '150px',
+                              overflow: 'auto'
+                            }}>
+                              {formatParamValue(param.valeur)}
+                            </div>
+                            {param.updated_at && (
+                              <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.5rem', marginBottom: 0 }}>
+                                Modifié le {new Date(param.updated_at).toLocaleDateString('fr-FR')} à {new Date(param.updated_at).toLocaleTimeString('fr-FR')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+
+          {allParametres.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
+              <p>Aucun paramètre configuré.</p>
+              <p style={{ fontSize: '0.9rem' }}>Utilisez le formulaire ci-dessus pour ajouter votre premier paramètre.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Contenu GLOBAL (colonnes) */}
       {activeTab === 'global' && (
         <div>
           <div style={{ 

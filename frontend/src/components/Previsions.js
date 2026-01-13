@@ -4,6 +4,27 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+// Configuration des APIs météo externes (à personnaliser)
+const METEO_CONFIG = {
+  // OpenWeatherMap - API gratuite jusqu'à 1000 appels/jour
+  openWeatherMap: {
+    baseUrl: 'https://api.openweathermap.org/data/2.5',
+    apiKey: process.env.REACT_APP_OPENWEATHER_API_KEY || '',
+    enabled: false
+  },
+  // Météo France - API officielle
+  meteoFrance: {
+    baseUrl: 'https://public-api.meteofrance.fr/public',
+    apiKey: process.env.REACT_APP_METEOFRANCE_API_KEY || '',
+    enabled: false
+  },
+  // Open-Meteo - API gratuite sans clé
+  openMeteo: {
+    baseUrl: 'https://api.open-meteo.com/v1',
+    enabled: true // Activé par défaut car pas besoin de clé
+  }
+};
+
 function Previsions() {
   const [loading, setLoading] = useState(true);
   const [recoltes, setRecoltes] = useState([]);
@@ -12,6 +33,11 @@ function Previsions() {
   const [previsions, setPrevisions] = useState(null);
   const [selectedParcelle, setSelectedParcelle] = useState('all');
   const [parcelles, setParcelles] = useState([]);
+  
+  // État pour les données météo externes
+  const [meteoData, setMeteoData] = useState(null);
+  const [meteoLoading, setMeteoLoading] = useState(false);
+  const [showMeteoPanel, setShowMeteoPanel] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -22,6 +48,55 @@ function Previsions() {
       calculerPrevisions();
     }
   }, [recoltes, selectedParcelle]);
+
+  // Charger les données météo depuis Open-Meteo (API gratuite)
+  const loadMeteoData = async (latitude, longitude) => {
+    if (!latitude || !longitude) return;
+    
+    setMeteoLoading(true);
+    try {
+      // Open-Meteo API - gratuite et sans clé
+      const response = await axios.get(`${METEO_CONFIG.openMeteo.baseUrl}/forecast`, {
+        params: {
+          latitude,
+          longitude,
+          daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,soil_temperature_6cm_max',
+          timezone: 'Europe/Paris',
+          forecast_days: 14
+        }
+      });
+      
+      setMeteoData({
+        source: 'Open-Meteo',
+        daily: response.data.daily,
+        location: { latitude, longitude }
+      });
+    } catch (error) {
+      console.error('Erreur chargement météo:', error);
+      setMeteoData(null);
+    }
+    setMeteoLoading(false);
+  };
+
+  // Charger les données historiques météo pour analyse de corrélation
+  const loadHistoricalMeteo = async (latitude, longitude, startDate, endDate) => {
+    try {
+      const response = await axios.get(`${METEO_CONFIG.openMeteo.baseUrl}/archive`, {
+        params: {
+          latitude,
+          longitude,
+          start_date: startDate,
+          end_date: endDate,
+          daily: 'temperature_2m_mean,precipitation_sum,soil_temperature_6cm_mean',
+          timezone: 'Europe/Paris'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur données météo historiques:', error);
+      return null;
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -34,6 +109,16 @@ function Previsions() {
       setRecoltes(recoltesRes.data);
       setArbres(arbresRes.data);
       setParcelles(parcellesRes.data);
+      
+      // Si une parcelle a des coordonnées, charger les données météo
+      if (parcellesRes.data.length > 0) {
+        const firstParcelle = parcellesRes.data[0];
+        if (firstParcelle.coordinates && firstParcelle.coordinates.length > 0) {
+          const center = firstParcelle.coordinates[0];
+          loadMeteoData(center[0], center[1]);
+        }
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Erreur:', error);
@@ -103,7 +188,7 @@ function Previsions() {
       }, 0) / n;
       const ecartType = Math.sqrt(variance);
 
-      // Intervalle de confiance (±1.96 * écart-type pour 95%)
+      // Intervalle de confiance (Â±1.96 * écart-type pour 95%)
       const margeErreur = 1.96 * ecartType;
 
       // Prévisions pour les 3 prochaines années
@@ -181,7 +266,7 @@ function Previsions() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2>🔮 Prévisions de production</h2>
+        <h2>🔍® Prévisions de production</h2>
       </div>
 
       {/* Filtre par parcelle */}
@@ -361,6 +446,123 @@ function Previsions() {
               })}
             </tbody>
           </table>
+
+          {/* Section Données Météo Externes */}
+          <div style={{
+            marginTop: '2rem',
+            padding: '1.5rem',
+            background: '#e3f2fd',
+            borderRadius: '12px',
+            border: '1px solid #90caf9'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ color: '#1565c0', margin: 0 }}>🌤️ Données Météo Externes</h3>
+              <button
+                onClick={() => setShowMeteoPanel(!showMeteoPanel)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: showMeteoPanel ? '#1565c0' : 'white',
+                  color: showMeteoPanel ? 'white' : '#1565c0',
+                  border: '1px solid #1565c0',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                {showMeteoPanel ? 'Masquer' : 'Afficher'} les détails
+              </button>
+            </div>
+
+            {showMeteoPanel && (
+              <div>
+                {meteoLoading ? (
+                  <p>Chargement des données météo...</p>
+                ) : meteoData ? (
+                  <div>
+                    <p style={{ marginBottom: '1rem', color: '#666' }}>
+                      <strong>Source :</strong> {meteoData.source} | 
+                      <strong> Position :</strong> {meteoData.location.latitude.toFixed(4)}°N, {meteoData.location.longitude.toFixed(4)}°E
+                    </p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                      {meteoData.daily?.time?.slice(0, 7).map((date, idx) => (
+                        <div key={date} style={{ background: 'white', padding: '0.75rem', borderRadius: '8px', textAlign: 'center' }}>
+                          <div style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                            {new Date(date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
+                          </div>
+                          <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                            {meteoData.daily.temperature_2m_min[idx]?.toFixed(0)}° - {meteoData.daily.temperature_2m_max[idx]?.toFixed(0)}°C
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: '#1976d2' }}>
+                            💧 {meteoData.daily.precipitation_sum[idx]?.toFixed(1) || 0} mm
+                          </div>
+                          {meteoData.daily.soil_temperature_6cm_max && (
+                            <div style={{ fontSize: '0.85rem', color: '#8b4513' }}>
+                              🌡️ Sol: {meteoData.daily.soil_temperature_6cm_max[idx]?.toFixed(1)}°C
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: '#666' }}>
+                    Aucune donnée météo disponible. Vérifiez que vos parcelles ont des coordonnées GPS.
+                  </p>
+                )}
+
+                {/* Guide d'intégration des APIs météo */}
+                <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', marginTop: '1rem' }}>
+                  <h4 style={{ color: '#1565c0', marginBottom: '0.5rem' }}>📚 Comment intégrer des données météo externes</h4>
+                  <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+                    Pour améliorer vos prévisions de production, vous pouvez intégrer des données météo via plusieurs APIs :
+                  </p>
+                  
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div style={{ borderLeft: '3px solid #4caf50', paddingLeft: '1rem' }}>
+                      <strong style={{ color: '#2e7d32' }}>✅ Open-Meteo (Actif par défaut)</strong>
+                      <p style={{ fontSize: '0.85rem', margin: '0.25rem 0' }}>
+                        API gratuite, sans clé requise. Prévisions 14 jours + historique.
+                        <br />
+                        <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: '4px' }}>
+                          https://open-meteo.com/
+                        </code>
+                      </p>
+                    </div>
+                    
+                    <div style={{ borderLeft: '3px solid #ff9800', paddingLeft: '1rem' }}>
+                      <strong style={{ color: '#e65100' }}>⚙️ OpenWeatherMap</strong>
+                      <p style={{ fontSize: '0.85rem', margin: '0.25rem 0' }}>
+                        1000 appels/jour gratuits. Ajouter dans <code>.env</code> :
+                        <br />
+                        <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: '4px' }}>
+                          REACT_APP_OPENWEATHER_API_KEY=votre_clé
+                        </code>
+                      </p>
+                    </div>
+                    
+                    <div style={{ borderLeft: '3px solid #2196f3', paddingLeft: '1rem' }}>
+                      <strong style={{ color: '#1565c0' }}>⚙️ Météo France</strong>
+                      <p style={{ fontSize: '0.85rem', margin: '0.25rem 0' }}>
+                        API officielle française. Inscription sur :
+                        <br />
+                        <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: '4px' }}>
+                          https://portail-api.meteofrance.fr/
+                        </code>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fff3e0', borderRadius: '6px' }}>
+                    <strong style={{ color: '#e65100' }}>💡 Conseil :</strong>
+                    <span style={{ fontSize: '0.9rem', color: '#666' }}>
+                      {' '}Pour des prévisions plus précises, combinez les données météo historiques avec vos récoltes 
+                      pour identifier les conditions optimales (température du sol, pluviométrie été/automne).
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Recommandations */}
           <div style={{

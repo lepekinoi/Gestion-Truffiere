@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Polygon, useMapEvents, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
@@ -13,6 +13,15 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 // Coordonnées par défaut (même que Carte.js)
 const DEFAULT_CENTER = [46.1464315, -0.1652445];
 const DEFAULT_ZOOM = 16;
+
+// Options de pagination
+const PAGINATION_OPTIONS = [
+  { value: 10, label: '10' },
+  { value: 20, label: '20' },
+  { value: 30, label: '30' },
+  { value: 50, label: '50' },
+  { value: 'all', label: 'Tous' }
+];
 
 // Fix pour les icones Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -101,6 +110,21 @@ function Arbres() {
   // Modal de confirmation
   const [confirmModal, setConfirmModal] = useState(null);
   
+  // État pour la pagination
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // États pour les filtres
+  const [filters, setFilters] = useState({
+    search: '',
+    parcelle: '',
+    espece: '',
+    etat: '',
+    variete_truffe: '',
+    avecPosition: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  
   const [formData, setFormData] = useState({
     parcelle_id: '',
     numero: '',
@@ -126,6 +150,18 @@ function Arbres() {
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [selectedParcelleCoords, setSelectedParcelleCoords] = useState(null);
   const [mapKey, setMapKey] = useState(0); // Pour forcer le re-render de la carte
+
+  // ============ SÉLECTION MULTIPLE ============
+  const [selectedArbres, setSelectedArbres] = useState(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState({
+    espece: '',
+    variete_truffe: '',
+    date_plantation: '',
+    etat: '',
+    circonference_cm: '',
+    hauteur_m: ''
+  });
 
   // Hook pour les paramètres de colonnes
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('arbres');
@@ -155,6 +191,81 @@ function Arbres() {
       setLoading(false);
     }
   };
+
+  // Extraire les valeurs uniques pour les filtres
+  const filterOptions = useMemo(() => {
+    const especes = [...new Set(arbres.map(a => a.espece).filter(Boolean))].sort();
+    const etats = [...new Set(arbres.map(a => a.etat).filter(Boolean))].sort();
+    const varietes = [...new Set(arbres.map(a => a.variete_truffe).filter(Boolean))].sort();
+    return { especes, etats, varietes };
+  }, [arbres]);
+
+  // Filtrer les arbres selon les critères
+  const filteredArbres = useMemo(() => {
+    return arbres.filter(arbre => {
+      // Filtre recherche textuelle (numéro, notes)
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchNumero = arbre.numero?.toLowerCase().includes(searchLower);
+        const matchNotes = arbre.notes?.toLowerCase().includes(searchLower);
+        const matchEspece = arbre.espece?.toLowerCase().includes(searchLower);
+        const matchParcelle = arbre.parcelle_nom?.toLowerCase().includes(searchLower);
+        if (!matchNumero && !matchNotes && !matchEspece && !matchParcelle) return false;
+      }
+      
+      // Filtre par parcelle
+      if (filters.parcelle && arbre.parcelle_id !== parseInt(filters.parcelle)) {
+        return false;
+      }
+      
+      // Filtre par espèce
+      if (filters.espece && arbre.espece !== filters.espece) {
+        return false;
+      }
+      
+      // Filtre par état
+      if (filters.etat && arbre.etat !== filters.etat) {
+        return false;
+      }
+      
+      // Filtre par variété de truffe
+      if (filters.variete_truffe && arbre.variete_truffe !== filters.variete_truffe) {
+        return false;
+      }
+      
+      // Filtre par position GPS
+      if (filters.avecPosition === 'oui' && (!arbre.latitude || !arbre.longitude)) {
+        return false;
+      }
+      if (filters.avecPosition === 'non' && (arbre.latitude && arbre.longitude)) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [arbres, filters]);
+
+  // Gérer les changements de filtres
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({ ...prev, [name]: value }));
+    setCurrentPage(1); // Revenir à la première page lors d'un changement de filtre
+  };
+
+  // Réinitialiser tous les filtres
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      parcelle: '',
+      espece: '',
+      etat: '',
+      variete_truffe: '',
+      avecPosition: ''
+    });
+    setCurrentPage(1);
+  };
+
+  // Vérifier si des filtres sont actifs
+  const hasActiveFilters = Object.values(filters).some(v => v !== '');
 
   // Charger les arbres de la corbeille
   const loadCorbeille = async () => {
@@ -246,17 +357,6 @@ function Arbres() {
     }
   };
 
-  // Fonction pour obtenir le centre d'un polygone
-  const getPolygonCenter = (coordinates) => {
-    if (!coordinates || coordinates.length === 0) return null;
-    const lats = coordinates.map(c => c[0]);
-    const lngs = coordinates.map(c => c[1]);
-    return [
-      (Math.min(...lats) + Math.max(...lats)) / 2,
-      (Math.min(...lngs) + Math.max(...lngs)) / 2
-    ];
-  };
-
   // Gérer le changement de parcelle
   const handleParcelleChange = (e) => {
     const parcelleId = e.target.value;
@@ -300,7 +400,7 @@ function Arbres() {
     try {
       if (editingArbre) {
         await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
-        showMessage('Arbre mis à  jour avec succès !', 'success');
+        showMessage('Arbre mis àÂ  jour avec succès !', 'success');
       } else {
         await axios.post(`${API_URL}/arbres`, formData);
         showMessage('Arbre créé avec succès !', 'success');
@@ -359,30 +459,195 @@ function Arbres() {
     setShowModal(true);
   };
 
-  // Demander confirmation pour mettre à  la corbeille
+  // Demander confirmation pour mettre à la corbeille
   const askDelete = (arbre) => {
     setConfirmModal({
       type: 'delete',
       item: arbre,
-      title: 'Mettre à  la corbeille',
-      message: `Voulez-vous mettre l'arbre "${arbre.numero}" à  la corbeille ? Vous pourrez le restaurer plus tard.`,
-      confirmText: 'Oui, mettre à  la corbeille',
+      title: 'Mettre à la corbeille',
+      message: `Voulez-vous mettre l'arbre "${arbre.numero}" à la corbeille ? Vous pourrez le restaurer plus tard.`,
+      confirmText: 'Oui, mettre à la corbeille',
       confirmColor: '#ff9800'
     });
   };
 
-  // Exécuter la mise à  la corbeille
+  // Exécuter la mise à la corbeille
   const doDelete = async (arbre) => {
     setIsProcessing(true);
     setConfirmModal(null);
     
     try {
       await axios.delete(`${API_URL}/arbres/${arbre.id}`);
-      showMessage('Arbre mis à  la corbeille', 'success');
+      showMessage('Arbre mis à la corbeille', 'success');
       loadData();
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       showMessage('Erreur lors de la suppression de l\'arbre', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ============ SÉLECTION MULTIPLE - FONCTIONS ============
+  
+  // Gérer la sélection d'un arbre
+  const handleSelectArbre = (arbreId) => {
+    setSelectedArbres(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(arbreId)) {
+        newSet.delete(arbreId);
+      } else {
+        newSet.add(arbreId);
+      }
+      return newSet;
+    });
+  };
+
+  // Sélectionner/Désélectionner tous les arbres de la page courante
+  const handleSelectAllPage = () => {
+    const pageArbreIds = paginatedArbres.map(a => a.id);
+    const allSelected = pageArbreIds.every(id => selectedArbres.has(id));
+    
+    setSelectedArbres(prev => {
+      const newSet = new Set(prev);
+      if (allSelected) {
+        pageArbreIds.forEach(id => newSet.delete(id));
+      } else {
+        pageArbreIds.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  };
+
+  // Sélectionner tous les arbres filtrés
+  const handleSelectAllFiltered = () => {
+    const allIds = filteredArbres.map(a => a.id);
+    setSelectedArbres(new Set(allIds));
+  };
+
+  // Désélectionner tout
+  const handleDeselectAll = () => {
+    setSelectedArbres(new Set());
+  };
+
+  // Ouvrir le modal de modification groupée
+  const openBulkEditModal = () => {
+    setBulkEditData({
+      espece: '',
+      variete_truffe: '',
+      date_plantation: '',
+      etat: '',
+      circonference_cm: '',
+      hauteur_m: ''
+    });
+    setShowBulkEditModal(true);
+  };
+
+  // Gérer les changements dans le formulaire de modification groupée
+  const handleBulkEditChange = (e) => {
+    const { name, value } = e.target;
+    setBulkEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Appliquer les modifications groupées
+  const handleBulkEditSubmit = async () => {
+    if (selectedArbres.size === 0) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      const updates = {};
+      if (bulkEditData.espece) updates.espece = bulkEditData.espece;
+      if (bulkEditData.variete_truffe) updates.variete_truffe = bulkEditData.variete_truffe;
+      if (bulkEditData.date_plantation) updates.date_plantation = bulkEditData.date_plantation;
+      if (bulkEditData.etat) updates.etat = bulkEditData.etat;
+      if (bulkEditData.circonference_cm) updates.circonference_cm = bulkEditData.circonference_cm;
+      if (bulkEditData.hauteur_m) updates.hauteur_m = bulkEditData.hauteur_m;
+
+      if (Object.keys(updates).length === 0) {
+        showMessage('Aucune modification àÂ  appliquer', 'error');
+        setIsProcessing(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const arbreId of selectedArbres) {
+        const arbre = arbres.find(a => a.id === arbreId);
+        if (arbre) {
+          try {
+            await axios.put(`${API_URL}/arbres/${arbreId}`, {
+              ...arbre,
+              ...updates
+            });
+            successCount++;
+          } catch (error) {
+            console.error(`Erreur pour l'arbre ${arbreId}:`, error);
+            errorCount++;
+          }
+        }
+      }
+
+      if (errorCount === 0) {
+        showMessage(`${successCount} arbre(s) modifié(s) avec succès !`, 'success');
+      } else {
+        showMessage(`${successCount} modifié(s), ${errorCount} erreur(s)`, 'error');
+      }
+
+      loadData();
+      setShowBulkEditModal(false);
+      setSelectedArbres(new Set());
+    } catch (error) {
+      console.error('Erreur lors de la modification groupée:', error);
+      showMessage('Erreur lors de la modification groupée', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Demander confirmation pour suppression groupée
+  const askBulkDelete = () => {
+    setConfirmModal({
+      type: 'bulk-delete',
+      item: null,
+      title: 'Suppression groupée',
+      message: `Voulez-vous mettre ${selectedArbres.size} arbre(s) à la corbeille ? Vous pourrez les restaurer plus tard.`,
+      confirmText: 'Oui, mettre à la corbeille',
+      confirmColor: '#ff9800'
+    });
+  };
+
+  // Exécuter la suppression groupée
+  const doBulkDelete = async () => {
+    setIsProcessing(true);
+    setConfirmModal(null);
+    
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const arbreId of selectedArbres) {
+        try {
+          await axios.delete(`${API_URL}/arbres/${arbreId}`);
+          successCount++;
+        } catch (error) {
+          console.error(`Erreur pour l'arbre ${arbreId}:`, error);
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        showMessage(`${successCount} arbre(s) mis à la corbeille !`, 'success');
+      } else {
+        showMessage(`${successCount} supprimé(s), ${errorCount} erreur(s)`, 'error');
+      }
+
+      loadData();
+      setSelectedArbres(new Set());
+    } catch (error) {
+      console.error('Erreur lors de la suppression groupée:', error);
+      showMessage('Erreur lors de la suppression groupée', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -401,6 +666,9 @@ function Arbres() {
         break;
       case 'vider-corbeille':
         doViderCorbeille();
+        break;
+      case 'bulk-delete':
+        doBulkDelete();
         break;
       default:
         setConfirmModal(null);
@@ -469,7 +737,7 @@ function Arbres() {
 
   // Export PDF avec colonnes configurées
   const handleExportPDF = () => {
-    exportArbresPDF(arbres, null, colonnesExport);
+    exportArbresPDF(filteredArbres, null, colonnesExport);
   };
 
   const getEtatBadgeStyle = (etat) => {
@@ -530,12 +798,8 @@ function Arbres() {
   // Obtenir les interventions en cours ou prévues pour un arbre
   const getInterventionsForArbre = (arbreId) => {
     return interventions.filter(intervention => {
-      // Vérifier si l'intervention concerne cet arbre
       if (intervention.arbre_id !== arbreId) return false;
-      
-      // Garder seulement les interventions planifiées ou en cours
       if (intervention.statut !== 'Planifié' && intervention.statut !== 'En cours') return false;
-      
       return true;
     }).sort((a, b) => new Date(a.date_prevue) - new Date(b.date_prevue));
   };
@@ -580,6 +844,51 @@ function Arbres() {
     }
     return { background: '#cce5ff', color: '#004085' };
   };
+
+  // ===== PAGINATION =====
+  const totalArbres = filteredArbres.length;
+  const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(totalArbres / itemsPerPage);
+  
+  const paginatedArbres = itemsPerPage === 'all' 
+    ? filteredArbres 
+    : filteredArbres.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleItemsPerPageChange = (value) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
+
+  // Vérifier si tous les arbres de la page sont sélectionnés
+  const isAllPageSelected = paginatedArbres.length > 0 && paginatedArbres.every(a => selectedArbres.has(a.id));
+  const isSomePageSelected = paginatedArbres.some(a => selectedArbres.has(a.id));
 
   if (loading || loadingSettings) {
     return <div className="loading">Chargement des arbres...</div>;
@@ -670,16 +979,13 @@ function Arbres() {
       )}
 
       <div className="page-header">
-        <h2>Gestion des arbres truffiers</h2>
+        <h2>🌳 Gestion des arbres truffiers</h2>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
             className="btn btn-secondary" 
             onClick={openCorbeille}
             title="Voir les arbres supprimés"
-            style={{ 
-              background: '#6c757d',
-              position: 'relative'
-            }}
+            style={{ background: '#6c757d' }}
           >
             🗑️ Corbeille
           </button>
@@ -688,18 +994,18 @@ function Arbres() {
             onClick={() => setShowImportModal(true)}
             title="Importer des arbres depuis un fichier CSV"
           >
-            📤 Importer CSV
+            📥 Importer CSV
           </button>
           <button 
             className="btn btn-secondary" 
             onClick={handleExportPDF}
-            disabled={arbres.length === 0}
+            disabled={filteredArbres.length === 0}
             title="Exporter la liste des arbres en PDF"
           >
             📄 Exporter PDF
           </button>
           <button className="btn btn-primary" onClick={openNewModal}>
-            âž• Nouvel arbre
+            ➕ Nouvel arbre
           </button>
         </div>
       </div>
@@ -730,20 +1036,367 @@ function Arbres() {
         </div>
       </div>
 
-      {/* Tableau */}
-      {arbres.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">🌳</div>
-          <p>Aucun arbre enregistré</p>
-          <button className="btn btn-primary" onClick={openNewModal} style={{ marginTop: '1rem' }}>
-            Ajouter mon premier arbre
+      {/* Barre de sélection groupée */}
+      {selectedArbres.size > 0 && (
+        <div style={{
+          background: '#e3f2fd',
+          padding: '1rem',
+          borderRadius: '12px',
+          marginBottom: '1rem',
+          border: '2px solid #1976d2',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+              ✅ {selectedArbres.size} arbre(s) sélectionné(s)
+            </span>
+            <button
+              onClick={handleDeselectAll}
+              style={{
+                padding: '0.4rem 0.8rem',
+                background: 'transparent',
+                border: '1px solid #1976d2',
+                borderRadius: '6px',
+                color: '#1976d2',
+                cursor: 'pointer'
+              }}
+            >
+              Tout désélectionner
+            </button>
+            {filteredArbres.length > selectedArbres.size && (
+              <button
+                onClick={handleSelectAllFiltered}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  background: 'transparent',
+                  border: '1px solid #1976d2',
+                  borderRadius: '6px',
+                  color: '#1976d2',
+                  cursor: 'pointer'
+                }}
+              >
+                Sélectionner les {filteredArbres.length} arbres filtrés
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={openBulkEditModal}
+              className="btn btn-primary"
+              style={{ padding: '0.5rem 1rem' }}
+            >
+              ✏️ Modifier la sélection
+            </button>
+            <button
+              onClick={askBulkDelete}
+              className="btn btn-danger"
+              style={{ padding: '0.5rem 1rem' }}
+            >
+              🗑️ Supprimer la sélection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Barre de recherche et filtres */}
+      <div style={{ 
+        background: 'white', 
+        padding: '1rem', 
+        borderRadius: '12px', 
+        marginBottom: '1rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 Rechercher par numéro, espèce, parcelle, notes..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '1rem'
+              }}
+            />
+            {filters.search && (
+              <button
+                onClick={() => handleFilterChange('search', '')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  color: '#999'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            style={{
+              padding: '0.75rem 1.25rem',
+              border: hasActiveFilters ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
+              borderRadius: '8px',
+              background: hasActiveFilters ? '#e8f5e9' : 'white',
+              color: hasActiveFilters ? '#2c5f2d' : '#666',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: hasActiveFilters ? 'bold' : 'normal'
+            }}
+          >
+            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
+            <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
           </button>
+          
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              style={{
+                padding: '0.75rem 1rem',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#ffebee',
+                color: '#c62828',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              ✕ Réinitialiser
+            </button>
+          )}
+        </div>
+
+        {/* Panneau de filtres avancés */}
+        {showFilters && (
+          <div style={{ 
+            marginTop: '1rem', 
+            paddingTop: '1rem', 
+            borderTop: '1px solid #eee',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '1rem'
+          }}>
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Parcelle
+              </label>
+              <select
+                value={filters.parcelle}
+                onChange={(e) => handleFilterChange('parcelle', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.parcelle ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes les parcelles</option>
+                {parcelles.map(p => (
+                  <option key={p.id} value={p.id}>{p.nom}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Espèce
+              </label>
+              <select
+                value={filters.espece}
+                onChange={(e) => handleFilterChange('espece', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.espece ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes les espèces</option>
+                {filterOptions.especes.map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                État de santé
+              </label>
+              <select
+                value={filters.etat}
+                onChange={(e) => handleFilterChange('etat', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.etat ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Tous les états</option>
+                <option value="Bon">🟢 Bon</option>
+                <option value="Moyen">🟡 Moyen</option>
+                <option value="Mauvais">🟠 Mauvais</option>
+                <option value="Mort">⚫ Mort</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Variété de truffe
+              </label>
+              <select
+                value={filters.variete_truffe}
+                onChange={(e) => handleFilterChange('variete_truffe', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.variete_truffe ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes les variétés</option>
+                {filterOptions.varietes.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Position GPS
+              </label>
+              <select
+                value={filters.avecPosition}
+                onChange={(e) => handleFilterChange('avecPosition', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.avecPosition ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Tous</option>
+                <option value="oui">📍 Avec position</option>
+                <option value="non">❌ Sans position</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Résumé des résultats */}
+        {hasActiveFilters && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            background: '#f5f5f5', 
+            borderRadius: '6px',
+            fontSize: '0.9rem',
+            color: '#666'
+          }}>
+            <strong>{filteredArbres.length}</strong> arbre{filteredArbres.length > 1 ? 's' : ''} trouvé{filteredArbres.length > 1 ? 's' : ''} 
+            {filteredArbres.length !== arbres.length && (
+              <span> sur {arbres.length} au total</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Contrôles de pagination */}
+      {filteredArbres.length > 0 && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontWeight: '500', color: '#666' }}>Afficher :</span>
+            {PAGINATION_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                onClick={() => handleItemsPerPageChange(option.value)}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: itemsPerPage === option.value ? '2px solid #2c5f2d' : '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: itemsPerPage === option.value ? '#e8f5e9' : 'white',
+                  color: itemsPerPage === option.value ? '#2c5f2d' : '#666',
+                  fontWeight: itemsPerPage === option.value ? 'bold' : 'normal',
+                  cursor: 'pointer'
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          
+          {itemsPerPage !== 'all' && (
+            <div style={{ color: '#666', fontSize: '0.9rem' }}>
+              Affichage de {((currentPage - 1) * itemsPerPage) + 1} àÂ  {Math.min(currentPage * itemsPerPage, totalArbres)} sur {totalArbres} arbres
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tableau */}
+      {filteredArbres.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">{hasActiveFilters ? '🔍' : '🌳'}</div>
+          <p>
+            {hasActiveFilters 
+              ? 'Aucun arbre ne correspond aux critères de recherche' 
+              : 'Aucun arbre enregistré'}
+          </p>
+          {hasActiveFilters ? (
+            <button className="btn btn-secondary" onClick={resetFilters} style={{ marginTop: '1rem' }}>
+              Réinitialiser les filtres
+            </button>
+          ) : (
+            <button className="btn btn-primary" onClick={openNewModal} style={{ marginTop: '1rem' }}>
+              Ajouter mon premier arbre
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ position: 'relative' }}>
           <table>
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllPageSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = isSomePageSelected && !isAllPageSelected;
+                    }}
+                    onChange={handleSelectAllPage}
+                    title={isAllPageSelected ? 'Désélectionner tous' : 'Sélectionner tous'}
+                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                  />
+                </th>
                 {colonnesValides.map(col => (
                   <th key={col} style={{ textAlign: config[col].align || 'left' }}>
                     {config[col].label}
@@ -753,16 +1406,25 @@ function Arbres() {
               </tr>
             </thead>
             <tbody>
-              {arbres.map(arbre => (
+              {paginatedArbres.map(arbre => (
                 <tr 
                   key={arbre.id}
                   onMouseEnter={(e) => handleMouseEnter(e, arbre.id)}
                   onMouseLeave={handleMouseLeave}
                   style={{ 
                     cursor: hasInterventions(arbre.id) ? 'help' : 'default',
-                    position: 'relative'
+                    background: selectedArbres.has(arbre.id) ? '#e3f2fd' : 'transparent'
                   }}
                 >
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedArbres.has(arbre.id)}
+                      onChange={() => handleSelectArbre(arbre.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                    />
+                  </td>
                   {colonnesValides.map(col => (
                     <td key={col} style={{ textAlign: config[col].align || 'left' }}>
                       {col === 'numero' ? (
@@ -780,12 +1442,9 @@ function Arbres() {
                                 borderRadius: '50%',
                                 width: '20px',
                                 height: '20px',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold'
+                                fontSize: '0.75rem'
                               }}
-                            >
-                              🔧
-                            </span>
+                            ></span>
                           )}
                         </span>
                       ) : renderCell(arbre, col)}
@@ -812,75 +1471,56 @@ function Arbres() {
             </tbody>
           </table>
 
+          {/* Pagination */}
+          {itemsPerPage !== 'all' && totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              marginTop: '1.5rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid #eee'
+            }}>
+              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>⏮</button>
+              <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>
+                ◀️
+              </button>
+              
+              {getPageNumbers().map((page, idx) => (
+                <button key={idx} onClick={() => page !== '...' && setCurrentPage(page)} disabled={page === '...'}
+                  style={{ padding: '0.5rem 0.9rem', border: currentPage === page ? '2px solid #2c5f2d' : '1px solid #ddd', borderRadius: '6px', background: currentPage === page ? '#2c5f2d' : 'white', color: currentPage === page ? 'white' : (page === '...' ? '#999' : '#333'), fontWeight: currentPage === page ? 'bold' : 'normal', cursor: page === '...' ? 'default' : 'pointer', minWidth: '40px' }}>
+                  {page}
+                </button>
+              ))}
+              
+              <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === totalPages ? '#f5f5f5' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>
+                ▶️
+              </button>
+              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === totalPages ? '#f5f5f5' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>⏭</button>
+            </div>
+          )}
+
           {/* Tooltip des interventions */}
           {hoveredArbreId && (
-            <div
-              style={{
-                position: 'fixed',
-                left: tooltipPosition.x,
-                top: tooltipPosition.y,
-                background: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                padding: '0.75rem 1rem',
-                zIndex: 9999,
-                maxWidth: '350px',
-                minWidth: '250px'
-              }}
-            >
-              <div style={{ 
-                fontWeight: 'bold', 
-                marginBottom: '0.5rem', 
-                color: '#2c3e50',
-                borderBottom: '1px solid #eee',
-                paddingBottom: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                🔧 Interventions prévues
+            <div style={{ position: 'fixed', left: tooltipPosition.x, top: tooltipPosition.y, background: 'white', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '0.75rem 1rem', zIndex: 9999, maxWidth: '350px', minWidth: '250px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#2c3e50', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
+                🌧️ Interventions prévues
               </div>
               {getInterventionsForArbre(hoveredArbreId).map((intervention, idx) => (
-                <div 
-                  key={intervention.id}
-                  style={{ 
-                    padding: '0.5rem 0',
-                    borderBottom: idx < getInterventionsForArbre(hoveredArbreId).length - 1 ? '1px solid #f0f0f0' : 'none'
-                  }}
-                >
+                <div key={intervention.id} style={{ padding: '0.5rem 0', borderBottom: idx < getInterventionsForArbre(hoveredArbreId).length - 1 ? '1px solid #f0f0f0' : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <span style={{ fontWeight: '500', color: '#34495e' }}>
-                      {intervention.type_nom || 'Intervention'}
-                    </span>
-                    <span style={{
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '10px',
-                      fontSize: '0.75rem',
-                      fontWeight: '500',
-                      ...getStatutInterventionStyle(intervention.statut)
-                    }}>
-                      {intervention.statut}
-                    </span>
+                    <span style={{ fontWeight: '500', color: '#34495e' }}>{intervention.type_nom || 'Intervention'}</span>
+                    <span style={{ padding: '0.15rem 0.5rem', borderRadius: '10px', fontSize: '0.75rem', fontWeight: '500', ...getStatutInterventionStyle(intervention.statut) }}>{intervention.statut}</span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                    📆 {formatDateIntervention(intervention.date_prevue)}
-                    {intervention.personnel && (
-                      <span style={{ marginLeft: '0.75rem' }}>👤 {intervention.personnel}</span>
-                    )}
+                    📅 {formatDateIntervention(intervention.date_prevue)}
+                    {intervention.personnel && <span style={{ marginLeft: '0.75rem' }}>👤 {intervention.personnel}</span>}
                   </div>
-                  {intervention.description && (
-                    <div style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#95a5a6', 
-                      marginTop: '0.25rem',
-                      fontStyle: 'italic'
-                    }}>
-                      {intervention.description.length > 60 
-                        ? intervention.description.substring(0, 60) + '...' 
-                        : intervention.description}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -901,12 +1541,7 @@ function Arbres() {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Parcelle *</label>
-                  <select
-                    name="parcelle_id"
-                    value={formData.parcelle_id}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <select name="parcelle_id" value={formData.parcelle_id} onChange={handleInputChange} required>
                     <option value="">Sélectionner une parcelle...</option>
                     {parcelles.map(parcelle => (
                       <option key={parcelle.id} value={parcelle.id}>{parcelle.nom}</option>
@@ -916,30 +1551,19 @@ function Arbres() {
 
                 <div className="form-group">
                   <label>Numéro d'identification *</label>
-                  <input
-                    type="text"
-                    name="numero"
-                    value={formData.numero}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Ex: A-001"
-                  />
+                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required placeholder="Ex: A-001" />
                 </div>
 
                 <div className="form-group">
                   <label>Espèce *</label>
-                  <select
-                    name="espece"
-                    value={formData.espece}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <select name="espece" value={formData.espece} onChange={handleInputChange} required>
                     <option value="">Sélectionner...</option>
-                    <option value="Chêne vert">Chêne vert</option>
-                    <option value="Chêne pubescent">Chêne pubescent</option>
+                    <option value="Chênes vert (V)">Chênes vert (V)</option>
+                    <option value="Chêne pubescent (P)">Chêne pubescent (P)</option>
+                    <option value="Chênes Cerris (Cé)">Chênes Cerris (Cé)</option>
                     <option value="Chêne pédonculé">Chêne pédonculé</option>
                     <option value="Noisetier">Noisetier</option>
-                    <option value="Charme">Charme</option>
+                    <option value="Charmes (C)">Charmes (C)</option>
                     <option value="Tilleul">Tilleul</option>
                     <option value="Pin">Pin</option>
                   </select>
@@ -947,11 +1571,7 @@ function Arbres() {
 
                 <div className="form-group">
                   <label>Variété de truffe associée</label>
-                  <select
-                    name="variete_truffe"
-                    value={formData.variete_truffe}
-                    onChange={handleInputChange}
-                  >
+                  <select name="variete_truffe" value={formData.variete_truffe} onChange={handleInputChange}>
                     <option value="">Sélectionner...</option>
                     <option value="Tuber melanosporum">Tuber melanosporum (Truffe noire)</option>
                     <option value="Tuber aestivum">Tuber aestivum (Truffe d'été)</option>
@@ -962,22 +1582,12 @@ function Arbres() {
 
                 <div className="form-group">
                   <label>Date de plantation</label>
-                  <input
-                    type="date"
-                    name="date_plantation"
-                    value={formData.date_plantation}
-                    onChange={handleInputChange}
-                  />
+                  <input type="date" name="date_plantation" value={formData.date_plantation} onChange={handleInputChange} />
                 </div>
 
                 <div className="form-group">
                   <label>État de santé *</label>
-                  <select
-                    name="etat"
-                    value={formData.etat}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <select name="etat" value={formData.etat} onChange={handleInputChange} required>
                     <option value="Bon">Bon</option>
                     <option value="Moyen">Moyen</option>
                     <option value="Mauvais">Mauvais</option>
@@ -987,107 +1597,48 @@ function Arbres() {
 
                 <div className="form-group">
                   <label>Circonférence du tronc (cm)</label>
-                  <input
-                    type="number"
-                    name="circonference_cm"
-                    value={formData.circonference_cm}
-                    onChange={handleInputChange}
-                    step="0.1"
-                    placeholder="Ex: 45.5"
-                  />
+                  <input type="number" name="circonference_cm" value={formData.circonference_cm} onChange={handleInputChange} step="0.1" placeholder="Ex: 45.5" />
                 </div>
 
                 <div className="form-group">
                   <label>Hauteur (mètres)</label>
-                  <input
-                    type="number"
-                    name="hauteur_m"
-                    value={formData.hauteur_m}
-                    onChange={handleInputChange}
-                    step="0.1"
-                    placeholder="Ex: 3.5"
-                  />
+                  <input type="number" name="hauteur_m" value={formData.hauteur_m} onChange={handleInputChange} step="0.1" placeholder="Ex: 3.5" />
                 </div>
               </div>
 
               {/* Section Géolocalisation */}
-              <div style={{ 
-                marginTop: '1rem', 
-                padding: '1rem', 
-                background: '#f8f9fa', 
-                borderRadius: '8px',
-                border: '1px solid #e9ecef'
-              }}>
+              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <label style={{ fontWeight: '600', color: '#2c5f2d', margin: 0 }}>
-                    📍 Géolocalisation
-                  </label>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowMap(!showMap)}
-                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                  >
+                  <label style={{ fontWeight: '600', color: '#2c5f2d', margin: 0 }}>📍 Géolocalisation</label>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowMap(!showMap)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                     {showMap ? '🗺️ Masquer carte' : '🗺️ Afficher carte'}
                   </button>
                 </div>
 
-                {/* Info parcelle */}
                 {formData.parcelle_id && (
                   <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.75rem', padding: '0.5rem', background: '#e8f5e9', borderRadius: '4px' }}>
                     {selectedParcelleCoords ? (
-                      <>✔ Parcelle "<strong>{getSelectedParcelleName()}</strong>" géolocalisée - la carte zoomera automatiquement dessus</>
+                      <>✓ Parcelle "<strong>{getSelectedParcelleName()}</strong>" géolocalisée</>
                     ) : (
-                      <>↩️ Parcelle "<strong>{getSelectedParcelleName()}</strong>" non dessinée - position par défaut utilisée</>
+                      <>⚠️ Parcelle "<strong>{getSelectedParcelleName()}</strong>" non dessinée</>
                     )}
                   </p>
                 )}
 
-                {/* Affichage des coordonnées */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', alignItems: 'end' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.85rem' }}>Latitude</label>
-                    <input
-                      type="text"
-                      name="latitude"
-                      value={formData.latitude}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 46.1464315"
-                      style={{ fontSize: '0.9rem' }}
-                    />
+                    <input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="Ex: 46.1464315" style={{ fontSize: '0.9rem' }} />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.85rem' }}>Longitude</label>
-                    <input
-                      type="text"
-                      name="longitude"
-                      value={formData.longitude}
-                      onChange={handleInputChange}
-                      placeholder="Ex: -0.1652445"
-                      style={{ fontSize: '0.9rem' }}
-                    />
+                    <input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="Ex: -0.1652445" style={{ fontSize: '0.9rem' }} />
                   </div>
                   {(formData.latitude || formData.longitude) && (
-                    <button
-                      type="button"
-                      onClick={clearPosition}
-                      style={{ 
-                        padding: '0.5rem', 
-                        background: '#dc3545', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        height: '38px'
-                      }}
-                      title="Supprimer la position"
-                    >
-                      ✕
-                    </button>
+                    <button type="button" onClick={clearPosition} style={{ padding: '0.5rem', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', height: '38px' }} title="Supprimer la position">✕</button>
                   )}
                 </div>
 
-                {/* Mini-carte */}
                 {showMap && (
                   <div style={{ marginTop: '0.75rem' }}>
                     <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
@@ -1095,73 +1646,19 @@ function Arbres() {
                       {selectedParcelleCoords && <span style={{ color: '#d4a600' }}> (zone jaune = parcelle)</span>}
                     </p>
                     <div style={{ height: '350px', borderRadius: '8px', overflow: 'hidden', border: '2px solid #ddd' }}>
-                      <MapContainer
-                        key={mapKey}
-                        center={mapCenter || DEFAULT_CENTER}
-                        zoom={DEFAULT_ZOOM}
-                        style={{ height: '100%', width: '100%' }}
-                      >
+                      <MapContainer key={mapKey} center={mapCenter || DEFAULT_CENTER} zoom={DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
                         <LayersControl position="topright">
                           <LayersControl.BaseLayer checked name="Satellite">
-                            <TileLayer
-                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                              maxZoom={19}
-                            />
+                            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />
                           </LayersControl.BaseLayer>
                           <LayersControl.BaseLayer name="Plan">
-                            <TileLayer
-                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
-                          </LayersControl.BaseLayer>
-                          <LayersControl.BaseLayer name="Terrain">
-                            <TileLayer
-                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-                              maxZoom={19}
-                            />
-                          </LayersControl.BaseLayer>
-                          <LayersControl.BaseLayer name="Cadastre">
-                            <TileLayer
-                              url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
-                              maxZoom={20}
-                            />
+                            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                           </LayersControl.BaseLayer>
                         </LayersControl>
-                        
-                        {/* Contrôleur pour zoom sur parcelle ou arbre */}
-                        <MapController 
-                          bounds={selectedParcelleCoords}
-                          center={mapCenter}
-                          zoom={mapZoom}
-                          mapKey={mapKey}
-                          arbrePosition={formData.latitude && formData.longitude 
-                            ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-                            : null
-                          }
-                        />
-                        
+                        <MapController bounds={selectedParcelleCoords} center={mapCenter} zoom={mapZoom} mapKey={mapKey} arbrePosition={formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : null} />
                         <MapClickHandler onMapClick={handleMapClick} />
-                        
-                        {/* Polygone de la parcelle */}
-                        {selectedParcelleCoords && (
-                          <Polygon
-                            positions={selectedParcelleCoords}
-                            pathOptions={{
-                              color: '#ffff00',
-                              weight: 3,
-                              fillColor: '#ffff00',
-                              fillOpacity: 0.25
-                            }}
-                          />
-                        )}
-                        
-                        {/* Marqueur de l'arbre */}
-                        {formData.latitude && formData.longitude && (
-                          <Marker 
-                            position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]}
-                            icon={arbreIcon}
-                          />
-                        )}
+                        {selectedParcelleCoords && <Polygon positions={selectedParcelleCoords} pathOptions={{ color: '#ffff00', weight: 3, fillColor: '#ffff00', fillOpacity: 0.25 }} />}
+                        {formData.latitude && formData.longitude && <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} icon={arbreIcon} />}
                       </MapContainer>
                     </div>
                   </div>
@@ -1169,31 +1666,128 @@ function Arbres() {
 
                 {formData.latitude && formData.longitude && (
                   <p style={{ fontSize: '0.8rem', color: '#27ae60', marginTop: '0.5rem', marginBottom: 0 }}>
-                    ✔ Position définie : {parseFloat(formData.latitude).toFixed(5)}, {parseFloat(formData.longitude).toFixed(5)}
+                    ✓ Position définie : {parseFloat(formData.latitude).toFixed(5)}, {parseFloat(formData.longitude).toFixed(5)}
                   </p>
                 )}
               </div>
 
               <div className="form-group" style={{ marginTop: '1rem' }}>
                 <label>Notes et observations</label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Observations, particularités, historique..."
-                  rows="4"
-                />
+                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Observations, particularités, historique..." rows="4" />
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Annuler
-                </button>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre à  jour' : 'Créer')}
+                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre àÂ  jour' : 'Créer')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modification groupée */}
+      {showBulkEditModal && (
+        <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>✏️ Modifier {selectedArbres.size} arbre(s)</h3>
+              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>✕</button>
+            </div>
+            
+            <div style={{ padding: '1rem', background: '#fff3e0', borderRadius: '8px', marginBottom: '1rem' }}>
+              <p style={{ margin: 0, color: '#e65100' }}>
+                <strong>⚠️ Attention :</strong> Seuls les champs remplis seront modifiés. Les champs vides seront ignorés.
+              </p>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Espèce</label>
+                <select name="espece" value={bulkEditData.espece} onChange={handleBulkEditChange}>
+                  <option value="">-- Ne pas modifier --</option>
+                  <option value="Chênes vert (V)">Chênes vert (V)</option>
+                  <option value="Chêne pubescent (P)">Chêne pubescent (P)</option>
+                  <option value="Chênes Cerris (Cé)">Chênes Cerris (Cé)</option>
+                  <option value="Chêne pédonculé">Chêne pédonculé</option>
+                  <option value="Noisetier">Noisetier</option>
+                  <option value="Charmes (C)">Charmes (C)</option>
+                  <option value="Tilleul">Tilleul</option>
+                  <option value="Pin">Pin</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Variété de truffe</label>
+                <select name="variete_truffe" value={bulkEditData.variete_truffe} onChange={handleBulkEditChange}>
+                  <option value="">-- Ne pas modifier --</option>
+                  <option value="Tuber melanosporum">Tuber melanosporum (Truffe noire)</option>
+                  <option value="Tuber aestivum">Tuber aestivum (Truffe d'été)</option>
+                  <option value="Tuber brumale">Tuber brumale (Truffe brumale)</option>
+                  <option value="Tuber uncinatum">Tuber uncinatum (Truffe de Bourgogne)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Date de plantation</label>
+                <input 
+                  type="date" 
+                  name="date_plantation" 
+                  value={bulkEditData.date_plantation} 
+                  onChange={handleBulkEditChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>État de santé</label>
+                <select name="etat" value={bulkEditData.etat} onChange={handleBulkEditChange}>
+                  <option value="">-- Ne pas modifier --</option>
+                  <option value="Bon">Bon</option>
+                  <option value="Moyen">Moyen</option>
+                  <option value="Mauvais">Mauvais</option>
+                  <option value="Mort">Mort</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Circonférence du tronc (cm)</label>
+                <input 
+                  type="number" 
+                  name="circonference_cm" 
+                  value={bulkEditData.circonference_cm} 
+                  onChange={handleBulkEditChange}
+                  step="0.1" 
+                  placeholder="Laisser vide pour ne pas modifier"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Hauteur (mètres)</label>
+                <input 
+                  type="number" 
+                  name="hauteur_m" 
+                  value={bulkEditData.hauteur_m} 
+                  onChange={handleBulkEditChange}
+                  step="0.1" 
+                  placeholder="Laisser vide pour ne pas modifier"
+                />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowBulkEditModal(false)}>
+                Annuler
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleBulkEditSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'En cours...' : `Appliquer àÂ  ${selectedArbres.size} arbre(s)`}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1210,20 +1804,12 @@ function Arbres() {
             {loadingCorbeille ? (
               <div style={{ padding: '2rem', textAlign: 'center' }}>Chargement...</div>
             ) : arbresCorbeille.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-                <p>La corbeille est vide</p>
-              </div>
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>La corbeille est vide</div>
             ) : (
               <>
                 <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{arbresCorbeille.length} arbre(s) dans la corbeille</span>
-                  <button 
-                    className="btn btn-danger"
-                    onClick={askViderCorbeille}
-                    style={{ padding: '0.5rem 1rem' }}
-                  >
-                    Vider la corbeille
-                  </button>
+                  <button className="btn btn-danger" onClick={askViderCorbeille} style={{ padding: '0.5rem 1rem' }}>Vider la corbeille</button>
                 </div>
                 <table>
                   <thead>
@@ -1243,20 +1829,8 @@ function Arbres() {
                         <td>{arbre.parcelle_nom || '-'}</td>
                         <td>{formatDateSuppression(arbre.deleted_at)}</td>
                         <td>
-                          <button 
-                            className="btn btn-primary"
-                            onClick={() => handleRestaurer(arbre.id)}
-                            style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
-                          >
-                            ↩️ Restaurer
-                          </button>
-                          <button 
-                            className="btn btn-danger"
-                            onClick={() => askSupprimerDefinitivement(arbre)}
-                            style={{ padding: '0.4rem 0.8rem' }}
-                          >
-                            ✕ Supprimer
-                          </button>
+                          <button className="btn btn-primary" onClick={() => handleRestaurer(arbre.id)} style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}>↩️ Restaurer</button>
+                          <button className="btn btn-danger" onClick={() => askSupprimerDefinitivement(arbre)} style={{ padding: '0.4rem 0.8rem' }}>✕ Supprimer</button>
                         </td>
                       </tr>
                     ))}
@@ -1266,9 +1840,7 @@ function Arbres() {
             )}
             
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowCorbeille(false)}>
-                Fermer
-              </button>
+              <button className="btn btn-secondary" onClick={() => setShowCorbeille(false)}>Fermer</button>
             </div>
           </div>
         </div>

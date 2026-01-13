@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap, useMapEvents, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
@@ -105,9 +105,25 @@ function Parcelles() {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [parcelleToDelete, setParcelleToDelete] = useState(null);
   const [reassignTargetId, setReassignTargetId] = useState('');
+
+  // État pour afficher/masquer les détails d'arbres par espèce
+  const [expandedParcelleId, setExpandedParcelleId] = useState(null);
+  
+  // ============ FILTRES ============
+  const [filters, setFilters] = useState({
+    search: '',
+    type_sol: '',
+    avecGeo: '',
+    surfaceMin: '',
+    surfaceMax: '',
+    phMin: '',
+    phMax: '',
+    avecArbres: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
   
   const [formData, setFormData] = useState({
-    nom: '', surface_ha: '', type_sol: '', ph_sol: '', exposition: '', notes: ''
+    nom: '', surface_ha: '', type_sol: '', ph_sol: '', notes: ''
   });
 
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('parcelles');
@@ -147,6 +163,124 @@ function Parcelles() {
     }
   };
 
+  // Calculer les statistiques d'arbres par parcelle et par espèce
+  const arbresParParcelle = useMemo(() => {
+    const stats = {};
+    parcelles.forEach(p => {
+      const arbresDeParcellle = arbres.filter(a => a.parcelle_id === p.id);
+      const parEspece = {};
+      arbresDeParcellle.forEach(a => {
+        const espece = a.espece || 'Non définie';
+        if (!parEspece[espece]) {
+          parEspece[espece] = { total: 0, etats: { Bon: 0, Moyen: 0, Mauvais: 0, Mort: 0 } };
+        }
+        parEspece[espece].total++;
+        if (a.etat && parEspece[espece].etats[a.etat] !== undefined) {
+          parEspece[espece].etats[a.etat]++;
+        }
+      });
+      stats[p.id] = {
+        total: arbresDeParcellle.length,
+        parEspece
+      };
+    });
+    return stats;
+  }, [parcelles, arbres]);
+
+  // ============ LOGIQUE DE FILTRAGE ============
+  const parcellesFiltrees = useMemo(() => {
+    return parcelles.filter(parcelle => {
+      // Filtre recherche texte (nom, notes)
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchNom = parcelle.nom?.toLowerCase().includes(searchLower);
+        const matchNotes = parcelle.notes?.toLowerCase().includes(searchLower);
+        if (!matchNom && !matchNotes) return false;
+      }
+      
+      // Filtre type de sol
+      if (filters.type_sol && parcelle.type_sol !== filters.type_sol) {
+        return false;
+      }
+      
+      // Filtre géolocalisation
+      if (filters.avecGeo === 'oui' && (!parcelle.coordinates || parcelle.coordinates.length === 0)) {
+        return false;
+      }
+      if (filters.avecGeo === 'non' && parcelle.coordinates && parcelle.coordinates.length > 0) {
+        return false;
+      }
+      
+      // Filtre surface minimum
+      if (filters.surfaceMin && parcelle.surface_ha) {
+        if (parseFloat(parcelle.surface_ha) < parseFloat(filters.surfaceMin)) {
+          return false;
+        }
+      }
+      
+      // Filtre surface maximum
+      if (filters.surfaceMax && parcelle.surface_ha) {
+        if (parseFloat(parcelle.surface_ha) > parseFloat(filters.surfaceMax)) {
+          return false;
+        }
+      }
+      
+      // Filtre pH minimum
+      if (filters.phMin && parcelle.ph_sol) {
+        if (parseFloat(parcelle.ph_sol) < parseFloat(filters.phMin)) {
+          return false;
+        }
+      }
+      
+      // Filtre pH maximum
+      if (filters.phMax && parcelle.ph_sol) {
+        if (parseFloat(parcelle.ph_sol) > parseFloat(filters.phMax)) {
+          return false;
+        }
+      }
+      
+      // Filtre avec/sans arbres
+      const nbArbres = arbresParParcelle[parcelle.id]?.total || 0;
+      if (filters.avecArbres === 'oui' && nbArbres === 0) {
+        return false;
+      }
+      if (filters.avecArbres === 'non' && nbArbres > 0) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [parcelles, filters, arbresParParcelle]);
+
+  // Extraire les types de sol uniques pour le filtre
+  const typesSolUniques = useMemo(() => {
+    const types = new Set();
+    parcelles.forEach(p => {
+      if (p.type_sol) types.add(p.type_sol);
+    });
+    return Array.from(types).sort();
+  }, [parcelles]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      type_sol: '',
+      avecGeo: '',
+      surfaceMin: '',
+      surfaceMax: '',
+      phMin: '',
+      phMax: '',
+      avecArbres: ''
+    });
+  };
+
+  const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -179,7 +313,7 @@ function Parcelles() {
       surface_ha: parcelle.surface_ha || '',
       type_sol: parcelle.type_sol || '',
       ph_sol: parcelle.ph_sol || '',
-      exposition: parcelle.exposition || '',
+      
       notes: parcelle.notes || ''
     });
     setShowModal(true);
@@ -253,7 +387,6 @@ function Parcelles() {
         surface_ha: parcelle.surface_ha,
         type_sol: parcelle.type_sol || '',
         ph_sol: parcelle.ph_sol || '',
-        exposition: parcelle.exposition || '',
         notes: parcelle.notes || '',
         coordinates: [],
         deleteGeometry: true
@@ -289,7 +422,6 @@ function Parcelles() {
         surface_ha: parcelleToEdit.surface_ha,
         type_sol: parcelleToEdit.type_sol || '',
         ph_sol: parcelleToEdit.ph_sol || '',
-        exposition: parcelleToEdit.exposition || '',
         notes: parcelleToEdit.notes || '',
         coordinates: drawingPoints
       });
@@ -444,7 +576,7 @@ function Parcelles() {
 
   const openNewModal = () => {
     setEditingParcelle(null);
-    setFormData({ nom: '', surface_ha: '', type_sol: '', ph_sol: '', exposition: '', notes: '' });
+    setFormData({ nom: '', surface_ha: '', type_sol: '', ph_sol: '', notes: '' });
     setShowModal(true);
   };
 
@@ -465,10 +597,15 @@ function Parcelles() {
   const handleExportPDF = () => { exportParcellesPDF(parcelles, colonnesExport); };
   const getParcelleColor = (index) => PARCELLE_COLORS[index % PARCELLE_COLORS.length];
 
+  // Toggle pour afficher/masquer les détails d'arbres par espèce
+  const toggleArbreDetails = (parcelleId) => {
+    setExpandedParcelleId(prev => prev === parcelleId ? null : parcelleId);
+  };
+
   const config = COLONNES_CONFIG.parcelles;
   const colonnesValides = colonnesAffichees.filter(col => config[col]);
-  const parcellesAvecGeo = parcelles.filter(p => p.coordinates?.length > 0);
-  const parcellesSansGeo = parcelles.filter(p => !p.coordinates || p.coordinates.length === 0);
+  const parcellesAvecGeo = parcellesFiltrees.filter(p => p.coordinates?.length > 0);
+  const parcellesSansGeo = parcellesFiltrees.filter(p => !p.coordinates || p.coordinates.length === 0);
   const defaultCenter = [46.1464315, -0.1652445];
 
   // Arbres affectés à une parcelle et avec position GPS
@@ -651,56 +788,240 @@ function Parcelles() {
             }}>
               <strong>{isRedrawing ? '🔄 REDESSIN parcelle' : '✏️ Dessin parcelle'}</strong>
               <p style={{ margin: '0.5rem 0' }}>
-                Cliquez sur la carte pour placer les points. <strong>{drawingPoints.length} point(s)</strong> (min 3)
+                Parcelle : <strong>{parcelleToEdit?.nom}</strong> | Points : {drawingPoints.length}
+                {isRedrawing && <span style={{ color: '#e65100', marginLeft: '1rem' }}>(Le tracé actuel sera remplacé)</span>}
               </p>
-              
-              {parcelleToEdit && (
-                <p style={{ fontWeight: 'bold', color: isRedrawing ? '#e65100' : '#1565c0' }}>
-                  Parcelle: {parcelleToEdit.nom}
-                </p>
-              )}
-
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button 
-                  className="btn btn-primary" 
                   onClick={finalizeParcelle} 
-                  disabled={drawingPoints.length < 3 || !parcelleToEdit || isProcessing}
+                  disabled={drawingPoints.length < 3 || isProcessing}
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    background: drawingPoints.length >= 3 ? '#4caf50' : '#ccc', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '4px', 
+                    cursor: drawingPoints.length >= 3 ? 'pointer' : 'not-allowed'
+                  }}
                 >
-                  {isProcessing ? 'Enregistrement...' : 'Valider le tracé'}
+                  {isProcessing ? 'Enregistrement...' : '✓ Valider le tracé'}
                 </button>
-                <button className="btn btn-secondary" onClick={() => setDrawingPoints([])}>
-                  Effacer points
+                <button 
+                  onClick={() => setDrawingPoints(drawingPoints.slice(0, -1))} 
+                  disabled={drawingPoints.length === 0}
+                  style={{ padding: '0.5rem 1rem', background: '#ff9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  ↩ Annuler dernier point
                 </button>
-                <button className="btn btn-danger" onClick={cancelDrawing}>
-                  Annuler
+                <button 
+                  onClick={cancelDrawing}
+                  style={{ padding: '0.5rem 1rem', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  ✕ Annuler le dessin
                 </button>
               </div>
             </div>
           )}
 
-          {/* Carte - TOUJOURS VISIBLE */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ height: '450px', borderRadius: '12px', overflow: 'hidden', border: '2px solid #ddd' }}>
-              <MapContainer center={defaultCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
+          {/* ============ SECTION FILTRES ============ */}
+          <div style={{ marginBottom: '1rem' }}>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                background: activeFiltersCount > 0 ? '#e3f2fd' : undefined,
+                borderColor: activeFiltersCount > 0 ? '#1976d2' : undefined
+              }}
+            >
+              🔍 Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+              <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
+            </button>
+            
+            {showFilters && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                padding: '1rem', 
+                background: 'white', 
+                borderRadius: '8px', 
+                border: '1px solid #ddd',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                  {/* Recherche texte */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Recherche
+                    </label>
+                    <input
+                      type="text"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Nom, notes..."
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  
+                  {/* Type de sol */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Type de sol
+                    </label>
+                    <select
+                      name="type_sol"
+                      value={filters.type_sol}
+                      onChange={handleFilterChange}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="">Tous</option>
+                      {typesSolUniques.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Géolocalisation */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Géolocalisation
+                    </label>
+                    <select
+                      name="avecGeo"
+                      value={filters.avecGeo}
+                      onChange={handleFilterChange}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="">Toutes</option>
+                      <option value="oui">Avec tracé</option>
+                      <option value="non">Sans tracé</option>
+                    </select>
+                  </div>
+                  
+                  {/* Avec arbres */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Arbres
+                    </label>
+                    <select
+                      name="avecArbres"
+                      value={filters.avecArbres}
+                      onChange={handleFilterChange}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="">Toutes</option>
+                      <option value="oui">Avec arbres</option>
+                      <option value="non">Sans arbres</option>
+                    </select>
+                  </div>
+                  
+                  {/* Surface min/max */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Surface (ha)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="number"
+                        name="surfaceMin"
+                        value={filters.surfaceMin}
+                        onChange={handleFilterChange}
+                        placeholder="Min"
+                        step="0.1"
+                        min="0"
+                        style={{ width: '50%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                      <input
+                        type="number"
+                        name="surfaceMax"
+                        value={filters.surfaceMax}
+                        onChange={handleFilterChange}
+                        placeholder="Max"
+                        step="0.1"
+                        min="0"
+                        style={{ width: '50%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* pH min/max */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      pH du sol
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="number"
+                        name="phMin"
+                        value={filters.phMin}
+                        onChange={handleFilterChange}
+                        placeholder="Min"
+                        step="0.1"
+                        min="0"
+                        max="14"
+                        style={{ width: '50%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                      <input
+                        type="number"
+                        name="phMax"
+                        value={filters.phMax}
+                        onChange={handleFilterChange}
+                        placeholder="Max"
+                        step="0.1"
+                        min="0"
+                        max="14"
+                        style={{ width: '50%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Bouton réinitialiser */}
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                    {parcellesFiltrees.length} / {parcelles.length} parcelle(s)
+                  </span>
+                  {activeFiltersCount > 0 && (
+                    <button 
+                      onClick={resetFilters}
+                      style={{ 
+                        padding: '0.5rem 1rem', 
+                        background: '#ff5722', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: '4px', 
+                        cursor: 'pointer',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      ✕ Réinitialiser les filtres
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Carte et panneau */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '1rem', marginBottom: '1rem' }}>
+            {/* Carte */}
+            <div style={{ height: '450px', borderRadius: '12px', overflow: 'hidden', border: '2px solid #e0e0e0' }}>
+              <MapContainer center={defaultCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
                 <LayersControl position="topright">
                   <LayersControl.BaseLayer checked name="Satellite">
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />
                   </LayersControl.BaseLayer>
                   <LayersControl.BaseLayer name="Plan">
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  </LayersControl.BaseLayer>
-                  <LayersControl.BaseLayer name="Terrain">
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />
+                    <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   </LayersControl.BaseLayer>
                 </LayersControl>
-                
+                <MapController bounds={mapBounds} selectedParcelleId={selectedParcelleId} parcelles={parcelles} />
                 <MapClickHandler onMapClick={handleMapClick} mode={editMode} />
-                {mapBounds && <MapController bounds={mapBounds} selectedParcelleId={selectedParcelleId} parcelles={parcelles} />}
                 
-                {/* Parcelles */}
-                {parcellesAvecGeo
-                  .filter(p => !(isRedrawing && parcelleToEdit && p.id === parcelleToEdit.id))
-                  .map((parcelle, index) => (
+                {/* Parcelles existantes (filtrées) */}
+                {parcellesAvecGeo.map((parcelle, index) => (
                   <Polygon
                     key={parcelle.id}
                     positions={parcelle.coordinates}
@@ -727,7 +1048,20 @@ function Parcelles() {
                           <h4 style={{ margin: '0 0 0.5rem 0', color: '#2c5f2d' }}>{parcelle.nom}</h4>
                           <p style={{ margin: '0.25rem 0' }}>{parcelle.surface_ha} ha</p>
                           {parcelle.type_sol && <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>Sol: {parcelle.type_sol}</p>}
-                          <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>Arbres: {arbres.filter(a => a.parcelle_id === parcelle.id).length}</p>
+                          <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>
+                            <strong>Arbres: {arbresParParcelle[parcelle.id]?.total || 0}</strong>
+                          </p>
+                          {/* Détails par espèce */}
+                          {arbresParParcelle[parcelle.id]?.total > 0 && (
+                            <div style={{ fontSize: '0.85rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #eee' }}>
+                              <strong>Par espèce :</strong>
+                              {Object.entries(arbresParParcelle[parcelle.id].parEspece).map(([espece, data]) => (
+                                <div key={espece} style={{ marginLeft: '0.5rem' }}>
+                                  • {espece}: {data.total}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <button
                               onClick={() => askEditParcelle(parcelle)}
@@ -862,8 +1196,26 @@ function Parcelles() {
                     <p><strong>Surface:</strong> {selectedParcelle.surface_ha || '-'} ha</p>
                     <p><strong>Type sol:</strong> {selectedParcelle.type_sol || '-'}</p>
                     <p><strong>pH:</strong> {selectedParcelle.ph_sol || '-'}</p>
-                    <p><strong>Exposition:</strong> {selectedParcelle.exposition || '-'}</p>
-                    <p><strong>Arbres:</strong> {arbres.filter(a => a.parcelle_id === selectedParcelle.id).length}</p>
+                    <p><strong>Arbres:</strong> {arbresParParcelle[selectedParcelle.id]?.total || 0}</p>
+                    
+                    {/* Détails par espèce */}
+                    {arbresParParcelle[selectedParcelle.id]?.total > 0 && (
+                      <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f8f9fa', borderRadius: '6px' }}>
+                        <strong style={{ color: '#2c5f2d' }}>🌳 Répartition par espèce :</strong>
+                        {Object.entries(arbresParParcelle[selectedParcelle.id].parEspece).map(([espece, data]) => (
+                          <div key={espece} style={{ marginTop: '0.5rem', paddingLeft: '0.5rem' }}>
+                            <div style={{ fontWeight: '500' }}>{espece}: {data.total}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#888', display: 'flex', gap: '0.5rem', marginLeft: '0.5rem' }}>
+                              <span style={{ color: '#27ae60' }}>Bon: {data.etats.Bon}</span>
+                              <span style={{ color: '#f39c12' }}>Moyen: {data.etats.Moyen}</span>
+                              <span style={{ color: '#e74c3c' }}>Mauvais: {data.etats.Mauvais}</span>
+                              <span style={{ color: '#95a5a6' }}>Mort: {data.etats.Mort}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
                     {selectedParcelle.notes && <p style={{ marginTop: '0.5rem' }}><strong>Notes:</strong> {selectedParcelle.notes}</p>}
                   </div>
                   <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
@@ -878,7 +1230,9 @@ function Parcelles() {
           {/* Tableau */}
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
             <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e0e0e0', background: '#f8f9fa', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', color: '#2c5f2d' }}>📋 Liste des parcelles ({parcelles.length})</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#2c5f2d' }}>
+                📋 Liste des parcelles ({parcellesFiltrees.length}{parcellesFiltrees.length !== parcelles.length ? ` / ${parcelles.length}` : ''})
+              </h3>
               {parcellesSansGeo.length > 0 && (
                 <span style={{ fontSize: '0.85rem', color: '#e67e22', background: '#fff9e6', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
                   {parcellesSansGeo.length} sans géolocalisation
@@ -893,65 +1247,141 @@ function Parcelles() {
                   {colonnesValides.map(col => (
                     <th key={col} style={{ textAlign: config[col].align || 'left' }}>{config[col].label}</th>
                   ))}
+                  <th>Arbres</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {parcelles.map((parcelle, index) => {
+                {parcellesFiltrees.map((parcelle, index) => {
                   const hasGeo = parcelle.coordinates?.length > 0;
                   const isSelected = selectedParcelleId === parcelle.id;
-                  const arbresCount = arbres.filter(a => a.parcelle_id === parcelle.id).length;
+                  const arbresCount = arbresParParcelle[parcelle.id]?.total || 0;
+                  const isExpanded = expandedParcelleId === parcelle.id;
                   
                   return (
-                    <tr 
-                      key={parcelle.id}
-                      onClick={() => hasGeo && handleSelectParcelle(parcelle.id)}
-                      style={{ cursor: hasGeo ? 'pointer' : 'default', background: isSelected ? '#e8f5e9' : 'transparent' }}
-                      onMouseEnter={() => hasGeo && setHoveredParcelleId(parcelle.id)}
-                      onMouseLeave={() => setHoveredParcelleId(null)}
-                    >
-                      <td style={{ textAlign: 'center' }}>
-                        {hasGeo ? (
-                          <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '3px', background: getParcelleColor(index), border: isSelected ? '2px solid #1a5f1a' : '1px solid rgba(0,0,0,0.2)' }}></span>
-                        ) : (
-                          <span style={{ color: '#999', fontSize: '0.9rem' }} title="Non géolocalisée">○</span>
-                        )}
-                      </td>
-                      {colonnesValides.map(col => (
-                        <td key={col} style={{ textAlign: config[col].align || 'left' }}>
-                          {col === 'nom' ? <strong>{config[col].render(parcelle)}</strong> : config[col].render(parcelle)}
+                    <React.Fragment key={parcelle.id}>
+                      <tr 
+                        onClick={() => hasGeo && handleSelectParcelle(parcelle.id)}
+                        style={{ cursor: hasGeo ? 'pointer' : 'default', background: isSelected ? '#e8f5e9' : 'transparent' }}
+                        onMouseEnter={() => hasGeo && setHoveredParcelleId(parcelle.id)}
+                        onMouseLeave={() => setHoveredParcelleId(null)}
+                      >
+                        <td style={{ textAlign: 'center' }}>
+                          {hasGeo ? (
+                            <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '3px', background: getParcelleColor(index), border: isSelected ? '2px solid #1a5f1a' : '1px solid rgba(0,0,0,0.2)' }}></span>
+                          ) : (
+                            <span style={{ color: '#999', fontSize: '0.9rem' }} title="Non géolocalisée">○</span>
+                          )}
                         </td>
-                      ))}
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <button 
-                            className="btn btn-secondary" 
-                            onClick={() => askEditParcelle(parcelle)} 
-                            style={{ padding: '0.4rem 0.6rem' }}
-                            title="Modifier"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            className="btn btn-secondary" 
-                            onClick={() => askDrawParcelle(parcelle)} 
-                            style={{ padding: '0.4rem 0.6rem', background: hasGeo ? '#ff9800' : '#4caf50', color: 'white' }}
-                            title={hasGeo ? "Redessiner" : "Dessiner"}
-                            disabled={editMode !== null}
-                          >
-                            {hasGeo ? '🔄' : '✏️'}
-                          </button>
-                          <button 
-                            className="btn btn-danger" 
-                            onClick={() => askDelete(parcelle)} 
-                            style={{ padding: '0.4rem 0.6rem' }}
-                            title="Supprimer"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        {colonnesValides.map(col => (
+                          <td key={col} style={{ textAlign: config[col].align || 'left' }}>
+                            {col === 'nom' ? <strong>{config[col].render(parcelle)}</strong> : config[col].render(parcelle)}
+                          </td>
+                        ))}
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ 
+                              fontWeight: 'bold', 
+                              color: arbresCount > 0 ? '#2c5f2d' : '#999',
+                              minWidth: '30px'
+                            }}>
+                              {arbresCount}
+                            </span>
+                            {arbresCount > 0 && (
+                              <button
+                                onClick={() => toggleArbreDetails(parcelle.id)}
+                                style={{
+                                  padding: '0.2rem 0.5rem',
+                                  background: isExpanded ? '#2c5f2d' : '#e8f5e9',
+                                  color: isExpanded ? 'white' : '#2c5f2d',
+                                  border: '1px solid #2c5f2d',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem'
+                                }}
+                                title="Voir détails par espèce"
+                              >
+                                {isExpanded ? '▼' : '▶'} Détails
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button 
+                              className="btn btn-secondary" 
+                              onClick={() => askEditParcelle(parcelle)} 
+                              style={{ padding: '0.4rem 0.6rem' }}
+                              title="Modifier"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="btn btn-secondary" 
+                              onClick={() => askDrawParcelle(parcelle)} 
+                              style={{ padding: '0.4rem 0.6rem', background: hasGeo ? '#ff9800' : '#4caf50', color: 'white' }}
+                              title={hasGeo ? "Redessiner" : "Dessiner"}
+                              disabled={editMode !== null}
+                            >
+                              {hasGeo ? '🔄' : '✏️'}
+                            </button>
+                            <button 
+                              className="btn btn-danger" 
+                              onClick={() => askDelete(parcelle)} 
+                              style={{ padding: '0.4rem 0.6rem' }}
+                              title="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Ligne de détails par espèce */}
+                      {isExpanded && arbresCount > 0 && (
+                        <tr>
+                          <td colSpan={colonnesValides.length + 3} style={{ background: '#f8f9fa', padding: '0.75rem 1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                              {Object.entries(arbresParParcelle[parcelle.id].parEspece).map(([espece, data]) => (
+                                <div key={espece} style={{ 
+                                  background: 'white', 
+                                  padding: '0.75rem', 
+                                  borderRadius: '8px', 
+                                  border: '1px solid #ddd',
+                                  minWidth: '180px'
+                                }}>
+                                  <div style={{ fontWeight: 'bold', color: '#2c5f2d', marginBottom: '0.5rem' }}>
+                                    🌳 {espece}
+                                  </div>
+                                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{data.total} arbres</div>
+                                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                                    {data.etats.Bon > 0 && (
+                                      <span style={{ background: '#d4edda', color: '#155724', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                        Bon: {data.etats.Bon}
+                                      </span>
+                                    )}
+                                    {data.etats.Moyen > 0 && (
+                                      <span style={{ background: '#fff3cd', color: '#856404', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                        Moyen: {data.etats.Moyen}
+                                      </span>
+                                    )}
+                                    {data.etats.Mauvais > 0 && (
+                                      <span style={{ background: '#f8d7da', color: '#721c24', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                        Mauvais: {data.etats.Mauvais}
+                                      </span>
+                                    )}
+                                    {data.etats.Mort > 0 && (
+                                      <span style={{ background: '#e0e0e0', color: '#666', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                        Mort: {data.etats.Mort}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -992,20 +1422,6 @@ function Parcelles() {
                 <div className="form-group">
                   <label>pH du sol</label>
                   <input type="number" name="ph_sol" value={formData.ph_sol} onChange={handleInputChange} step="0.1" min="0" max="14" placeholder="Ex: 7.8" />
-                </div>
-                <div className="form-group">
-                  <label>Exposition</label>
-                  <select name="exposition" value={formData.exposition} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
-                    <option value="Nord">Nord</option>
-                    <option value="Nord-Est">Nord-Est</option>
-                    <option value="Est">Est</option>
-                    <option value="Sud-Est">Sud-Est</option>
-                    <option value="Sud">Sud</option>
-                    <option value="Sud-Ouest">Sud-Ouest</option>
-                    <option value="Ouest">Ouest</option>
-                    <option value="Nord-Ouest">Nord-Ouest</option>
-                  </select>
                 </div>
               </div>
               <div className="form-group">

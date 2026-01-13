@@ -1,11 +1,14 @@
+// pdfExport.js
+
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import truffeIcon from './truffeicon.png';
 
 /**
- * Utilitaire d'export PDF pour l'application TruffiÃ¨re
+ * Utilitaire d'export PDF pour l'application Truffiere
  */
 
-// Configuration des couleurs du thÃ¨me
+// Configuration des couleurs du theme
 const COLORS = {
   primary: '#2c5f2d',
   secondary: '#97bc62',
@@ -15,21 +18,53 @@ const COLORS = {
 };
 
 /**
- * Fonction gÃ©nÃ©rique pour crÃ©er un PDF avec en-tÃªte et pied de page
+ * Fonction pour charger une image en base64
  */
-const createBasePDF = (title, subtitle = '') => {
+const loadImageAsBase64 = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
+/**
+ * Fonction generique pour creer un PDF avec en-tete et pied de page
+ */
+const createBasePDF = async (title, subtitle = '', withLogo = true) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // En-tÃªte
+  // En-tete
   doc.setFillColor(COLORS.primary);
   doc.rect(0, 0, pageWidth, 30, 'F');
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('ðŸ„ Gestion de TruffiÃ¨re', pageWidth / 2, 12, { align: 'center' });
+  
+  // Ajouter le logo si disponible
+  if (withLogo) {
+    try {
+      const logoBase64 = await loadImageAsBase64(truffeIcon);
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 55, 2, 10, 10);
+      doc.text('Gestion de Truffiere', pageWidth / 2 + 5, 10, { align: 'center' });
+    } catch (e) {
+      doc.text('Gestion de Truffiere', pageWidth / 2, 10, { align: 'center' });
+    }
+  } else {
+    doc.text('Gestion de Truffiere', pageWidth / 2, 10, { align: 'center' });
+  }
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
@@ -42,10 +77,10 @@ const createBasePDF = (title, subtitle = '') => {
     doc.text(subtitle, 14, 38);
   }
 
-  // Date de gÃ©nÃ©ration
+  // Date de generation
   doc.setFontSize(9);
   doc.setTextColor(COLORS.text);
-  const dateStr = `GÃ©nÃ©rÃ© le ${new Date().toLocaleDateString('fr-FR')} Ã  ${new Date().toLocaleTimeString('fr-FR')}`;
+  const dateStr = `Genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}`;
   doc.text(dateStr, pageWidth - 14, 38, { align: 'right' });
 
   // Pied de page
@@ -66,8 +101,8 @@ const createBasePDF = (title, subtitle = '') => {
 /**
  * Export PDF : Liste des parcelles
  */
-export const exportParcellesPDF = (parcelles) => {
-  const { doc, addFooter, startY } = createBasePDF(
+export const exportParcellesPDF = async (parcelles) => {
+  const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Parcelles',
     `Total : ${parcelles.length} parcelle(s)`
   );
@@ -77,13 +112,12 @@ export const exportParcellesPDF = (parcelles) => {
     `${p.surface_ha} ha`,
     p.type_sol || '-',
     p.ph_sol ? `pH ${p.ph_sol}` : '-',
-    p.exposition || '-',
     new Date(p.date_creation).toLocaleDateString('fr-FR')
   ]);
 
   doc.autoTable({
     startY: startY,
-    head: [['Nom', 'Surface', 'Type de sol', 'pH', 'Exposition', 'Date crÃ©ation']],
+    head: [['Nom', 'Surface', 'Type de sol', 'pH', 'Date creation']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -130,15 +164,15 @@ export const exportParcellesPDF = (parcelles) => {
 /**
  * Export PDF : Liste des arbres
  */
-export const exportArbresPDF = (arbres, parcelleFilter = null) => {
+export const exportArbresPDF = async (arbres, parcelleFilter = null) => {
   const filteredArbres = parcelleFilter 
     ? arbres.filter(a => a.parcelle_id === parcelleFilter)
     : arbres;
 
-  const { doc, addFooter, startY } = createBasePDF(
+  const { doc, addFooter, startY } = await createBasePDF(
     'Inventaire des Arbres Truffiers',
     parcelleFilter 
-      ? `Parcelle filtrÃ©e - Total : ${filteredArbres.length} arbre(s)`
+      ? `Parcelle filtree - Total : ${filteredArbres.length} arbre(s)`
       : `Total : ${filteredArbres.length} arbre(s)`
   );
 
@@ -154,7 +188,7 @@ export const exportArbresPDF = (arbres, parcelleFilter = null) => {
 
   doc.autoTable({
     startY: startY,
-    head: [['NumÃ©ro', 'EspÃ¨ce', 'VariÃ©tÃ© truffe', 'Parcelle', 'Ã‰tat', 'Plantation', 'Circonf.']],
+    head: [['Numero', 'Espece', 'Variete truffe', 'Parcelle', 'Etat', 'Plantation', 'Circonf.']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -196,7 +230,7 @@ export const exportArbresPDF = (arbres, parcelleFilter = null) => {
   doc.setFont('helvetica', 'normal');
   Object.entries(stats).forEach(([etat, count]) => {
     if (count > 0) {
-      doc.text(`  â€¢ ${etat} : ${count} arbre(s)`, 14, statY);
+      doc.text(`- ${etat} : ${count} arbre(s)`, 14, statY);
       statY += 5;
     }
   });
@@ -207,10 +241,10 @@ export const exportArbresPDF = (arbres, parcelleFilter = null) => {
 /**
  * Export PDF : Statistiques de production
  */
-export const exportProductionPDF = (stats) => {
-  const { doc, addFooter, startY } = createBasePDF(
+export const exportProductionPDF = async (stats) => {
+  const { doc, addFooter, startY } = await createBasePDF(
     'Rapport de Production',
-    `PÃ©riode : ${new Date().getFullYear()}`
+    `Periode : ${new Date().getFullYear()}`
   );
 
   doc.setFontSize(14);
@@ -221,13 +255,13 @@ export const exportProductionPDF = (stats) => {
     p.nom_parcelle,
     `${p.annee}`,
     `${(p.poids_total_g / 1000).toFixed(2)} kg`,
-    `${parseFloat(p.valeur_totale || 0).toFixed(2)} â‚¬`,
-    `${parseFloat(p.prix_moyen_kg || 0).toFixed(2)} â‚¬/kg`
+    `${parseFloat(p.valeur_totale || 0).toFixed(2)} EUR`,
+    `${parseFloat(p.prix_moyen_kg || 0).toFixed(2)} EUR/kg`
   ]);
 
   doc.autoTable({
     startY: startY + 5,
-    head: [['Parcelle', 'AnnÃ©e', 'Production', 'Valeur', 'Prix moyen']],
+    head: [['Parcelle', 'Annee', 'Production', 'Valeur', 'Prix moyen']],
     body: parcelleData,
     theme: 'grid',
     headStyles: {
@@ -257,12 +291,12 @@ export const exportProductionPDF = (stats) => {
     a.numero_arbre,
     a.espece,
     `${(a.poids_total_g / 1000).toFixed(2)} kg`,
-    `${a.nombre_recoltes || 0} rÃ©colte(s)`
+    `${a.nombre_recoltes || 0} recolte(s)`
   ]);
 
   doc.autoTable({
     startY: currentY + 5,
-    head: [['Rang', 'Arbre', 'EspÃ¨ce', 'Production', 'RÃ©coltes']],
+    head: [['Rang', 'Arbre', 'Espece', 'Production', 'Recoltes']],
     body: arbreData,
     theme: 'grid',
     headStyles: {
@@ -284,12 +318,12 @@ export const exportProductionPDF = (stats) => {
 /**
  * Export PDF : Liste des interventions
  */
-export const exportInterventionsPDF = (interventions, filterStatut = 'all') => {
+export const exportInterventionsPDF = async (interventions, filterStatut = 'all') => {
   const filteredInterventions = filterStatut === 'all' 
     ? interventions 
     : interventions.filter(i => i.statut === filterStatut);
 
-  const { doc, addFooter, startY } = createBasePDF(
+  const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Interventions',
     `${filterStatut === 'all' ? 'Toutes' : filterStatut} - Total : ${filteredInterventions.length}`
   );
@@ -301,12 +335,12 @@ export const exportInterventionsPDF = (interventions, filterStatut = 'all') => {
     i.arbre_numero || '-',
     i.statut,
     i.personnel || '-',
-    i.cout ? `${parseFloat(i.cout).toFixed(2)} â‚¬` : '-'
+    i.cout ? `${parseFloat(i.cout).toFixed(2)} EUR` : '-'
   ]);
 
   doc.autoTable({
     startY: startY,
-    head: [['Date', 'Type', 'Parcelle', 'Arbre', 'Statut', 'Personnel', 'CoÃ»t']],
+    head: [['Date', 'Type', 'Parcelle', 'Arbre', 'Statut', 'Personnel', 'Cout']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -322,11 +356,11 @@ export const exportInterventionsPDF = (interventions, filterStatut = 'all') => {
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;
-  const stats = {
-    planifie: filteredInterventions.filter(i => i.statut === 'PlanifiÃ©').length,
+  const statsIntervention = {
+    planifie: filteredInterventions.filter(i => i.statut === 'Planifie').length,
     enCours: filteredInterventions.filter(i => i.statut === 'En cours').length,
-    termine: filteredInterventions.filter(i => i.statut === 'TerminÃ©').length,
-    annule: filteredInterventions.filter(i => i.statut === 'AnnulÃ©').length,
+    termine: filteredInterventions.filter(i => i.statut === 'Termine').length,
+    annule: filteredInterventions.filter(i => i.statut === 'Annule').length,
     coutTotal: filteredInterventions.reduce((sum, i) => sum + parseFloat(i.cout || 0), 0)
   };
 
@@ -335,31 +369,31 @@ export const exportInterventionsPDF = (interventions, filterStatut = 'all') => {
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 35, 'F');
   
-  doc.text('RÃ©sumÃ© des Interventions', 104, finalY, { align: 'center' });
+  doc.text('Resume des Interventions', 104, finalY, { align: 'center' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   
-  doc.text(`  â€¢ PlanifiÃ© : ${stats.planifie}`, 20, finalY + 8);
-  doc.text(`  â€¢ En cours : ${stats.enCours}`, 20, finalY + 15);
-  doc.text(`  â€¢ TerminÃ© : ${stats.termine}`, 20, finalY + 22);
-  doc.text(`  â€¢ AnnulÃ© : ${stats.annule}`, 120, finalY + 8);
-  doc.text(`  â€¢ CoÃ»t total : ${stats.coutTotal.toFixed(2)} â‚¬`, 120, finalY + 15);
+  doc.text(`- Planifie : ${statsIntervention.planifie}`, 20, finalY + 8);
+  doc.text(`- En cours : ${statsIntervention.enCours}`, 20, finalY + 15);
+  doc.text(`- Termine : ${statsIntervention.termine}`, 20, finalY + 22);
+  doc.text(`- Annule : ${statsIntervention.annule}`, 120, finalY + 8);
+  doc.text(`- Cout total : ${statsIntervention.coutTotal.toFixed(2)} EUR`, 120, finalY + 15);
 
   doc.save(`interventions_${filterStatut}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
 /**
- * Export PDF : Rapport de rÃ©coltes
+ * Export PDF : Rapport de recoltes
  */
-export const exportRecoltesPDF = (recoltes, annee = null) => {
+export const exportRecoltesPDF = async (recoltes, annee = null) => {
   const filteredRecoltes = annee
     ? recoltes.filter(r => new Date(r.date_recolte).getFullYear() === annee)
     : recoltes;
 
-  const { doc, addFooter, startY } = createBasePDF(
-    'Rapport des RÃ©coltes',
-    annee ? `AnnÃ©e ${annee} - ${filteredRecoltes.length} rÃ©colte(s)` : `Total : ${filteredRecoltes.length} rÃ©colte(s)`
+  const { doc, addFooter, startY } = await createBasePDF(
+    'Rapport des Recoltes',
+    annee ? `Annee ${annee} - ${filteredRecoltes.length} recolte(s)` : `Total : ${filteredRecoltes.length} recolte(s)`
   );
 
   const tableData = filteredRecoltes.map(r => [
@@ -369,12 +403,12 @@ export const exportRecoltesPDF = (recoltes, annee = null) => {
     `${r.poids_grammes} g`,
     r.qualite || '-',
     r.calibre || '-',
-    r.notes ? 'âœ“' : ''
+    r.notes ? 'Oui' : ''
   ]);
 
   doc.autoTable({
     startY: startY,
-    head: [['Date', 'Parcelle', 'Arbre', 'Poids', 'Qualité', 'Calibre', 'Notes']],
+    head: [['Date', 'Parcelle', 'Arbre', 'Poids', 'Qualite', 'Calibre', 'Notes']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -400,13 +434,13 @@ export const exportRecoltesPDF = (recoltes, annee = null) => {
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('RÃ©sumÃ© :', 14, finalY);
+  doc.text('Resume :', 14, finalY);
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`  â€¢ Poids total : ${(totalPoids / 1000).toFixed(2)} kg`, 14, finalY + 7);
-  doc.text(`  â€¢ Poids moyen par rÃ©colte : ${(totalPoids / filteredRecoltes.length / 1000).toFixed(2)} kg`, 14, finalY + 14);
-  doc.text(`  â€¢ RÃ©coltes avec qualitÃ© renseignÃ©e : ${avgQuality}/${filteredRecoltes.length}`, 14, finalY + 21);
+  doc.text(`- Poids total : ${(totalPoids / 1000).toFixed(2)} kg`, 14, finalY + 7);
+  doc.text(`- Poids moyen par recolte : ${(totalPoids / filteredRecoltes.length / 1000).toFixed(2)} kg`, 14, finalY + 14);
+  doc.text(`- Recoltes avec qualite renseignee : ${avgQuality}/${filteredRecoltes.length}`, 14, finalY + 21);
 
   doc.save(`recoltes_${annee || 'toutes'}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
@@ -414,24 +448,63 @@ export const exportRecoltesPDF = (recoltes, annee = null) => {
 /**
  * Export PDF : Liste des clients
  */
-export const exportClientsPDF = (clients) => {
-  const { doc, addFooter, startY } = createBasePDF(
+export const exportClientsPDF = async (clients, colonnesExport = null) => {
+  const { doc, addFooter, startY } = await createBasePDF(
     'Liste des Clients',
     `Total : ${clients.length} client(s)`
   );
 
-  const tableData = clients.map(c => [
-    c.type === 'particulier' ? c.nom + ' ' + (c.prenom || '') : c.raison_sociale,
-    c.type === 'particulier' ? 'Particulier' : 'Professionnel',
-    c.email || '-',
-    c.telephone || '-',
-    c.ville || '-',
-    c.date_premier_achat ? new Date(c.date_premier_achat).toLocaleDateString('fr-FR') : '-'
-  ]);
+  // Colonnes par défaut si non spécifiées
+  const defaultCols = ['nom', 'type', 'email', 'telephone', 'ville', 'date_premier_achat'];
+  const cols = colonnesExport && colonnesExport.length > 0 ? colonnesExport : defaultCols;
+
+  // Configuration des colonnes disponibles (largeurs ajustées pour tenir sur A4)
+  const colConfig = {
+    nom: { 
+      label: 'Nom', 
+      render: (c) => c.type === 'Particulier' ? `${c.nom} ${c.prenom || ''}`.trim() : (c.raison_sociale || c.nom),
+      width: 'auto'
+    },
+    prenom: { label: 'Prénom', render: (c) => c.prenom || '-', width: 'auto' },
+    raison_sociale: { label: 'Raison sociale', render: (c) => c.raison_sociale || '-', width: 'auto' },
+    type: { label: 'Type', render: (c) => c.type || '-', width: 20, align: 'center' },
+    email: { label: 'Email', render: (c) => c.email || '-', width: 'auto' },
+    telephone: { label: 'Tél.', render: (c) => c.telephone || '-', width: 25 },
+    adresse: { label: 'Adresse', render: (c) => c.adresse || '-', width: 'auto' },
+    code_postal: { label: 'CP', render: (c) => c.code_postal || '-', width: 15, align: 'center' },
+    ville: { label: 'Ville', render: (c) => c.ville || '-', width: 'auto' },
+    pays: { label: 'Pays', render: (c) => c.pays || '-', width: 20 },
+    siret: { label: 'SIRET', render: (c) => c.siret || '-', width: 30 },
+    date_premier_achat: { 
+      label: '1er achat', 
+      render: (c) => c.date_premier_achat ? new Date(c.date_premier_achat).toLocaleDateString('fr-FR') : '-',
+      width: 22, 
+      align: 'center' 
+    },
+    notes: { label: 'Notes', render: (c) => c.notes || '-', width: 'auto' }
+  };
+
+  // Filtrer les colonnes valides
+  const validCols = cols.filter(col => colConfig[col]);
+  
+  // En-têtes et données du tableau
+  const headers = validCols.map(col => colConfig[col].label);
+  const tableData = clients.map(c => validCols.map(col => colConfig[col].render(c)));
+
+  // Styles des colonnes (laisser auto-size pour les colonnes sans width fixe)
+  const columnStyles = {};
+  validCols.forEach((col, index) => {
+    const config = colConfig[col];
+    const style = { halign: config.align || 'left' };
+    if (config.width !== 'auto') {
+      style.cellWidth = config.width;
+    }
+    columnStyles[index] = style;
+  });
 
   doc.autoTable({
     startY: startY,
-    head: [['Nom', 'Type', 'Email', 'TÃ©lÃ©phone', 'Ville', '1er achat']],
+    head: [headers],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -440,17 +513,12 @@ export const exportClientsPDF = (clients) => {
       fontStyle: 'bold'
     },
     styles: {
-      fontSize: 9,
-      cellPadding: 3
+      fontSize: 8,
+      cellPadding: 2,
+      overflow: 'linebreak'
     },
-    columnStyles: {
-      0: { cellWidth: 45 },
-      1: { cellWidth: 25, halign: 'center' },
-      2: { cellWidth: 45 },
-      3: { cellWidth: 30 },
-      4: { cellWidth: 25 },
-      5: { cellWidth: 25, halign: 'center' }
-    },
+    columnStyles: columnStyles,
+    tableWidth: 'auto',
     didDrawPage: addFooter
   });
 
@@ -460,29 +528,94 @@ export const exportClientsPDF = (clients) => {
 /**
  * Export PDF : Liste des ventes
  */
-export const exportVentesPDF = (ventes, annee = null) => {
+export const exportVentesPDF = async (ventes, clients = [], colonnesExport = null, annee = null) => {
   const filteredVentes = annee
     ? ventes.filter(v => new Date(v.date_vente).getFullYear() === annee)
     : ventes;
 
-  const { doc, addFooter, startY } = createBasePDF(
+  const { doc, addFooter, startY } = await createBasePDF(
     'Rapport des Ventes',
-    annee ? `AnnÃ©e ${annee} - ${filteredVentes.length} vente(s)` : `Total : ${filteredVentes.length} vente(s)`
+    annee ? `Année ${annee} - ${filteredVentes.length} vente(s)` : `Total : ${filteredVentes.length} vente(s)`
   );
 
-  const tableData = filteredVentes.map(v => [
-    new Date(v.date_vente).toLocaleDateString('fr-FR'),
-    v.client_nom || '-',
-    `${v.quantite_grammes ? (parseFloat(v.quantite_grammes) / 1000).toFixed(2) : '0'} kg`,
-    v.prix_unitaire_kg ? `${v.prix_unitaire_kg} â‚¬/kg` : '-',
-    v.montant_total ? `${parseFloat(v.montant_total).toFixed(2)} â‚¬` : '-',
-    v.mode_paiement || '-',
-    v.statut || '-'
-  ]);
+  // Colonnes par défaut si non spécifiées
+  const defaultCols = ['date_vente', 'client_nom', 'quantite_grammes', 'prix_unitaire_kg', 'montant_total', 'mode_paiement', 'statut'];
+  const cols = colonnesExport && colonnesExport.length > 0 ? colonnesExport : defaultCols;
+
+  // Fonction pour récupérer le nom du client
+  const getClientName = (v) => {
+    if (v.client_nom) return v.client_nom;
+    const client = clients.find(c => c.id === v.client_id);
+    if (client) {
+      return client.type === 'Particulier' 
+        ? `${client.nom} ${client.prenom || ''}`.trim()
+        : (client.raison_sociale || client.nom);
+    }
+    return '-';
+  };
+
+  // Configuration des colonnes disponibles (largeurs ajustées)
+  const colConfig = {
+    date_vente: { 
+      label: 'Date', 
+      render: (v) => new Date(v.date_vente).toLocaleDateString('fr-FR'),
+      width: 22, 
+      align: 'center' 
+    },
+    numero_facture: { label: 'N° Facture', render: (v) => v.numero_facture || '-', width: 'auto' },
+    client_nom: { label: 'Client', render: (v) => getClientName(v), width: 'auto' },
+    quantite_grammes: { 
+      label: 'Qté', 
+      render: (v) => v.quantite_grammes ? `${(parseFloat(v.quantite_grammes) / 1000).toFixed(2)} kg` : '-',
+      width: 18, 
+      align: 'right' 
+    },
+    prix_unitaire_kg: { 
+      label: 'Prix/kg', 
+      render: (v) => v.prix_unitaire_kg ? `${parseFloat(v.prix_unitaire_kg).toFixed(0)} €` : '-',
+      width: 18, 
+      align: 'right' 
+    },
+    montant_total: { 
+      label: 'Montant', 
+      render: (v) => `${parseFloat(v.montant_total || 0).toFixed(2)} €`,
+      width: 22, 
+      align: 'right' 
+    },
+    mode_paiement: { label: 'Paiement', render: (v) => v.mode_paiement || '-', width: 22 },
+    statut: { label: 'Statut', render: (v) => v.statut || '-', width: 20, align: 'center' },
+    commande_numero: { 
+      label: 'Cmd', 
+      render: (v) => v.commande_numero || (v.commande_id ? `#${v.commande_id}` : '-'),
+      width: 18 
+    },
+    notes: { label: 'Notes', render: (v) => v.notes || '-', width: 'auto' }
+  };
+
+  // Filtrer les colonnes valides
+  const validCols = cols.filter(col => colConfig[col]);
+  
+  // En-têtes et données du tableau
+  const headers = validCols.map(col => colConfig[col].label);
+  const tableData = filteredVentes.map(v => validCols.map(col => colConfig[col].render(v)));
+
+  // Styles des colonnes (laisser auto-size pour les colonnes sans width fixe)
+  const columnStyles = {};
+  validCols.forEach((col, index) => {
+    const config = colConfig[col];
+    const style = { halign: config.align || 'left' };
+    if (config.width !== 'auto') {
+      style.cellWidth = config.width;
+    }
+    if (col === 'montant_total') {
+      style.fontStyle = 'bold';
+    }
+    columnStyles[index] = style;
+  });
 
   doc.autoTable({
     startY: startY,
-    head: [['Date', 'Client', 'QuantitÃ©', 'Prix/kg', 'Montant', 'Paiement', 'Statut']],
+    head: [headers],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -491,17 +624,12 @@ export const exportVentesPDF = (ventes, annee = null) => {
       fontStyle: 'bold'
     },
     styles: {
-      fontSize: 9,
-      cellPadding: 3
+      fontSize: 8,
+      cellPadding: 2,
+      overflow: 'linebreak'
     },
-    columnStyles: {
-      0: { cellWidth: 25 },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right', fontStyle: 'bold' },
-      5: { cellWidth: 25 },
-      6: { cellWidth: 25, halign: 'center' }
-    },
+    columnStyles: columnStyles,
+    tableWidth: 'auto',
     didDrawPage: addFooter
   });
 
@@ -515,16 +643,16 @@ export const exportVentesPDF = (ventes, annee = null) => {
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 35, 'F');
   
-  doc.text('RÃ©sumÃ© des Ventes', 104, finalY, { align: 'center' });
+  doc.text('Résumé des Ventes', 104, finalY, { align: 'center' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   
-  doc.text(`  â€¢ QuantitÃ© totale : ${(totalQuantite / 1000).toFixed(2)} kg`, 20, finalY + 8);
-  doc.text(`  â€¢ Chiffre d'affaires : ${totalMontant.toFixed(2)} â‚¬`, 20, finalY + 15);
-  doc.text(`  â€¢ Prix moyen : ${prixMoyen.toFixed(2)} â‚¬/kg`, 20, finalY + 22);
-  doc.text(`  â€¢ Nombre de ventes : ${filteredVentes.length}`, 120, finalY + 8);
-  doc.text(`  â€¢ Vente moyenne : ${(totalMontant / filteredVentes.length).toFixed(2)} â‚¬`, 120, finalY + 15);
+  doc.text(`- Quantité totale : ${(totalQuantite / 1000).toFixed(2)} kg`, 20, finalY + 8);
+  doc.text(`- Chiffre d'affaires : ${totalMontant.toFixed(2)} EUR`, 20, finalY + 15);
+  doc.text(`- Prix moyen : ${prixMoyen.toFixed(2)} EUR/kg`, 20, finalY + 22);
+  doc.text(`- Nombre de ventes : ${filteredVentes.length}`, 120, finalY + 8);
+  doc.text(`- Vente moyenne : ${filteredVentes.length > 0 ? (totalMontant / filteredVentes.length).toFixed(2) : '0.00'} EUR`, 120, finalY + 15);
 
   doc.save(`ventes_${annee || 'toutes'}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
@@ -532,8 +660,8 @@ export const exportVentesPDF = (ventes, annee = null) => {
 /**
  * Export PDF : Liste des commandes
  */
-export const exportCommandesPDF = (commandes, clients) => {
-  const { doc, addFooter, startY } = createBasePDF(
+export const exportCommandesPDF = async (commandes, clients) => {
+  const { doc, addFooter, startY } = await createBasePDF(
     'Liste des Commandes',
     `Total : ${commandes.length} commande(s)`
   );
@@ -554,14 +682,14 @@ export const exportCommandesPDF = (commandes, clients) => {
       `${parseFloat(c.poids_grammes || 0).toFixed(0)} g`,
       c.calibre || '-',
       c.qualite || '-',
-      `${parseFloat(c.montant_total || 0).toFixed(2)} â‚¬`,
+      `${parseFloat(c.montant_total || 0).toFixed(2)} EUR`,
       c.statut || '-'
     ];
   });
 
   doc.autoTable({
     startY: startY,
-    head: [['NÂ° Commande', 'Date', 'Client', 'Livraison', 'Poids', 'Calibre', 'QualitÃ©', 'Montant', 'Statut']],
+    head: [['N. Commande', 'Date', 'Client', 'Livraison', 'Poids', 'Calibre', 'Qualite', 'Montant', 'Statut']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -589,14 +717,14 @@ export const exportCommandesPDF = (commandes, clients) => {
 
   // Statistiques
   const finalY = doc.lastAutoTable.finalY + 10;
-  const stats = {
+  const statsCommande = {
     enAttente: commandes.filter(c => c.statut === 'En attente').length,
-    confirmees: commandes.filter(c => c.statut === 'ConfirmÃ©e').length,
-    enPreparation: commandes.filter(c => c.statut === 'En prÃ©paration').length,
-    livrees: commandes.filter(c => c.statut === 'LivrÃ©e').length,
-    annulees: commandes.filter(c => c.statut === 'AnnulÃ©e').length,
-    poidsTotal: commandes.filter(c => c.statut !== 'AnnulÃ©e').reduce((sum, c) => sum + parseFloat(c.poids_grammes || 0), 0),
-    montantTotal: commandes.filter(c => c.statut !== 'AnnulÃ©e').reduce((sum, c) => sum + parseFloat(c.montant_total || 0), 0)
+    confirmees: commandes.filter(c => c.statut === 'Confirmee').length,
+    enPreparation: commandes.filter(c => c.statut === 'En preparation').length,
+    livrees: commandes.filter(c => c.statut === 'Livree').length,
+    annulees: commandes.filter(c => c.statut === 'Annulee').length,
+    poidsTotal: commandes.filter(c => c.statut !== 'Annulee').reduce((sum, c) => sum + parseFloat(c.poids_grammes || 0), 0),
+    montantTotal: commandes.filter(c => c.statut !== 'Annulee').reduce((sum, c) => sum + parseFloat(c.montant_total || 0), 0)
   };
 
   doc.setFontSize(12);
@@ -604,32 +732,40 @@ export const exportCommandesPDF = (commandes, clients) => {
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, finalY - 5, 180, 40, 'F');
   
-  doc.text('RÃ©sumÃ© des Commandes', 104, finalY, { align: 'center' });
+  doc.text('Resume des Commandes', 104, finalY, { align: 'center' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   
-  doc.text(`  â€¢ En attente : ${stats.enAttente}`, 20, finalY + 8);
-  doc.text(`  â€¢ ConfirmÃ©es : ${stats.confirmees}`, 20, finalY + 15);
-  doc.text(`  â€¢ En prÃ©paration : ${stats.enPreparation}`, 20, finalY + 22);
-  doc.text(`  â€¢ LivrÃ©es : ${stats.livrees}`, 20, finalY + 29);
-  doc.text(`  â€¢ Poids total commandÃ© : ${(stats.poidsTotal / 1000).toFixed(2)} kg`, 100, finalY + 8);
-  doc.text(`  â€¢ Montant total : ${stats.montantTotal.toFixed(2)} â‚¬`, 100, finalY + 15);
-  doc.text(`  â€¢ AnnulÃ©es : ${stats.annulees}`, 100, finalY + 22);
+  doc.text(`- En attente : ${statsCommande.enAttente}`, 20, finalY + 8);
+  doc.text(`- Confirmees : ${statsCommande.confirmees}`, 20, finalY + 15);
+  doc.text(`- En preparation : ${statsCommande.enPreparation}`, 20, finalY + 22);
+  doc.text(`- Livrees : ${statsCommande.livrees}`, 20, finalY + 29);
+  doc.text(`- Poids total commande : ${(statsCommande.poidsTotal / 1000).toFixed(2)} kg`, 100, finalY + 8);
+  doc.text(`- Montant total : ${statsCommande.montantTotal.toFixed(2)} EUR`, 100, finalY + 15);
+  doc.text(`- Annulees : ${statsCommande.annulees}`, 100, finalY + 22);
 
   doc.save(`commandes_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
 /**
- * Export PDF : DÃ©tail d'une commande (bon de commande)
+ * Export PDF : Detail d'une commande (bon de commande)
  */
-export const exportCommandeDetailPDF = (commande, client) => {
+export const exportCommandeDetailPDF = async (commande, client) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
 
-  // En-tÃªte
+  // En-tete
   doc.setFillColor(COLORS.primary);
   doc.rect(0, 0, pageWidth, 35, 'F');
+  
+  // Ajouter le logo
+  try {
+    const logoBase64 = await loadImageAsBase64(truffeIcon);
+    doc.addImage(logoBase64, 'PNG', 14, 5, 12, 12);
+  } catch (e) {
+    // Continuer sans logo
+  }
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
@@ -653,7 +789,7 @@ export const exportCommandeDetailPDF = (commande, client) => {
   if (commande.date_livraison_demandee) {
     currentY += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text('Livraison souhaitÃ©e :', 14, currentY);
+    doc.text('Livraison souhaitee :', 14, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(new Date(commande.date_livraison_demandee).toLocaleDateString('fr-FR'), 60, currentY);
   }
@@ -693,31 +829,31 @@ export const exportCommandeDetailPDF = (commande, client) => {
     }
     if (client.telephone) {
       currentY += 6;
-      doc.text(`TÃ©l : ${client.telephone}`, 14, currentY);
+      doc.text(`Tel : ${client.telephone}`, 14, currentY);
     }
     if (client.email) {
       currentY += 6;
       doc.text(`Email : ${client.email}`, 14, currentY);
     }
   } else {
-    doc.text('Client non spÃ©cifiÃ©', 14, currentY);
+    doc.text('Client non specifie', 14, currentY);
   }
 
-  // DÃ©tails produit
+  // Details produit
   currentY += 15;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.lightGray);
   doc.rect(14, currentY - 5, 180, 10, 'F');
-  doc.text('DÃ©tails de la commande', 18, currentY + 2);
+  doc.text('Details de la commande', 18, currentY + 2);
 
   currentY += 12;
   
   const produitData = [
-    ['Poids demandÃ©', `${parseFloat(commande.poids_grammes || 0).toFixed(0)} g (${(parseFloat(commande.poids_grammes || 0) / 1000).toFixed(2)} kg)`],
-    ['Calibre', commande.calibre || 'Non spÃ©cifiÃ©'],
-    ['QualitÃ©', commande.qualite || 'Non spÃ©cifiÃ©e'],
-    ['MaturitÃ©', commande.maturite || 'Non spÃ©cifiÃ©e']
+    ['Poids demande', `${parseFloat(commande.poids_grammes || 0).toFixed(0)} g (${(parseFloat(commande.poids_grammes || 0) / 1000).toFixed(2)} kg)`],
+    ['Calibre', commande.calibre || 'Non specifie'],
+    ['Qualite', commande.qualite || 'Non specifiee'],
+    ['Maturite', commande.maturite || 'Non specifiee']
   ];
 
   doc.autoTable({
@@ -745,7 +881,7 @@ export const exportCommandeDetailPDF = (commande, client) => {
   currentY += 12;
 
   const prixData = [
-    ['Prix unitaire', commande.prix_unitaire_kg ? `${parseFloat(commande.prix_unitaire_kg).toFixed(2)} â‚¬/kg` : 'Non dÃ©fini'],
+    ['Prix unitaire', commande.prix_unitaire_kg ? `${parseFloat(commande.prix_unitaire_kg).toFixed(2)} EUR/kg` : 'Non defini'],
   ];
 
   doc.autoTable({
@@ -770,7 +906,7 @@ export const exportCommandeDetailPDF = (commande, client) => {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL :', 105, currentY + 10);
-  doc.text(`${parseFloat(commande.montant_total || 0).toFixed(2)} â‚¬`, 188, currentY + 10, { align: 'right' });
+  doc.text(`${parseFloat(commande.montant_total || 0).toFixed(2)} EUR`, 188, currentY + 10, { align: 'right' });
 
   // Notes
   if (commande.notes) {
@@ -790,7 +926,7 @@ export const exportCommandeDetailPDF = (commande, client) => {
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text(
-    `GÃ©nÃ©rÃ© le ${new Date().toLocaleDateString('fr-FR')} Ã  ${new Date().toLocaleTimeString('fr-FR')}`,
+    `Genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}`,
     pageWidth / 2,
     doc.internal.pageSize.height - 10,
     { align: 'center' }
@@ -802,12 +938,12 @@ export const exportCommandeDetailPDF = (commande, client) => {
 /**
  * Export PDF complet : Rapport annuel
  */
-export const exportRapportAnnuelPDF = (data) => {
+export const exportRapportAnnuelPDF = async (data) => {
   const { parcelles, arbres, recoltes, ventes, annee } = data;
   
-  const { doc, addFooter } = createBasePDF(
+  const { doc, addFooter } = await createBasePDF(
     `Rapport Annuel ${annee}`,
-    'Vue d\'ensemble complÃ¨te de l\'exploitation'
+    'Vue d\'ensemble complete de l\'exploitation'
   );
 
   let currentY = 50;
@@ -817,23 +953,23 @@ export const exportRapportAnnuelPDF = (data) => {
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(COLORS.secondary);
   doc.rect(14, currentY - 5, 180, 10, 'F');
-  doc.text('ðŸ“Š Vue d\'ensemble', 18, currentY + 2);
+  doc.text('Vue d\'ensemble', 18, currentY + 2);
   
   currentY += 15;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   
-  const stats = [
+  const statsAnnuel = [
     `Parcelles : ${parcelles.length}`,
     `Arbres : ${arbres.length}`,
-    `RÃ©coltes : ${recoltes.length}`,
+    `Recoltes : ${recoltes.length}`,
     `Ventes : ${ventes.length}`,
     `Production totale : ${(recoltes.reduce((sum, r) => sum + parseFloat(r.poids_grammes || 0), 0) / 1000).toFixed(2)} kg`,
-    `Chiffre d'affaires : ${ventes.reduce((sum, v) => sum + parseFloat(v.montant_total || 0), 0).toFixed(2)} â‚¬`
+    `Chiffre d'affaires : ${ventes.reduce((sum, v) => sum + parseFloat(v.montant_total || 0), 0).toFixed(2)} EUR`
   ];
 
-  stats.forEach(stat => {
-    doc.text(`  â€¢ ${stat}`, 20, currentY);
+  statsAnnuel.forEach(stat => {
+    doc.text(`- ${stat}`, 20, currentY);
     currentY += 7;
   });
 

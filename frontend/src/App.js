@@ -25,6 +25,7 @@ import Parametres from './components/Parametres';
 import Historique from './components/Historique';
 import UserManagement from './components/UserManagement';
 import ChangePassword from './components/ChangePassword';
+import GlobalSearch from './components/GlobalSearch';
 
 // ============================================================
 // Composant UserMenu - Menu utilisateur dans la navbar
@@ -88,28 +89,28 @@ const UserMenu = ({ onShowUserManagement, onShowChangePassword }) => {
               <div className="user-name">{user?.prenom} {user?.nom}</div>
               <div className="user-email">{user?.email}</div>
             </div>
-						
-			{isAdmin() && (
-			  <button 
-				className="user-dropdown-item"
-				onClick={() => {
-				  setIsOpen(false);
-				  onShowUserManagement();
-				}}
-			  >
-				👥 Gestion des utilisateurs
-			  </button>
-			)}
+            
+            {isAdmin() && (
+              <button 
+                className="user-dropdown-item"
+                onClick={() => {
+                  setIsOpen(false);
+                  onShowUserManagement();
+                }}
+              >
+                👥 Gestion des utilisateurs
+              </button>
+            )}
 
-			<button 
-			  className="user-dropdown-item"
-			  onClick={() => {
-				setIsOpen(false);
-				onShowChangePassword();
-			  }}
-			>
-			  🔑 Changer le mot de passe
-			</button>
+            <button 
+              className="user-dropdown-item"
+              onClick={() => {
+                setIsOpen(false);
+                onShowChangePassword();
+              }}
+            >
+              🔑 Changer le mot de passe
+            </button>
             
             <div className="user-dropdown-divider" />
             
@@ -134,24 +135,45 @@ const MainApp = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [searchHighlight, setSearchHighlight] = useState(null);
   const { canWrite } = useAuth();
+
+  // Navigation depuis la recherche globale
+  const handleSearchNavigate = (category, itemId) => {
+    const categoryToPage = {
+      parcelles: 'parcelles',
+      arbres: 'arbres',
+      recoltes: 'recoltes',
+      clients: 'commercial',
+      ventes: 'commercial',
+      commandes: 'commercial',
+      interventions: 'interventions'
+    };
+    
+    const page = categoryToPage[category] || 'dashboard';
+    setCurrentPage(page);
+    setSearchHighlight({ category, id: itemId });
+    
+    // Effacer le highlight après 3 secondes
+    setTimeout(() => setSearchHighlight(null), 3000);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard />;
       case 'parcelles':
-        return <Parcelles />;
+        return <Parcelles highlightId={searchHighlight?.category === 'parcelles' ? searchHighlight.id : null} />;
       case 'arbres':
-        return <Arbres />;
+        return <Arbres highlightId={searchHighlight?.category === 'arbres' ? searchHighlight.id : null} />;
       case 'carte':
         return <Carte />;
       case 'interventions':
-        return <Interventions />;
+        return <Interventions highlightId={searchHighlight?.category === 'interventions' ? searchHighlight.id : null} />;
       case 'recoltes':
-        return <Recoltes />;
+        return <Recoltes highlightId={searchHighlight?.category === 'recoltes' ? searchHighlight.id : null} />;
       case 'commercial':
-        return <Commercial />;
+        return <Commercial highlightId={searchHighlight?.id} highlightCategory={searchHighlight?.category} />;
       case 'statistiques':
         return <Statistiques />;
       case 'previsions':
@@ -176,7 +198,11 @@ const MainApp = () => {
           />
           <h1>Gestion de Truffière</h1>
         </div>
+        
         <div className="navbar-menu">
+          {/* Recherche globale */}
+          <GlobalSearch onNavigate={handleSearchNavigate} />
+          
           <button 
             className={currentPage === 'dashboard' ? 'active' : ''} 
             onClick={() => setCurrentPage('dashboard')}

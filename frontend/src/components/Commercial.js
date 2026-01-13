@@ -24,7 +24,7 @@ const STATUT_COLORS_VENTES = {
 function Commercial() {
   const [activeTab, setActiveTab] = useState('clients');
   
-  // États clients
+  // Ã‰tats clients
   const [clients, setClients] = useState([]);
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -35,13 +35,13 @@ function Commercial() {
   const [clientTransactions, setClientTransactions] = useState({ commandes: [], ventes: [] });
   const [showTransactionsModal, setShowTransactionsModal] = useState(false);
   
-  // États commandes
+  // Ã‰tats commandes
   const [commandes, setCommandes] = useState([]);
   const [showCommandeModal, setShowCommandeModal] = useState(false);
   const [editingCommande, setEditingCommande] = useState(null);
   const [filterStatutCommande, setFilterStatutCommande] = useState('all');
   
-  // États ventes
+  // Ã‰tats ventes
   const [ventes, setVentes] = useState([]);
   const [showVenteModal, setShowVenteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -50,7 +50,7 @@ function Commercial() {
   const [filterStatutVente, setFilterStatutVente] = useState('all');
   const [filterRecolte, setFilterRecolte] = useState({ type: 'all', value: '' });
   
-  // États partagés
+  // Ã‰tats partagés
   const [recoltes, setRecoltes] = useState([]);
   const [arbres, setArbres] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -203,7 +203,7 @@ function Commercial() {
       type: 'delete-client',
       item: client,
       title: 'Supprimer le client',
-      message: `Êtes-vous sûr de vouloir supprimer le client "${clientName}" ? Cette action est irréversible.`,
+      message: `ÃŠtes-vous sûr de vouloir supprimer le client "${clientName}" ? Cette action est irréversible.`,
       confirmText: 'Oui, supprimer',
       confirmColor: '#f44336'
     });
@@ -262,7 +262,8 @@ function Commercial() {
     const styles = { 
       'Particulier': { background: '#e3f2fd', color: '#1565c0' }, 
       'Restaurant': { background: '#fff3e0', color: '#e65100' }, 
-      'Grossiste': { background: '#f3e5f5', color: '#7b1fa2' } 
+      'Grossiste': { background: '#f3e5f5', color: '#7b1fa2' },
+      'Association': { background: '#e8f5e9', color: '#2e7d32' } 
     };
     return styles[type] || styles['Particulier'];
   };
@@ -283,7 +284,8 @@ function Commercial() {
     total: clients.length,
     particuliers: clients.filter(c => c.type === 'Particulier').length,
     restaurants: clients.filter(c => c.type === 'Restaurant').length,
-    grossistes: clients.filter(c => c.type === 'Grossiste').length
+    grossistes: clients.filter(c => c.type === 'Grossiste').length,
+    associations: clients.filter(c => c.type === 'Association').length
   };
 
   const configClients = COLONNES_CONFIG.clients;
@@ -355,7 +357,7 @@ function Commercial() {
       };
       
       await axios.post(`${API_URL}/ventes`, venteData);
-      showMessage('✖ Vente créée automatiquement !', 'success');
+      showMessage('✔ Vente créée automatiquement !', 'success');
       
       const ventesRes = await axios.get(`${API_URL}/ventes`);
       setVentes(ventesRes.data);
@@ -425,7 +427,7 @@ function Commercial() {
       type: 'delete-commande',
       item: commande,
       title: 'Supprimer la commande',
-      message: `Êtes-vous sûr de vouloir supprimer la commande ${commande.numero_commande || '#' + commande.id} ?`,
+      message: `ÃŠtes-vous sûr de vouloir supprimer la commande ${commande.numero_commande || '#' + commande.id} ?`,
       confirmText: 'Oui, supprimer',
       confirmColor: '#f44336'
     });
@@ -484,14 +486,14 @@ function Commercial() {
   const handleVenteSubmit = async (e) => {
     e.preventDefault();
     
-    if (!venteFormData.recolte_id) {
-      showMessage('La récolte est obligatoire pour enregistrer une vente', 'error');
-      return;
-    }
     
     setIsProcessing(true);
     try {
       const dataToSend = { ...venteFormData };
+      // Si pas de récolte associée, on met null
+      if (!dataToSend.recolte_id) {
+        dataToSend.recolte_id = null;
+      }
       
       if (editingVente) {
         await axios.put(`${API_URL}/ventes/${editingVente.id}`, dataToSend);
@@ -531,7 +533,7 @@ function Commercial() {
       type: 'delete-vente',
       item: vente,
       title: 'Supprimer la vente',
-      message: `Êtes-vous sûr de vouloir supprimer la vente ${vente.numero_facture || '#' + vente.id} ?`,
+      message: `ÃŠtes-vous sûr de vouloir supprimer la vente ${vente.numero_facture || '#' + vente.id} ?`,
       confirmText: 'Oui, supprimer',
       confirmColor: '#f44336'
     });
@@ -594,7 +596,7 @@ function Commercial() {
     return recoltes;
   };
 
-  // ======================= FONCTIONS PARTAGÉES =======================
+  // ======================= FONCTIONS PARTAGÃ‰ES =======================
 
   const handleQuickClientInputChange = (e) => {
     const { name, value } = e.target;
@@ -850,7 +852,7 @@ function Commercial() {
           {/* Boutons d'action clients */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', justifyContent: 'flex-end' }}>
             <button className="btn btn-secondary" onClick={() => setShowClientImportModal(true)}>📤 Importer CSV</button>
-            <button className="btn btn-secondary" onClick={handleExportClientsPDF} disabled={filteredClients.length === 0}>🔄 Exporter PDF</button>
+            <button className="btn btn-secondary" onClick={handleExportClientsPDF} disabled={filteredClients.length === 0}>📄 Exporter PDF</button>
             <button className="btn btn-primary" onClick={openNewClientModal}>➕ Nouveau client</button>
           </div>
 
@@ -860,6 +862,7 @@ function Commercial() {
             <div className="card"><div className="card-title">Particuliers</div><div className="card-value" style={{ color: '#1565c0' }}>{statsClients.particuliers}</div></div>
             <div className="card"><div className="card-title">Restaurants</div><div className="card-value" style={{ color: '#e65100' }}>{statsClients.restaurants}</div></div>
             <div className="card"><div className="card-title">Grossistes</div><div className="card-value" style={{ color: '#7b1fa2' }}>{statsClients.grossistes}</div></div>
+            <div className="card"><div className="card-title">Associations</div><div className="card-value" style={{ color: '#2e7d32' }}>{statsClients.associations}</div></div>
           </div>
 
           {/* Stats chiffrées par type */}
@@ -896,7 +899,7 @@ function Commercial() {
           {/* Filtres clients */}
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {['all', 'Particulier', 'Restaurant', 'Grossiste'].map(type => (
+              {['all', 'Particulier', 'Restaurant', 'Grossiste', 'Association'].map(type => (
                 <button key={type} className={`btn ${filterTypeClient === type ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilterTypeClient(type)} style={{ padding: '0.5rem 1rem' }}>
                   {type === 'all' ? 'Tous' : type + 's'}
                 </button>
@@ -982,7 +985,7 @@ function Commercial() {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-secondary" onClick={() => exportCommandesPDF(filteredCommandes, clients)}>🔄 Export PDF</button>
+              <button className="btn btn-secondary" onClick={() => exportCommandesPDF(filteredCommandes, clients)}>📄 Export PDF</button>
               <button className="btn btn-primary" onClick={openNewCommandeModal}>➕ Nouvelle commande</button>
             </div>
           </div>
@@ -1084,7 +1087,7 @@ function Commercial() {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>📤 Importer CSV</button>
-              <button className="btn btn-secondary" onClick={() => exportVentesPDF(filteredVentes, clients, colonnesExportVentes)}>🔄 Export PDF</button>
+              <button className="btn btn-secondary" onClick={() => exportVentesPDF(filteredVentes, clients, colonnesExportVentes)}>📄 Export PDF</button>
               <button className="btn btn-primary" onClick={openNewVenteModal}>➕ Nouvelle vente</button>
             </div>
           </div>
@@ -1163,7 +1166,7 @@ function Commercial() {
               <div className="form-group">
                 <label>Type *</label>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                  {['Particulier', 'Restaurant', 'Grossiste'].map(type => (
+                  {['Particulier', 'Restaurant', 'Grossiste', 'Association'].map(type => (
                     <label key={type} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                       <input type="radio" name="type" value={type} checked={clientFormData.type === type} onChange={handleClientFormChange} style={{ marginRight: '0.5rem' }} />
                       <span>{type}</span>
@@ -1302,13 +1305,13 @@ function Commercial() {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => setShowTransactionsModal(false)}>Fermer</button>
+              <button className="btn btn-secondary" onClick={() => setShowTransactionsModal(false)}>Fermer</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal commande */}
+      {/* Modal création/édition commande */}
       {showCommandeModal && (
         <div className="modal-overlay" onClick={closeCommandeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
@@ -1316,7 +1319,6 @@ function Commercial() {
               <h3>{editingCommande ? 'Modifier la commande' : 'Nouvelle commande'}</h3>
               <button className="modal-close" onClick={closeCommandeModal}>✕</button>
             </div>
-            
             <form onSubmit={handleCommandeSubmit}>
               <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>👤 Client</h4>
               <div className="form-group">
@@ -1333,8 +1335,8 @@ function Commercial() {
                   <button type="button" className="btn btn-secondary" onClick={() => setShowQuickClientModal(true)} style={{ padding: '0.5rem 0.75rem' }}>➕</button>
                 </div>
               </div>
-
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>📦 Dates</h4>
+              
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>📅 Dates</h4>
               <div className="form-grid">
                 <div className="form-group">
                   <label>Date de commande *</label>
@@ -1345,7 +1347,7 @@ function Commercial() {
                   <input type="date" name="date_livraison_demandee" value={commandeFormData.date_livraison_demandee} onChange={handleCommandeInputChange} />
                 </div>
               </div>
-
+              
               <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>🍄 Produit</h4>
               <div className="form-grid">
                 <div className="form-group">
@@ -1353,61 +1355,61 @@ function Commercial() {
                   <input type="number" name="poids_grammes" value={commandeFormData.poids_grammes} onChange={handleCommandeInputChange} step="0.1" required />
                 </div>
                 <div className="form-group">
+                  <label>Prix/kg (€) *</label>
+                  <input type="number" name="prix_unitaire_kg" value={commandeFormData.prix_unitaire_kg} onChange={handleCommandeInputChange} step="0.01" required />
+                </div>
+                <div className="form-group">
+                  <label>Total</label>
+                  <input type="text" value={`${montantCalculeCommande()} €`} disabled style={{ background: '#f0f7f0', fontWeight: 'bold', color: '#27ae60' }} />
+                </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
                   <label>Calibre</label>
                   <select name="calibre" value={commandeFormData.calibre} onChange={handleCommandeInputChange}>
-                    <option value="">Indifférent</option>
-                    <option value="Petit">Petit (&lt;20g)</option>
-                    <option value="Moyen">Moyen (20-50g)</option>
-                    <option value="Gros">Gros (&gt;50g)</option>
+                    <option value="">Non spécifié</option>
+                    <option value="Petit (<20g)">Petit (&lt;20g)</option>
+                    <option value="Moyen (20-50g)">Moyen (20-50g)</option>
+                    <option value="Gros (>50g)">Gros (&gt;50g)</option>
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Qualité</label>
                   <select name="qualite" value={commandeFormData.qualite} onChange={handleCommandeInputChange}>
-                    <option value="">Indifférent</option>
+                    <option value="">Non spécifiée</option>
                     <option value="Extra">Extra</option>
-                    <option value="1ère catégorie">1ère catégorie</option>
-                    <option value="2ème catégorie">2ème catégorie</option>
+                    <option value="Première">Première</option>
+                    <option value="Deuxième">Deuxième</option>
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Maturité</label>
                   <select name="maturite" value={commandeFormData.maturite} onChange={handleCommandeInputChange}>
-                    <option value="">Indifférent</option>
-                    <option value="Jeune">Jeune</option>
+                    <option value="">Non spécifiée</option>
+                    <option value="Immature">Immature</option>
                     <option value="Mature">Mature</option>
-                    <option value="Très mûre">Très mûre</option>
+                    <option value="Très mature">Très mature</option>
                   </select>
                 </div>
               </div>
-
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>💶 Tarification</h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Prix/kg (€) *</label>
-                  <input type="number" name="prix_unitaire_kg" value={commandeFormData.prix_unitaire_kg} onChange={handleCommandeInputChange} step="0.01" required />
-                </div>
-                <div className="form-group">
-                  <label>Total TTC</label>
-                  <input type="text" value={`${montantCalculeCommande()} €`} disabled style={{ background: '#f0f7f0', fontWeight: 'bold', color: '#27ae60' }} />
-                </div>
-                <div className="form-group">
-                  <label>Statut *</label>
-                  <select name="statut" value={commandeFormData.statut} onChange={handleCommandeInputChange} required>
-                    <option value="En attente">En attente</option>
-                    <option value="Confirmée">Confirmée</option>
-                    <option value="En préparation">En préparation</option>
-                    <option value="Livrée">Livrée</option>
-                    <option value="Annulée">Annulée</option>
-                  </select>
-                </div>
+              
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>📋 Statut</h4>
+              <div className="form-group">
+                <label>Statut *</label>
+                <select name="statut" value={commandeFormData.statut} onChange={handleCommandeInputChange} required>
+                  <option value="En attente">En attente</option>
+                  <option value="Confirmée">Confirmée</option>
+                  <option value="En préparation">En préparation</option>
+                  <option value="Livrée">Livrée</option>
+                  <option value="Annulée">Annulée</option>
+                </select>
               </div>
-
+              
               <div className="form-group" style={{ marginTop: '1rem' }}>
                 <label>Notes</label>
                 <textarea name="notes" value={commandeFormData.notes} onChange={handleCommandeInputChange} rows="3" />
               </div>
-
+              
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={closeCommandeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
@@ -1419,7 +1421,7 @@ function Commercial() {
         </div>
       )}
 
-      {/* Modal vente */}
+      {/* Modal création/édition vente */}
       {showVenteModal && (
         <div className="modal-overlay" onClick={closeVenteModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
@@ -1427,7 +1429,6 @@ function Commercial() {
               <h3>{editingVente ? 'Modifier la vente' : 'Nouvelle vente'}</h3>
               <button className="modal-close" onClick={closeVenteModal}>✕</button>
             </div>
-            
             <form onSubmit={handleVenteSubmit}>
               <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>👤 Client</h4>
               <div className="form-group">
@@ -1445,23 +1446,7 @@ function Commercial() {
                 </div>
               </div>
               
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>🍄 Récolte</h4>
-              
-              <div className="form-group">
-                <label>Récolte associée * <span style={{ color: '#e74c3c', fontSize: '0.85rem' }}>(obligatoire)</span></label>
-                <select name="recolte_id" value={venteFormData.recolte_id} onChange={handleVenteInputChange} required>
-                  <option value="">Sélectionner une récolte...</option>
-                  {getFilteredRecoltes().sort((a, b) => new Date(b.date_recolte) - new Date(a.date_recolte)).map(r => {
-                    const arbre = arbres.find(a => a.id === r.arbre_id);
-                    return (
-                      <option key={r.id} value={r.id}>
-                        {new Date(r.date_recolte).toLocaleDateString('fr-FR')} - {parseFloat(r.poids_grammes).toFixed(0)}g
-                        {arbre && ` - ${arbre.numero}`}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>📅 Détails</h4>
               
               <div className="form-grid">
                 <div className="form-group">
@@ -1544,7 +1529,7 @@ function Commercial() {
               <div className="form-group">
                 <label>Type *</label>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                  {['Particulier', 'Restaurant', 'Grossiste'].map(type => (
+                  {['Particulier', 'Restaurant', 'Grossiste', 'Association'].map(type => (
                     <label key={type} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                       <input type="radio" name="type" value={type} checked={newClientData.type === type} onChange={handleQuickClientInputChange} style={{ marginRight: '0.5rem' }} />{type}
                     </label>

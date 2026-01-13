@@ -96,7 +96,6 @@ export const COLONNES_CONFIG = {
     surface_ha: { label: 'Surface (ha)', render: (p) => `${p.surface_ha} ha`, align: 'center' },
     type_sol: { label: 'Type de sol', render: (p) => p.type_sol || '-' },
     ph_sol: { label: 'pH', render: (p) => p.ph_sol ? `pH ${p.ph_sol}` : '-', align: 'center' },
-    exposition: { label: 'Exposition', render: (p) => p.exposition || '-', align: 'center' },
     date_creation: { label: 'Date création', render: (p) => new Date(p.date_creation).toLocaleDateString('fr-FR'), align: 'center' },
     notes: { label: 'Notes', render: (p) => p.notes || '-' }
   },
@@ -122,7 +121,7 @@ export const COLONNES_CONFIG = {
     statut: { label: 'Statut', render: (i) => i.statut },
     personnel: { label: 'Personnel', render: (i) => i.personnel || '-' },
     duree_minutes: { label: 'Durée (min)', render: (i) => i.duree_minutes ? `${i.duree_minutes} min` : '-', align: 'center' },
-    cout: { label: 'Coût', render: (i) => i.cout ? `${parseFloat(i.cout).toFixed(2)} €` : '-', align: 'right' },
+    cout: { label: 'Coût', render: (i) => i.cout ? `${parseFloat(i.cout).toFixed(2)} ââ€šÂ¬` : '-', align: 'right' },
     description: { label: 'Description', render: (i) => i.description || '-' },
     meteo: { label: 'Météo', render: (i) => i.meteo || '-' },
     notes: { label: 'Notes', render: (i) => i.notes || '-' }
@@ -139,7 +138,7 @@ export const COLONNES_CONFIG = {
     caveur: { label: 'Caveur', render: (r) => r.caveur || '-' },
     chien: { label: 'Chien', render: (r) => r.chien || '-' },
     conditions_meteo: { label: 'Météo', render: (r) => r.conditions_meteo || '-' },
-    temperature_sol: { label: 'Temp. sol', render: (r) => r.temperature_sol ? `${r.temperature_sol}°C` : '-', align: 'center' },
+    temperature_sol: { label: 'Temp. sol', render: (r) => r.temperature_sol ? `${r.temperature_sol}à‚Â°C` : '-', align: 'center' },
     notes: { label: 'Notes', render: (r) => r.notes || '-' }
   },
   clients: {
@@ -159,7 +158,7 @@ export const COLONNES_CONFIG = {
   },
   ventes: {
     date_vente: { label: 'Date', render: (v) => new Date(v.date_vente).toLocaleDateString('fr-FR'), align: 'center' },
-    numero_facture: { label: 'N° Facture', render: (v) => v.numero_facture || '-' },
+    numero_facture: { label: 'Nà‚Â° Facture', render: (v) => v.numero_facture || '-' },
     client_nom: { label: 'Client', render: (v, clients) => {
       const client = clients?.find(c => c.id === v.client_id);
       return client 
@@ -172,8 +171,8 @@ export const COLONNES_CONFIG = {
       return commande ? (commande.numero_commande || `#${commande.id}`) : `#${v.commande_id}`;
     }, align: 'center' },
     quantite_grammes: { label: 'Quantité', render: (v) => `${parseFloat(v.quantite_grammes).toFixed(0)} g`, align: 'right' },
-    prix_unitaire_kg: { label: 'Prix/kg', render: (v) => v.prix_unitaire_kg ? `${parseFloat(v.prix_unitaire_kg).toFixed(2)} €` : '-', align: 'right' },
-    montant_total: { label: 'Montant', render: (v) => `${parseFloat(v.montant_total || 0).toFixed(2)} €`, align: 'right' },
+    prix_unitaire_kg: { label: 'Prix/kg', render: (v) => v.prix_unitaire_kg ? `${parseFloat(v.prix_unitaire_kg).toFixed(2)} ââ€šÂ¬` : '-', align: 'right' },
+    montant_total: { label: 'Montant', render: (v) => `${parseFloat(v.montant_total || 0).toFixed(2)} ââ€šÂ¬`, align: 'right' },
     mode_paiement: { label: 'Paiement', render: (v) => v.mode_paiement || '-' },
     statut: { label: 'Statut', render: (v) => v.statut },
     notes: { label: 'Notes', render: (v) => v.notes || '-' }
@@ -223,7 +222,7 @@ export const DynamicTable = ({ data, entite, colonnesAffichees, onEdit, onDelete
                         onClick={() => onEdit(item)}
                         style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
                       >
-                        ✏️
+                        âÅ“Âà¯Â¸Â
                       </button>
                     )}
                     {onDelete && (
@@ -232,7 +231,7 @@ export const DynamicTable = ({ data, entite, colonnesAffichees, onEdit, onDelete
                         onClick={() => onDelete(item.id)}
                         style={{ padding: '0.4rem 0.8rem' }}
                       >
-                        🗑️
+                        à°Å¸â€”â€˜à¯Â¸Â
                       </button>
                     )}
                   </>

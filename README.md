@@ -59,45 +59,62 @@ curl http://localhost:3001/api/parcelles
 
 ## 📁 Structure du projet
 
-```
-truffiere-project/
-├── docker-compose.yml          # Orchestration des services
-├── init-db.sql                 # Schéma de la base de données
-├── README.md                   # Cette documentation
-├── .gitignore                  # Fichiers à ignorer par Git
+📁 TruffeGestion/
 │
-├── backend/                    # API Node.js/Express
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── server.js              # Serveur avec toutes les routes
-│   └── .env                   # Variables d'environnement
+├── 🎨 FRONTEND (React)
+│   ├── index.html              (1.0K)   - Point d'entrée HTML
+│   ├── index.js                (512B)   - Point d'entrée React
+│   ├── App.js                  (12K)    - Composant principal & routing
+│   ├── App.css                 (12K)    - Styles globaux
+│   ├── Login.js                (3.5K)   - Page de connexion
+│   ├── Login.css               (7.0K)   - Styles de connexion
+│   │
+│   ├── 📊 MODULES PRINCIPAUX
+│   │   ├── Dashboard.js        (47K)    - Tableau de bord
+│   │   ├── Parcelles.js        (52K)    - Gestion des parcelles
+│   │   ├── Arbres.js           (70K)    - Gestion des arbres
+│   │   ├── Interventions.js    (94K)    - Gestion des interventions
+│   │   ├── Recoltes.js         (81K)    - Gestion des récoltes
+│   │   ├── Commercial.js       (70K)    - Gestion commerciale
+│   │   ├── Statistiques.js     (47K)    - Statistiques & graphiques
+│   │   ├── Historique.js       (65K)    - Historique des opérations
+│   │   ├── Carte.js            (32K)    - Cartographie interactive
+│   │   ├── Previsions.js       (17K)    - Prévisions de récolte
+│   │   └── Parametres.js       (67K)    - Paramètres & configuration
+│   │
+│   ├── 🧩 COMPOSANTS PARTAGÉS
+│   │   ├── GlobalSearch.js     (9.5K)   - Recherche globale
+│   │   ├── CSVImportModal.js   (11K)    - Modal d'import CSV
+│   │   └── ChangePassword.js   (7.0K)   - Changement de mot de passe
+│   │
+│   └── 🔧 UTILITAIRES FRONTEND
+│       ├── AuthContext.js      (4.0K)   - Contexte d'authentification
+│       ├── axiosConfig.js      (4.5K)   - Configuration Axios
+│       ├── useColumnSettings.js(12K)    - Hook colonnes personnalisées
+│       ├── csvImport.js        (52K)    - Logique d'import CSV
+│       └── pdfExport.js        (27K)    - Export PDF
 │
-├── frontend/                   # Application React
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── .env.example
-│   ├── public/
-│   │   └── index.html
-│   └── src/
-│       ├── index.js
-│       ├── App.js
-│       ├── App.css
-│       └── components/
-│           ├── Dashboard.js    # Tableau de bord
-│           ├── Carte.js        # Cartographie Leaflet
-│           ├── Parcelles.js    # Gestion parcelles
-│           ├── Arbres.js       # Gestion arbres
-│           ├── Interventions.js
-│           ├── Recoltes.js
-│           ├── Clients.js
-│           ├── Ventes.js
-│           ├── Statistiques.js
-│           ├── Previsions.js
-│           └── WeatherWidget.js
+├── ⚙️ BACKEND (Node.js/Express)
+│   ├── server.js               (114K)   - Serveur principal & API
+│   ├── auth.js                 (5.5K)   - Middleware authentification
+│   ├── tokens.js               (5.0K)   - Gestion des tokens JWT
+│   ├── security.js             (5.0K)   - Utilitaires sécurité
+│   ├── validation.js           (7.0K)   - Validation des données
+│   └── api.js                  (8.0K)   - Helpers API
 │
-└── nginx/                      # Configuration Nginx (production)
-    └── nginx.conf
-```
+├── 🗄️ BASE DE DONNÉES
+│   └── init-db.sql             (159K)   - Script initialisation PostgreSQL
+│
+├── 🐳 CONFIGURATION
+│   ├── Dockerfile              (512B)   - Configuration Docker
+│   ├── package.json            (1.0K)   - Dépendances npm
+│   ├── package-lock.json       (376K)   - Versions figées
+│   ├── _env                    (512B)   - Variables d'environnement
+│   ├── _editorconfig           (512B)   - Configuration éditeur
+│   └── _gitignore              (512B)   - Fichiers ignorés Git
+│
+└── 🖼️ ASSETS
+    └── truffeicon.png          (52K)    - Icône de l'application
 
 ## 🛠️ Commandes utiles
 
