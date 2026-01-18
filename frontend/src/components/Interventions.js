@@ -1079,75 +1079,67 @@ const handleSubmit = async (e) => {
   setIsProcessing(true);
   
   try {
-    // 🔧 CORRECTION: Nettoyer les données avant envoi
-    const dataToSend = {
-      ...formData,
-      // Convertir les chaînes vides en null pour les champs numériques
-      typeInterventionId: formData.typeInterventionId && formData.typeInterventionId !== '' 
-        ? parseInt(formData.typeInterventionId) 
-        : null,
-      parcelleId: formData.parcelleId && formData.parcelleId !== '' 
-        ? parseInt(formData.parcelleId) 
-        : null,
-      caveurId: formData.caveurId && formData.caveurId !== '' 
-        ? parseInt(formData.caveurId) 
-        : null,
-      cout: formData.cout && formData.cout !== '' 
-        ? parseFloat(formData.cout) 
-        : null,
-      dureeMinutes: formData.dureeMinutes && formData.dureeMinutes !== '' 
-        ? parseInt(formData.dureeMinutes) 
-        : null,
-      // Assurer que arbreIds est un tableau (pas une chaîne vide)
-      arbreIds: Array.isArray(formData.arbreIds) && formData.arbreIds.length > 0 
-        ? formData.arbreIds 
-        : [],
-      // Nettoyer les champs texte vides
-      description: formData.description || '',
-      notes: formData.notes || '',
-      meteo: formData.meteo || '',
-      personnel: formData.personnel || '',
-      dateRealisee: formData.dateRealisee && formData.dateRealisee !== '' 
-        ? formData.dateRealisee 
-        : null
-    };
-
-    // 🔍 DIAGNOSTIC COMPLET
-    console.log('📤 ============ DIAGNOSTIC ENVOI ============');
-    console.log('📋 FormData brut:', formData);
-    console.log('✅ DataToSend nettoyé:', dataToSend);
-    console.log('🔢 Types des champs:');
-    console.log('  - typeInterventionId:', typeof dataToSend.typeInterventionId, '=', dataToSend.typeInterventionId);
-    console.log('  - parcelleId:', typeof dataToSend.parcelleId, '=', dataToSend.parcelleId);
-    console.log('  - arbreIds:', Array.isArray(dataToSend.arbreIds), '=', dataToSend.arbreIds);
-    console.log('  - datePrevue:', typeof dataToSend.datePrevue, '=', dataToSend.datePrevue);
-    console.log('  - cout:', typeof dataToSend.cout, '=', dataToSend.cout);
-    console.log('📡 URL cible:', `${API_URL}/interventions`);
-    console.log('==========================================');
-
-    let savedIntervention;
-    if (editingIntervention) {
-      const res = await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
-      savedIntervention = res.data;
-      showMessage('Intervention mise à jour avec succès ! ✅', 'success');
-    } else {
-      const res = await axios.post(`${API_URL}/interventions`, dataToSend);
-      savedIntervention = res.data;
-      showMessage('Intervention créée avec succès ! ✅', 'success');
-    }
-
-    // Sauvegarder les détails si présents
-    if (Object.keys(detailsData).length > 0) {
-      try {
-        await axios.post(`${API_URL}/interventions/${savedIntervention.id}/details`, detailsData);
-      } catch (detailError) {
-        console.error('❌ Erreur sauvegarde détails:', detailError);
-        showMessage('Intervention sauvegardée, mais erreur sur les détails ⚠️', 'warning');
+    // Si plusieurs arbres sélectionnés, créer une intervention par arbre
+    const arbresSelectionnes = formData.arbreIds && formData.arbreIds.length > 0 
+      ? formData.arbreIds 
+      : [null]; // Si aucun arbre, créer une intervention sans arbre
+    
+    let interventionsCreees = 0;
+    let savedIntervention = null;
+    
+    for (const arbreId of arbresSelectionnes) {
+      const dataToSend = {
+        // ⚠️ UTILISER snake_case pour correspondre au backend
+        typeinterventionid: formData.typeInterventionId ? parseInt(formData.typeInterventionId) : null,
+        parcelleid: formData.parcelleId ? parseInt(formData.parcelleId) : null,
+        arbreid: arbreId, // UN SEUL arbre (pas arbreIds)
+        dateprevue: formData.datePrevue,
+        daterealisee: formData.dateRealisee || null,
+        dureeminutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null,
+        personnel: formData.personnel || '',
+        description: formData.description || '',
+        cout: formData.cout ? parseFloat(formData.cout) : null,
+        statut: formData.statut || 'Planifié',
+        meteo: formData.meteo || '',
+        notes: formData.notes || ''
+      };
+      
+      console.log(`📤 Envoi intervention ${interventionsCreees + 1}/${arbresSelectionnes.length}:`, dataToSend);
+      
+      if (editingIntervention) {
+        // En mode édition, on modifie l'intervention existante
+        const res = await axios.put(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions/${editingIntervention.id}`, dataToSend);
+        savedIntervention = res.data;
+        interventionsCreees = 1;
+        break; // En édition, on ne traite qu'une seule intervention
+      } else {
+        // En mode création, créer une intervention par arbre
+        const res = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions`, dataToSend);
+        savedIntervention = res.data;
+        interventionsCreees++;
       }
     }
-
+    
+    // Message de succès
+    if (editingIntervention) {
+      showMessage('✅ Intervention mise à jour avec succès !', 'success');
+    } else {
+      showMessage(`✅ ${interventionsCreees} intervention(s) créée(s) avec succès !`, 'success');
+    }
+    
+    // Sauvegarder les détails si présents (uniquement pour la dernière intervention créée)
+    if (savedIntervention && Object.keys(detailsData).length > 0) {
+      try {
+        await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions/${savedIntervention.id}/details`, detailsData);
+      } catch (detailError) {
+        console.error('Erreur sauvegarde détails:', detailError);
+        showMessage('⚠️ Intervention sauvegardée, mais erreur sur les détails', 'warning');
+      }
+    }
+    
     loadData();
     closeModal();
+    
   } catch (error) {
     console.error('❌ Erreur lors de la sauvegarde:', error);
     
@@ -1163,6 +1155,8 @@ const handleSubmit = async (e) => {
     setIsProcessing(false);
   }
 };
+
+
 
 
   const askDelete = (intervention) => {

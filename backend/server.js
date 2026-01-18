@@ -1337,34 +1337,49 @@ app.get('/api/interventions/check-doublon', async (req, res) => {
   }
 });
 
+// POST - Créer une intervention
 app.post('/api/interventions', requireWriteAccess, async (req, res) => {
   try {
-    const { type_intervention_id, parcelle_id, arbre_id, date_prevue, date_realisee, duree_minutes, personnel, description, cout, statut, meteo, notes } = req.body;
+    const { 
+      typeinterventionid, parcelleid, arbreid, dateprevue, daterealisee, 
+      dureeminutes, personnel, description, cout, statut, meteo, notes 
+    } = req.body;
+    
+    console.log('📥 Création intervention:', { 
+      typeinterventionid, parcelleid, arbreid, dateprevue, statut 
+    });
+    
     const result = await pool.query(
-      `INSERT INTO interventions (type_intervention_id, parcelle_id, arbre_id, date_prevue, date_realisee, duree_minutes, personnel, description, cout, statut, meteo, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      // [type_intervention_id, parcelle_id || null, arbre_id || null, date_prevue, date_realisee || null, duree_minutes || null, personnel, description, cout || null, statut || 'Planifié', meteo, notes]
-	  [
-  typeinterventionid,
-  emptyToNull(parcelleid),      // ← AJOUTER
-  emptyToNull(arbreid),          // ← AJOUTER
-  dateprevue,
-  emptyToNull(daterealisee),     // ← AJOUTER
-  emptyToNull(dureeminutes),     // ← AJOUTER
-  personnel,
-  description,
-  emptyToNull(cout),             // ← AJOUTER
-  statut || 'Planifié',
-  emptyToNull(meteo),            // ← AJOUTER
-  emptyToNull(notes)             // ← AJOUTER
-]
+      `INSERT INTO interventions 
+       (typeinterventionid, parcelleid, arbreid, dateprevue, daterealisee, 
+        dureeminutes, personnel, description, cout, statut, meteo, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        emptyToNull(typeinterventionid),
+        emptyToNull(parcelleid),
+        emptyToNull(arbreid),
+        dateprevue,
+        emptyToNull(daterealisee),
+        emptyToNull(dureeminutes),
+        personnel || '',
+        description || '',
+        emptyToNull(cout),
+        statut || 'Planifié',
+        emptyToNull(meteo),
+        emptyToNull(notes)
+      ]
     );
+    
+    console.log('✅ Intervention créée, ID:', result.rows[0].id);
     res.status(201).json(result.rows[0]);
+    
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la création' });
+    console.error('❌ Erreur création intervention:', err.message);
+    res.status(500).json({ error: 'Erreur lors de la création', details: err.message });
   }
 });
+
 
 app.put('/api/interventions/:id', requireWriteAccess, async (req, res) => {
   try {
