@@ -503,20 +503,24 @@ function Parametres() {
     setSaving(false);
   };
 
-  const savePreferencesUtilisateur = async () => {
-    setSaving(true);
-    try {
-      await axios.post(`${API_URL}/preferences-utilisateur`, {
-        colonnes_affichees: JSON.stringify(preferencesUtilisateur.colonnes_affichees),
-        colonnes_export: JSON.stringify(preferencesUtilisateur.colonnes_export)
-      });
-      showMessage('Préférences sauvegardées !');
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors de la sauvegarde', 'error');
-    }
-    setSaving(false);
-  };
+	const savePreferencesUtilisateur = async () => {
+	  setSaving(true);
+	  try {
+		await axios.put(`${API_URL}/preferences-utilisateur`, {
+		  colonnesaffichees: preferencesUtilisateur.colonnesaffichees,
+		  colonnesexport: preferencesUtilisateur.colonnesexport,
+		});
+		showMessage('Préférences sauvegardées !', 'success');
+	  } catch (error) {
+		console.error('Erreur:', error);
+		showMessage('Erreur lors de la sauvegarde', 'error');
+	  } finally {
+		setSaving(false);
+	  }
+	};
+
+
+
 
   // ==================== GESTION PARAMETRES APPLICATION ====================
 

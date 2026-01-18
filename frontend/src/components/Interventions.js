@@ -1034,23 +1034,24 @@ const arbresFiltered = useMemo(() => {
     setShowModal(true);
   };
 
-  const handleEdit = async (intervention) => {
-    setEditingIntervention(intervention);
-    setFormData({
-      type_intervention_id: intervention.type_intervention_id || intervention.type_intervention_id,
-      parcelle_id: intervention.parcelle_id || intervention.parcelle_id,
-      arbre_id: intervention.arbre_id || [],
-      date_prevue : intervention.date_prevue ?.split('T')[0] || intervention.date_prevue?.split('T')[0],
-      date_realisee: intervention.date_realisee?.split('T')[0] || intervention.date_realisee?.split('T')[0] || '',
-      statut: intervention.statut || 'Planifié',
-      description: intervention.description || '',
-      notes: intervention.notes || '',
-      cout: intervention.cout || '',
-      dureeMinutes: intervention.dureeMinutes || intervention.duree_minutes || '',
-      meteo: intervention.meteo || '',
-      personnel: intervention.personnel || '',
-      caveurId: intervention.caveurId || intervention.caveur_id || ''
-    });
+	const handleEdit = async (intervention) => {
+	  setEditingIntervention(intervention);
+	  setFormData({
+		type_intervention_id: intervention.type_intervention_id || intervention.typeInterventionId,
+		parcelle_id: intervention.parcelle_id || intervention.parcelleId,
+		// ✅ CORRECTION : Convertir arbre_id en array
+		arbre_id: intervention.arbre_id ? (Array.isArray(intervention.arbre_id) ? intervention.arbre_id : [intervention.arbre_id]): [],
+		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.datePrevue?.split('T')[0],
+		date_realisee: intervention.date_realisee?.split('T')[0] || intervention.dateRealisee?.split('T')[0] || '',
+		statut: intervention.statut || 'Planifié',
+		description: intervention.description || '',
+		notes: intervention.notes || '',
+		cout: intervention.cout || '',
+		dureeMinutes: intervention.dureeMinutes || intervention.duree_minutes || '',
+		meteo: intervention.meteo || '',
+		personnel: intervention.personnel || '',
+		caveurId: intervention.caveurId || intervention.caveur_id || ''
+	  });
 
     // Charger les détails depuis la nouvelle API
     try {
@@ -1088,21 +1089,25 @@ const handleSubmit = async (e) => {
     let savedIntervention = null;
     
     for (const arbre_id of arbresSelectionnes) {
-      const dataToSend = {
-        // ⚠️ UTILISER snake_case pour correspondre au backend
-        type_intervention_id: formData.type_intervention_id ? parseInt(formData.type_intervention_id) : null,
-        parcelle_id: formData.parcelle_id ? parseInt(formData.parcelle_id) : null,
-        arbre_id: arbre_id, // UN SEUL arbre (pas arbre_id)
-        date_prevue: formData.date_prevue ,
-        date_realisee: formData.date_realisee || null,
-        dureeminutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null,
-        personnel: formData.personnel || '',
-        description: formData.description || '',
-        cout: formData.cout ? parseFloat(formData.cout) : null,
-        statut: formData.statut || 'Planifié',
-        meteo: formData.meteo || '',
-        notes: formData.notes || ''
-      };
+		const dataToSend = {
+		  // ⚠️ UTILISER snake_case pour correspondre au backend
+		  type_intervention_id: formData.type_intervention_id ? parseInt(formData.type_intervention_id) : null,
+		  parcelle_id: formData.parcelle_id ? parseInt(formData.parcelle_id) : null,
+		  date_prevue: formData.date_prevue,
+		  date_realisee: formData.date_realisee || null,
+		  dureeminutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null,
+		  personnel: formData.personnel || '',
+		  description: formData.description || '',
+		  cout: formData.cout ? parseFloat(formData.cout) : null,
+		  statut: formData.statut || 'Planifié',
+		  meteo: formData.meteo || '',
+		  notes: formData.notes || ''
+		};
+
+		// ✅ Ajouter arbre_id SEULEMENT si un arbre est sélectionné
+		if (arbre_id !== null) {
+		  dataToSend.arbre_id = arbre_id;
+		}
       
       console.log(`📤 Envoi intervention ${interventionsCreees + 1}/${arbresSelectionnes.length}:`, dataToSend);
       
@@ -1263,7 +1268,7 @@ const handleSubmit = async (e) => {
       return (
         <select
           name={champ.name}
-          value={value}
+          value={Array.isArray(formData.arbre_id) ? formData.arbre_id : []}  // ✅ Protection supplémentaire
           onChange={handleDetailsChange}
           style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
         >
@@ -1858,10 +1863,30 @@ const handleSubmit = async (e) => {
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'typenom')}</td>
                   <td style={{ padding: '0.75rem' }}>{intervention.parcelleNom || intervention.parcelle_nom || '-'}</td>
                   <td style={{ padding: '0.75rem' }}>
-                    {intervention.arbre_id && intervention.arbre_id.length > 0 
-                      ? `${intervention.arbre_id.length} arbre${intervention.arbre_id.length > 1 ? 's' : ''}`
-                      : '-'
-                    }
+					{(() => {
+					// Si arbre_id est un array (multi-sélection)
+					if (Array.isArray(intervention.arbre_id)) {
+					  if (intervention.arbre_id.length === 0) return '-';
+					  
+					  // Afficher les numéros des arbres
+					  const arbresNoms = intervention.arbre_id
+						.map(id => {
+						  const arbre = arbres.find(a => a.id === id);
+						  return arbre?.numero || `#${id}`;
+						})
+						.join(', ');
+					  
+					  return arbresNoms || '-';
+					}
+					
+					// Si arbre_id est un seul ID (nombre)
+					if (intervention.arbre_id) {
+					  const arbre = arbres.find(a => a.id === intervention.arbre_id);
+					  return arbre?.numero || `#${intervention.arbre_id}`;
+					}
+					
+					return '-';
+				  })()}
                   </td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue ')}</td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'statut')}</td>
@@ -2040,38 +2065,104 @@ const handleSubmit = async (e) => {
                   </div>
                 </div>
 
-				{/* Sélection des arbres - 🔧 CORRECTION APPLIQUÉE */}
-				{formData.parcelle_id && (
-				  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Arbres concernés</label>
-                    <input
-                      type="text"
-                      placeholder="🔍 Rechercher un arbre..."
-                      value={arbreSearchText}
-                      onChange={(e) => setArbreSearchText(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '0.5rem' }}
-                    />
-                    <select
-                      multiple
-                      value={formData.arbre_id}
-                      onChange={handleArbresChange}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd', minHeight: '150px' }}
-                    >
-                      {arbresFiltered.length === 0 ? (
-                        <option disabled>Aucun arbre disponible</option>
-                      ) : (
-                        arbresFiltered.map(arbre => (
-                          <option key={arbre.id} value={arbre.id}>
-                            {arbre.numero} - {arbre.espece} ({arbre.etat})
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <small style={{ color: '#666', fontSize: '0.85rem' }}>
-                      Maintenez Ctrl/Cmd pour sélectionner plusieurs arbres
-                    </small>
-                  </div>
-                )}
+				{/* 🎯 SÉLECTION D'ARBRES - Multiple en création, Simple en édition */}
+				<div>
+				  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+					Arbre(s) concerné(s)
+					{editingIntervention && (
+					  <span style={{ fontSize: '0.85em', color: '#666', marginLeft: '0.5rem' }}>
+						(modification : 1 seul arbre)
+					  </span>
+					)}
+				  </label>
+
+				  {/* 🔍 Champ de recherche - Seulement en mode création */}
+				  {!editingIntervention && (
+					<input
+					  type="text"
+					  placeholder="🔍 Rechercher un arbre..."
+					  value={arbreSearchText}
+					  onChange={(e) => setArbreSearchText(e.target.value)}
+					  style={{
+						width: '100%',
+						padding: '0.5rem',
+						marginBottom: '0.5rem',
+						borderRadius: '4px',
+						border: '1px solid #ddd'
+					  }}
+					/>
+				  )}
+
+				  {editingIntervention ? (
+					/* ✅ MODE ÉDITION : SELECT SIMPLE (1 seul arbre) */
+					<select
+					  name="arbre_id"
+					  value={Array.isArray(formData.arbre_id) ? (formData.arbre_id[0] || '') : (formData.arbre_id || '')}
+					  onChange={(e) => {
+						const value = e.target.value;
+						setFormData(prev => ({
+						  ...prev,
+						  arbre_id: value ? [parseInt(value)] : []
+						}));
+					  }}
+					  style={{
+						width: '100%',
+						padding: '0.5rem',
+						borderRadius: '6px',
+						border: '1px solid #ddd'
+					  }}
+					>
+					  <option value="">-- Aucun arbre --</option>
+					  {arbresFiltered.map(arbre => (
+						<option key={arbre.id} value={arbre.id}>
+						  {arbre.numero} - {arbre.espece} ({arbre.etat})
+						</option>
+					  ))}
+					</select>
+				  ) : (
+					/* 🆕 MODE CRÉATION : SELECT MULTIPLE (plusieurs arbres) */
+					<select
+					  multiple
+					  name="arbre_id"
+					  value={Array.isArray(formData.arbre_id) ? formData.arbre_id : []}
+					  onChange={handleArbresChange}
+					  size={Math.min(8, arbresFiltered.length)}
+					  style={{
+						width: '100%',
+						padding: '0.5rem',
+						borderRadius: '6px',
+						border: '1px solid #ddd',
+						minHeight: '150px'
+					  }}
+					>
+					  {arbresFiltered.length === 0 ? (
+						<option disabled>Aucun arbre disponible pour cette parcelle</option>
+					  ) : (
+						arbresFiltered.map(arbre => (
+						  <option key={arbre.id} value={arbre.id}>
+							{arbre.numero} - {arbre.espece} ({arbre.etat})
+						  </option>
+						))
+					  )}
+					</select>
+				  )}
+
+				  <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
+					{editingIntervention ? (
+					  '💡 Vous pouvez sélectionner un seul arbre en modification'
+					) : (
+					  <>
+						💡 Maintenez <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (Mac) pour sélectionner plusieurs arbres
+						{formData.arbre_id && formData.arbre_id.length > 0 && (
+						  <div style={{ marginTop: '0.5rem', fontWeight: 'bold', color: '#28a745' }}>
+							✅ {formData.arbre_id.length} arbre(s) sélectionné(s)
+						  </div>
+						)}
+					  </>
+					)}
+				  </div>
+				</div>
+
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                   <div>

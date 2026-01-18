@@ -20,6 +20,11 @@ import Carte from './components/Carte';
 import Interventions from './components/Interventions';
 import Recoltes from './components/Recoltes';
 import Commercial from './components/Commercial';
+import AchatsComponent from '@/components/AchatsComponent.vue';
+routes.push({
+  path: '/achats',
+  component: AchatsComponent
+});
 import Statistiques from './components/Statistiques';
 import Previsions from './components/Previsions';
 import Parametres from './components/Parametres';
