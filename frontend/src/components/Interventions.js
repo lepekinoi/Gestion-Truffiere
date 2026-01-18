@@ -373,7 +373,7 @@ function Interventions() {
   const [showFilters, setShowFilters] = useState(false);
 
   // 🆕 TRI
-  const [sortField, setSortField] = useState('date_prevue ');
+  const [sortField, setSortField] = useState('date_prevue');
   const [sortDirection, setSortDirection] = useState('desc');
 
   // UI
@@ -492,7 +492,7 @@ function Interventions() {
 
       // Filtre par période
       if (filterPeriode !== 'all') {
-        const dateIntervention = new Date(intervention.date_prevue );
+        const dateIntervention = new Date(intervention.date_prevue);
         const now = new Date();
 
         if (filterPeriode === 'today') {
@@ -511,13 +511,13 @@ function Interventions() {
       // Filtre par dates personnalisées
       if (filterDateDebut) {
         const dateDebut = new Date(filterDateDebut);
-        const dateIntervention = new Date(intervention.date_prevue );
+        const dateIntervention = new Date(intervention.date_prevue);
         if (dateIntervention < dateDebut) return false;
       }
 
       if (filterDateFin) {
         const dateFin = new Date(filterDateFin);
-        const dateIntervention = new Date(intervention.date_prevue );
+        const dateIntervention = new Date(intervention.date_prevue);
         if (dateIntervention > dateFin) return false;
       }
 
@@ -557,9 +557,9 @@ function Interventions() {
           aVal = (a.parcelleNom || a.parcelle_nom || '').toLowerCase();
           bVal = (b.parcelleNom || b.parcelle_nom || '').toLowerCase();
           break;
-        case 'date_prevue ':
-          aVal = new Date(a.date_prevue  || a.date_prevue || 0);
-          bVal = new Date(b.date_prevue  || b.date_prevue || 0);
+        case 'date_prevue':
+          aVal = new Date(a.date_prevue || a.date_prevue || 0);
+          bVal = new Date(b.date_prevue || b.date_prevue || 0);
           break;
         case 'date_realisee':
           aVal = new Date(a.date_realisee || a.date_realisee || 0);
@@ -834,7 +834,7 @@ function Interventions() {
       const moisNum = date.getMonth();
 
       const interventionsMois = interventions.filter(intervention => {
-        const dateInt = new Date(intervention.date_prevue  || intervention.date_realisee);
+        const dateInt = new Date(intervention.date_prevue || intervention.date_realisee);
         return dateInt.getMonth() === moisNum && dateInt.getFullYear() === annee;
       });
 
@@ -944,7 +944,7 @@ const arbresFiltered = useMemo(() => {
       );
     }
 
-    if (col === 'date_prevue ' || col === 'date_realisee') {
+    if (col === 'date_prevue' || col === 'date_realisee') {
       const date = intervention[col];
       if (!date) return '-';
       return new Date(date).toLocaleDateString('fr-FR');
@@ -1016,7 +1016,7 @@ const arbresFiltered = useMemo(() => {
       type_intervention_id: '',
       parcelle_id: '',
       arbre_id: [],
-      date_prevue : new Date().toISOString().split('T')[0],
+      date_prevue: new Date().toISOString().split('T')[0],
       date_realisee: '',
       statut: 'Planifié',
       description: '',
@@ -1041,7 +1041,7 @@ const arbresFiltered = useMemo(() => {
 		parcelle_id: intervention.parcelle_id || intervention.parcelleId,
 		// ✅ CORRECTION : Convertir arbre_id en array
 		arbre_id: intervention.arbre_id ? (Array.isArray(intervention.arbre_id) ? intervention.arbre_id : [intervention.arbre_id]): [],
-		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.date_Prevue?.split('T')[0],
+		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.date_prevue?.split('T')[0],
 		date_realisee: intervention.date_realisee?.split('T')[0] || intervention.dateRealisee?.split('T')[0] || '',
 		statut: intervention.statut || 'Planifié',
 		description: intervention.description || '',
@@ -1822,9 +1822,9 @@ const handleSubmit = async (e) => {
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Arbres</th>
               <th 
                 style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('date_prevue ')}
+                onClick={() => handleSort('date_prevue')}
               >
-                Date prévue{renderSortIcon('date_prevue ')}
+                Date prévue{renderSortIcon('date_prevue')}
               </th>
               <th 
                 style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
@@ -1888,7 +1888,7 @@ const handleSubmit = async (e) => {
 					return '-';
 				  })()}
                   </td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue ')}</td>
+                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue')}</td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'statut')}</td>
                   <td style={{ padding: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {intervention.description || '-'}
@@ -2169,7 +2169,7 @@ const handleSubmit = async (e) => {
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date prévue *</label>
                     <input
                       type="date"
-                      name="date_prevue "
+                      name="date_prevue"
                       value={formData.date_prevue}
                       onChange={handleInputChange}
                       required
