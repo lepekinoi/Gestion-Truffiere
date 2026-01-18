@@ -39,7 +39,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'WeR87fFC8SN5IJUGz4w6Tl87t1Fm2840GepKl82Xe666J0D7hD',
 });
 
-// Test de connexion Ã  la base de données
+// Test de connexion à la base de données
 pool.connect((err, client, release) => {
   if (err) {
     console.error('âÃ…â€™ Erreur de connexion Ã  la base de données:', err.stack);

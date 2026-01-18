@@ -1041,7 +1041,7 @@ const arbresFiltered = useMemo(() => {
 		parcelle_id: intervention.parcelle_id || intervention.parcelleId,
 		// ✅ CORRECTION : Convertir arbre_id en array
 		arbre_id: intervention.arbre_id ? (Array.isArray(intervention.arbre_id) ? intervention.arbre_id : [intervention.arbre_id]): [],
-		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.datePrevue?.split('T')[0],
+		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.date_Prevue?.split('T')[0],
 		date_realisee: intervention.date_realisee?.split('T')[0] || intervention.dateRealisee?.split('T')[0] || '',
 		statut: intervention.statut || 'Planifié',
 		description: intervention.description || '',
@@ -2170,7 +2170,7 @@ const handleSubmit = async (e) => {
                     <input
                       type="date"
                       name="date_prevue "
-                      value={formData.date_prevue }
+                      value={formData.date_prevue}
                       onChange={handleInputChange}
                       required
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
