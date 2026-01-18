@@ -373,7 +373,7 @@ function Interventions() {
   const [showFilters, setShowFilters] = useState(false);
 
   // 🆕 TRI
-  const [sortField, setSortField] = useState('datePrevue');
+  const [sortField, setSortField] = useState('date_prevue ');
   const [sortDirection, setSortDirection] = useState('desc');
 
   // UI
@@ -388,7 +388,7 @@ function Interventions() {
   // Sélection multiple
   const [selectedInterventions, setSelectedInterventions] = useState(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
-  const [bulkEditData, setBulkEditData] = useState({ statut: '', daterealisee: '' });
+  const [bulkEditData, setBulkEditData] = useState({ statut: '', date_realisee: '' });
 
   // Modal de confirmation
   const [confirmModal, setConfirmModal] = useState(null);
@@ -407,11 +407,11 @@ function Interventions() {
 
   // Formulaire principal
   const [formData, setFormData] = useState({
-    typeInterventionId: '',
-    parcelleId: '',
-    arbreIds: [],
-    datePrevue: new Date().toISOString().split('T')[0],
-    dateRealisee: '',
+    type_intervention_id: '',
+    parcelle_id: '',
+    arbre_id: [],          // ← comme ça
+    date_prevue: new Date().toISOString().split('T')[0],
+    date_realisee: '',
     statut: 'Planifié',
     description: '',
     notes: '',
@@ -485,14 +485,14 @@ function Interventions() {
       if (filterStatut !== 'all' && intervention.statut !== filterStatut) return false;
 
       // Filtre par type
-      if (filterType !== 'all' && intervention.typeInterventionId !== parseInt(filterType)) return false;
+      if (filterType !== 'all' && intervention.type_intervention_id !== parseInt(filterType)) return false;
 
       // Filtre par parcelle
-      if (filterParcelle !== 'all' && intervention.parcelleId !== parseInt(filterParcelle)) return false;
+      if (filterParcelle !== 'all' && intervention.parcelle_id !== parseInt(filterParcelle)) return false;
 
       // Filtre par période
       if (filterPeriode !== 'all') {
-        const dateIntervention = new Date(intervention.datePrevue);
+        const dateIntervention = new Date(intervention.date_prevue );
         const now = new Date();
 
         if (filterPeriode === 'today') {
@@ -511,20 +511,20 @@ function Interventions() {
       // Filtre par dates personnalisées
       if (filterDateDebut) {
         const dateDebut = new Date(filterDateDebut);
-        const dateIntervention = new Date(intervention.datePrevue);
+        const dateIntervention = new Date(intervention.date_prevue );
         if (dateIntervention < dateDebut) return false;
       }
 
       if (filterDateFin) {
         const dateFin = new Date(filterDateFin);
-        const dateIntervention = new Date(intervention.datePrevue);
+        const dateIntervention = new Date(intervention.date_prevue );
         if (dateIntervention > dateFin) return false;
       }
 
       // Filtre par recherche textuelle
       if (searchText) {
         const search = searchText.toLowerCase();
-        const typeNom = typesIntervention.find(t => t.id === intervention.typeInterventionId)?.nom || '';
+        const typeNom = typesIntervention.find(t => t.id === intervention.type_intervention_id)?.nom || '';
         const parcelleNom = intervention.parcelleNom || '';
         const description = intervention.description || '';
         const notes = intervention.notes || '';
@@ -550,20 +550,20 @@ function Interventions() {
 
       switch (sortField) {
         case 'typenom':
-          aVal = getTypeName(a.typeInterventionId).toLowerCase();
-          bVal = getTypeName(b.typeInterventionId).toLowerCase();
+          aVal = getTypeName(a.type_intervention_id).toLowerCase();
+          bVal = getTypeName(b.type_intervention_id).toLowerCase();
           break;
         case 'parcelleNom':
           aVal = (a.parcelleNom || a.parcelle_nom || '').toLowerCase();
           bVal = (b.parcelleNom || b.parcelle_nom || '').toLowerCase();
           break;
-        case 'datePrevue':
-          aVal = new Date(a.datePrevue || a.date_prevue || 0);
-          bVal = new Date(b.datePrevue || b.date_prevue || 0);
+        case 'date_prevue ':
+          aVal = new Date(a.date_prevue  || a.date_prevue || 0);
+          bVal = new Date(b.date_prevue  || b.date_prevue || 0);
           break;
-        case 'dateRealisee':
-          aVal = new Date(a.dateRealisee || a.date_realisee || 0);
-          bVal = new Date(b.dateRealisee || b.date_realisee || 0);
+        case 'date_realisee':
+          aVal = new Date(a.date_realisee || a.date_realisee || 0);
+          bVal = new Date(b.date_realisee || b.date_realisee || 0);
           break;
         case 'statut':
           aVal = (a.statut || '').toLowerCase();
@@ -686,7 +686,7 @@ function Interventions() {
   };
 
   const openBulkEditModal = () => {
-    setBulkEditData({ statut: '', daterealisee: '' });
+    setBulkEditData({ statut: '', date_realisee: '' });
     setShowBulkEditModal(true);
   };
 
@@ -705,7 +705,7 @@ function Interventions() {
     try {
       const updates = {};
       if (bulkEditData.statut) updates.statut = bulkEditData.statut;
-      if (bulkEditData.daterealisee) updates.daterealisee = bulkEditData.daterealisee;
+      if (bulkEditData.date_realisee) updates.date_realisee = bulkEditData.date_realisee;
 
       if (Object.keys(updates).length === 0) {
         showMessage('Aucune modification à appliquer', 'error');
@@ -834,7 +834,7 @@ function Interventions() {
       const moisNum = date.getMonth();
 
       const interventionsMois = interventions.filter(intervention => {
-        const dateInt = new Date(intervention.datePrevue || intervention.dateRealisee);
+        const dateInt = new Date(intervention.date_prevue  || intervention.date_realisee);
         return dateInt.getMonth() === moisNum && dateInt.getFullYear() === annee;
       });
 
@@ -858,24 +858,24 @@ function Interventions() {
 const arbresFiltered = useMemo(() => {
   return arbres.filter(arbre => {
     // 🔧 CORRECTION: Filtre par parcelle
-    if (formData.parcelleId && formData.parcelleId !== '') {
+    if (formData.parcelle_id && formData.parcelle_id !== '') {
       // Récupérer l'ID de parcelle de l'arbre (compatible snake_case et camelCase)
-      const arbreParcelleId = arbre.parcelleId || arbre.parcelle_id;
+      const arbreparcelle_id = arbre.parcelle_id || arbre.parcelle_id;
       
-      const parcelleIdNum = parseInt(formData.parcelleId);
-      const arbreParcelleIdNum = parseInt(arbreParcelleId);
+      const parcelle_id_Num = parseInt(formData.parcelle_id);
+      const arbreparcelle_id_Num = parseInt(arbreparcelle_id);
       
       // Si les conversions échouent (NaN), on n'affiche pas l'arbre
-      if (isNaN(parcelleIdNum) || isNaN(arbreParcelleIdNum)) {
+      if (isNaN(parcelle_id_Num) || isNaN(arbreparcelle_id_Num)) {
         return false;
       }
       
       // Comparaison des IDs numériques
-      if (arbreParcelleIdNum !== parcelleIdNum) {
+      if (arbreparcelle_id_Num !== parcelle_id_Num) {
         return false;
       }
     }
-    // Si parcelleId est vide → on affiche TOUS les arbres (cas "Toutes les parcelles")
+    // Si parcelle_id  est vide → on affiche TOUS les arbres (cas "Toutes les parcelles")
 
     // Filtre par texte de recherche
     if (arbreSearchText) {
@@ -892,7 +892,7 @@ const arbresFiltered = useMemo(() => {
 
     return true;
   });
-}, [arbres, formData.parcelleId, arbreSearchText]);
+}, [arbres, formData.parcelle_id, arbreSearchText]);
 
 
   // ========================================
@@ -918,7 +918,7 @@ const arbresFiltered = useMemo(() => {
   // ========================================
   const renderCell = (intervention, col) => {
     if (col === 'typenom') {
-      const typeName = intervention.typenom || getTypeName(intervention.typeInterventionId);
+      const typeName = intervention.typenom || getTypeName(intervention.type_intervention_id);
       const icon = getTypeIcon(typeName);
       return (
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -944,7 +944,7 @@ const arbresFiltered = useMemo(() => {
       );
     }
 
-    if (col === 'dateprevue' || col === 'daterealisee') {
+    if (col === 'date_prevue ' || col === 'date_realisee') {
       const date = intervention[col];
       if (!date) return '-';
       return new Date(date).toLocaleDateString('fr-FR');
@@ -982,13 +982,13 @@ const arbresFiltered = useMemo(() => {
     }));
 
     // Réinitialiser la recherche d'arbres quand la parcelle change
-    if (name === 'parcelleId') {
+    if (name === 'parcelle_id') {
       setArbreSearchText('');
-      setFormData(prev => ({ ...prev, arbreIds: [] }));
+      setFormData(prev => ({ ...prev, arbre_id: [] }));
     }
 
     // Réinitialiser les détails quand le type change
-    if (name === 'typeInterventionId') {
+    if (name === 'type_intervention_id') {
       setDetailsData({});
       setShowAdvancedFields(false);
     }
@@ -998,7 +998,7 @@ const arbresFiltered = useMemo(() => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
     setFormData(prev => ({
       ...prev,
-      arbreIds: selectedOptions
+      arbre_id: selectedOptions
     }));
   };
 
@@ -1013,11 +1013,11 @@ const arbresFiltered = useMemo(() => {
   const openNewModal = () => {
     setEditingIntervention(null);
     setFormData({
-      typeInterventionId: '',
-      parcelleId: '',
-      arbreIds: [],
-      datePrevue: new Date().toISOString().split('T')[0],
-      dateRealisee: '',
+      type_intervention_id: '',
+      parcelle_id: '',
+      arbre_id: [],
+      date_prevue : new Date().toISOString().split('T')[0],
+      date_realisee: '',
       statut: 'Planifié',
       description: '',
       notes: '',
@@ -1037,11 +1037,11 @@ const arbresFiltered = useMemo(() => {
   const handleEdit = async (intervention) => {
     setEditingIntervention(intervention);
     setFormData({
-      typeInterventionId: intervention.typeInterventionId || intervention.type_intervention_id,
-      parcelleId: intervention.parcelleId || intervention.parcelle_id,
-      arbreIds: intervention.arbreIds || [],
-      datePrevue: intervention.datePrevue?.split('T')[0] || intervention.date_prevue?.split('T')[0],
-      dateRealisee: intervention.dateRealisee?.split('T')[0] || intervention.date_realisee?.split('T')[0] || '',
+      type_intervention_id: intervention.type_intervention_id || intervention.type_intervention_id,
+      parcelle_id: intervention.parcelle_id || intervention.parcelle_id,
+      arbre_id: intervention.arbre_id || [],
+      date_prevue : intervention.date_prevue ?.split('T')[0] || intervention.date_prevue?.split('T')[0],
+      date_realisee: intervention.date_realisee?.split('T')[0] || intervention.date_realisee?.split('T')[0] || '',
       statut: intervention.statut || 'Planifié',
       description: intervention.description || '',
       notes: intervention.notes || '',
@@ -1080,21 +1080,21 @@ const handleSubmit = async (e) => {
   
   try {
     // Si plusieurs arbres sélectionnés, créer une intervention par arbre
-    const arbresSelectionnes = formData.arbreIds && formData.arbreIds.length > 0 
-      ? formData.arbreIds 
+    const arbresSelectionnes = formData.arbre_id && formData.arbre_id.length > 0 
+      ? formData.arbre_id
       : [null]; // Si aucun arbre, créer une intervention sans arbre
     
     let interventionsCreees = 0;
     let savedIntervention = null;
     
-    for (const arbreId of arbresSelectionnes) {
+    for (const arbre_id of arbresSelectionnes) {
       const dataToSend = {
         // ⚠️ UTILISER snake_case pour correspondre au backend
-        typeinterventionid: formData.typeInterventionId ? parseInt(formData.typeInterventionId) : null,
-        parcelleid: formData.parcelleId ? parseInt(formData.parcelleId) : null,
-        arbreid: arbreId, // UN SEUL arbre (pas arbreIds)
-        dateprevue: formData.datePrevue,
-        daterealisee: formData.dateRealisee || null,
+        type_intervention_id: formData.type_intervention_id ? parseInt(formData.type_intervention_id) : null,
+        parcelle_id: formData.parcelle_id ? parseInt(formData.parcelle_id) : null,
+        arbre_id: arbre_id, // UN SEUL arbre (pas arbre_id)
+        date_prevue: formData.date_prevue ,
+        date_realisee: formData.date_realisee || null,
         dureeminutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null,
         personnel: formData.personnel || '',
         description: formData.description || '',
@@ -1247,12 +1247,12 @@ const handleSubmit = async (e) => {
 
   // Obtenir la configuration des champs pour le type sélectionné
   const getFieldsConfig = () => {
-    const typeName = getTypeName(parseInt(formData.typeInterventionId));
+    const typeName = getTypeName(parseInt(formData.type_intervention_id));
     return CHAMPS_PAR_TYPE[typeName] || null;
   };
 
   const getSelectedTypeName = () => {
-    return getTypeName(parseInt(formData.typeInterventionId));
+    return getTypeName(parseInt(formData.type_intervention_id));
   };
 
   // Rendu d'un champ du formulaire détaillé
@@ -1412,8 +1412,8 @@ const handleSubmit = async (e) => {
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date réalisée</label>
               <input
                 type="date"
-                name="daterealisee"
-                value={bulkEditData.daterealisee}
+                name="date_realisee"
+                value={bulkEditData.date_realisee}
                 onChange={handleBulkEditChange}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
               />
@@ -1817,9 +1817,9 @@ const handleSubmit = async (e) => {
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Arbres</th>
               <th 
                 style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('datePrevue')}
+                onClick={() => handleSort('date_prevue ')}
               >
-                Date prévue{renderSortIcon('datePrevue')}
+                Date prévue{renderSortIcon('date_prevue ')}
               </th>
               <th 
                 style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
@@ -1858,12 +1858,12 @@ const handleSubmit = async (e) => {
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'typenom')}</td>
                   <td style={{ padding: '0.75rem' }}>{intervention.parcelleNom || intervention.parcelle_nom || '-'}</td>
                   <td style={{ padding: '0.75rem' }}>
-                    {intervention.arbreIds && intervention.arbreIds.length > 0 
-                      ? `${intervention.arbreIds.length} arbre${intervention.arbreIds.length > 1 ? 's' : ''}`
+                    {intervention.arbre_id && intervention.arbre_id.length > 0 
+                      ? `${intervention.arbre_id.length} arbre${intervention.arbre_id.length > 1 ? 's' : ''}`
                       : '-'
                     }
                   </td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'dateprevue')}</td>
+                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue ')}</td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'statut')}</td>
                   <td style={{ padding: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {intervention.description || '-'}
@@ -2011,8 +2011,8 @@ const handleSubmit = async (e) => {
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Type d'intervention *</label>
                     <select
-                      name="typeInterventionId"
-                      value={formData.typeInterventionId}
+                      name="type_intervention_id"
+                      value={formData.type_intervention_id}
                       onChange={handleInputChange}
                       required
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
@@ -2027,8 +2027,8 @@ const handleSubmit = async (e) => {
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Parcelle</label>
                     <select
-                      name="parcelleId"
-                      value={formData.parcelleId}
+                      name="parcelle_id"
+                      value={formData.parcelle_id}
                       onChange={handleInputChange}
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
                     >
@@ -2041,7 +2041,7 @@ const handleSubmit = async (e) => {
                 </div>
 
 				{/* Sélection des arbres - 🔧 CORRECTION APPLIQUÉE */}
-				{formData.parcelleId && (
+				{formData.parcelle_id && (
 				  <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Arbres concernés</label>
                     <input
@@ -2053,7 +2053,7 @@ const handleSubmit = async (e) => {
                     />
                     <select
                       multiple
-                      value={formData.arbreIds}
+                      value={formData.arbre_id}
                       onChange={handleArbresChange}
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd', minHeight: '150px' }}
                     >
@@ -2078,8 +2078,8 @@ const handleSubmit = async (e) => {
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date prévue *</label>
                     <input
                       type="date"
-                      name="datePrevue"
-                      value={formData.datePrevue}
+                      name="date_prevue "
+                      value={formData.date_prevue }
                       onChange={handleInputChange}
                       required
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
@@ -2090,8 +2090,8 @@ const handleSubmit = async (e) => {
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date réalisée</label>
                     <input
                       type="date"
-                      name="dateRealisee"
-                      value={formData.dateRealisee}
+                      name="date_realisee"
+                      value={formData.date_realisee}
                       onChange={handleInputChange}
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
                     />
