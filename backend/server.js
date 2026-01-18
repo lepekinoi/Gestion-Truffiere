@@ -1337,31 +1337,75 @@ app.get('/api/interventions/check-doublon', async (req, res) => {
   }
 });
 
-// POST - Créer une intervention
+// POST - Créer une intervention (avec création optionnelle des détails)
 app.post('/api/interventions', requireWriteAccess, async (req, res) => {
+  const client = await pool.connect();
+
   try {
+    await client.query('BEGIN');
+
     const { 
-      typeinterventionid, parcelleid, arbreid, dateprevue, daterealisee, 
-      dureeminutes, personnel, description, cout, statut, meteo, notes 
+      // Champs principaux (déjà utilisés dans ton code actuel)
+      type_intervention_id ,
+      parcelle_id ,
+      arbre_id ,
+      date_prevue ,
+      date_realisee,
+      duree_minutes,
+      personnel,
+      description,
+      cout,
+      statut,
+      meteo,
+      notes,
+
+      // Champs de détails POTENTIELS (adapter selon ta table intervention_details)
+      volume_eau_m3,
+      volume_eau_par_arbre_l,
+      methode_irrigation,
+      source_eau,
+      debit_l_h,
+      frequence_irrigation,
+      humidite_sol_avant,
+      humidite_sol_apres,
+      pression_bar,
+      categorie_traitement,
+      nom_commercial,
+      matiere_active,
+      numero_amm,
+      dose_produit_ha,
+      dose_produit_arbre,
+      concentration,
+      volume_bouillie_l,
+      surface_traitee_ha,
+      methode_application,
+      cible_traitement,
+      delai_avant_recolte_jours,
+      conditions_application,
+      equipement_protection,
+      zone_non_traitee_m,
+      fabricant
+      // ajoute ici tout autre champ existant dans intervention_details
     } = req.body;
     
-    console.log('📥 Création intervention:', { 
-      typeinterventionid, parcelleid, arbreid, dateprevue, statut 
+    console.log('📥 Création intervention (transaction):', { 
+      type_intervention_id , parcelle_id , arbre_id , date_prevue , statut 
     });
     
-    const result = await pool.query(
+    // ÉTAPE 1 : créer l'intervention principale (même logique que ton code actuel)
+    const interventionResult = await client.query(
       `INSERT INTO interventions 
-       (typeinterventionid, parcelleid, arbreid, dateprevue, daterealisee, 
-        dureeminutes, personnel, description, cout, statut, meteo, notes)
+       (type_intervention_id , parcelle_id , arbre_id , date_prevue , date_realisee, 
+        duree_minutes, personnel, description, cout, statut, meteo, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
-        emptyToNull(typeinterventionid),
-        emptyToNull(parcelleid),
-        emptyToNull(arbreid),
-        dateprevue,
-        emptyToNull(daterealisee),
-        emptyToNull(dureeminutes),
+        emptyToNull(type_intervention_id),
+        emptyToNull(parcelle_id),
+        emptyToNull(arbre_id),
+        date_prevue ,
+        emptyToNull(date_realisee),
+        emptyToNull(duree_minutes),
         personnel || '',
         description || '',
         emptyToNull(cout),
@@ -1371,14 +1415,83 @@ app.post('/api/interventions', requireWriteAccess, async (req, res) => {
       ]
     );
     
-    console.log('✅ Intervention créée, ID:', result.rows[0].id);
-    res.status(201).json(result.rows[0]);
-    
+    const intervention = interventionResult.rows[0];
+    const interventionId = intervention.id;
+    console.log('✅ Intervention créée, ID:', interventionId);
+
+    // ÉTAPE 2 : créer une ligne dans intervention_details SI des champs de détail sont fournis
+    const detailsRaw = {
+      volume_eau_m3,
+      volume_eau_par_arbre_l,
+      methode_irrigation,
+      source_eau,
+      debit_l_h,
+      frequence_irrigation,
+      humidite_sol_avant,
+      humidite_sol_apres,
+      pression_bar,
+      categorie_traitement,
+      nom_commercial,
+      matiere_active,
+      numero_amm,
+      dose_produit_ha,
+      dose_produit_arbre,
+      concentration,
+      volume_bouillie_l,
+      surface_traitee_ha,
+      methode_application,
+      cible_traitement,
+      delai_avant_recolte_jours,
+      conditions_application,
+      equipement_protection,
+      zone_non_traitee_m,
+      fabricant
+      // ajoute ici les autres champs de intervention_details si tu en as
+    };
+
+    // Filtrer pour ne garder que les champs réellement renseignés
+    const detailFields = Object.entries(detailsRaw)
+      .filter(([_, value]) => value !== undefined && value !== null && value !== '');
+
+    if (detailFields.length > 0) {
+      const columns = ['intervention_id'];
+      const values = [interventionId];
+      const placeholders = ['$1'];
+      let idx = 2;
+
+      for (const [field, value] of detailFields) {
+        columns.push(field);
+        values.push(value);
+        placeholders.push(`$${idx++}`);
+      }
+
+      console.log('📝 Insertion intervention_details:', { columns });
+
+      await client.query(
+        `INSERT INTO intervention_details (${columns.join(', ')})
+         VALUES (${placeholders.join(', ')})`,
+        values
+      );
+    } else {
+      console.log('ℹ️ Aucun détail spécifique fourni, pas d’entrée dans intervention_details');
+    }
+
+    await client.query('COMMIT');
+
+    res.status(201).json(intervention);
+
   } catch (err) {
-    console.error('❌ Erreur création intervention:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la création', details: err.message });
+    await client.query('ROLLBACK');
+    console.error('❌ Erreur création intervention (transaction):', err);
+    res.status(500).json({ 
+      error: 'Erreur lors de la création de l\'intervention', 
+      details: err.message 
+    });
+  } finally {
+    client.release();
   }
 });
+
 
 
 app.put('/api/interventions/:id', requireWriteAccess, async (req, res) => {
