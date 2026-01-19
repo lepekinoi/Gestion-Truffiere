@@ -1,0 +1,299 @@
+# ============================================================
+# .gitignore - Gestion Truffière
+# Fichiers et dossiers à exclure du contrôle de version Git
+# ============================================================
+
+# ============================================================
+# FICHIERS SENSIBLES - SÉCURITÉ CRITIQUE
+# ============================================================
+
+# Variables d'environnement (contient mots de passe, clés API, JWT_SECRET)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+backend/.env
+frontend/.env
+
+# Fichiers de configuration avec secrets
+config/secrets.json
+config/credentials.json
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+
+# Clés SSH et certificats
+id_rsa
+id_rsa.pub
+*.ppk
+
+# ============================================================
+# NODE.JS / NPM
+# ============================================================
+
+# Dépendances
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Fichiers de verrouillage (conserver package-lock.json pour la sécurité)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cache npm
+.npm
+.eslintcache
+.node_repl_history
+
+# Output de build
+dist/
+build/
+out/
+frontend/build/
+frontend/dist/
+
+# ============================================================
+# BASE DE DONNÉES
+# ============================================================
+
+# Fichiers de base de données locaux
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Backups de base de données (contiennent données sensibles)
+*.sql.backup
+*.sql.gz
+*.dump
+backup/*.sql
+dumps/*.sql
+backups/
+
+# Données PostgreSQL locales
+postgres-data/
+pgdata/
+
+# ============================================================
+# LOGS
+# ============================================================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+backend/logs/
+frontend/logs/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================================
+# ENVIRONNEMENTS DE DÉVELOPPEMENT
+# ============================================================
+
+# IDEs et éditeurs
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# JetBrains IDEs
+*.iml
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================
+# DOCKER
+# ============================================================
+
+# Fichiers Docker locaux avec secrets
+docker-compose.override.yml
+.dockerignore
+
+# Volumes Docker persistants
+docker-volumes/
+.docker/
+postgres_data/
+
+# ============================================================
+# SYSTÈMES D'EXPLOITATION
+# ============================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================
+# TESTS ET COUVERTURE
+# ============================================================
+
+# Jest / Test coverage
+coverage/
+.nyc_output/
+*.lcov
+.coverage/
+
+# Test results
+test-results/
+junit.xml
+
+# ============================================================
+# FICHIERS TEMPORAIRES
+# ============================================================
+
+# Fichiers temporaires
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+*.swp
+
+# Uploads temporaires
+uploads/temp/
+uploads/tmp/
+
+# ============================================================
+# FICHIERS SPÉCIFIQUES AU PROJET TRUFFIÈRE
+# ============================================================
+
+# Exports de données sensibles clients
+exports/*.csv
+exports/*.xlsx
+exports/*.pdf
+exports/factures/*.pdf
+!exports/.gitkeep
+!exports/README.md
+
+# Photos uploadées (si volumineuses)
+uploads/photos/*.jpg
+uploads/photos/*.png
+uploads/photos/*.jpeg
+!uploads/photos/.gitkeep
+
+# Backups locaux de production
+backups/
+*.backup
+*.bak
+
+# Fichiers de configuration locaux
+config.local.js
+config.local.json
+backend/config.local.js
+
+# ============================================================
+# SÉCURITÉ SUPPLÉMENTAIRE
+# ============================================================
+
+# Tokens et certificats d'authentification
+*.token
+*-key.json
+service-account.json
+jwt-secret.txt
+
+# Fichiers de session
+sessions/
+.sessions/
+
+# Fichiers de cache Redis/Memcached
+dump.rdb
+*.rdb
+
+# Fichiers contenant des mots de passe
+passwords.txt
+credentials.txt
+secrets.txt
+
+# ============================================================
+# CI/CD
+# ============================================================
+
+# Artifacts de build CI
+.travis.yml.local
+.gitlab-ci.local.yml
+.github/workflows/*.local.yml
+
+# Variables d'environnement CI (ne jamais commiter)
+.env.ci
+
+# ============================================================
+# FRONTEND (React/Vue/Angular)
+# ============================================================
+
+# Build frontend
+frontend/build/
+frontend/dist/
+frontend/.next/
+frontend/out/
+
+# Cache frontend
+frontend/.cache/
+
+# Variables d'environnement frontend
+frontend/.env.local
+frontend/.env.production.local
+
+# ============================================================
+# DOCUMENTATION GÉNÉRÉE
+# ============================================================
+
+# Documentation auto-générée
+docs/api-generated/
+docs/coverage/
+
+# ============================================================
+# AUTRES
+# ============================================================
+
+# Fichiers de lock système
+*.lock
+.lock-wscript
+
+# Fichiers de debug
+debug/
+.debug/
+
+# Fichiers de profiling
+*.cpuprofile
+*.heapsnapshot
+
+# Fichiers de monitoring
+.pm2/
+pm2-logs/
