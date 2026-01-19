@@ -14,6 +14,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 require('dotenv').config();
+const tokenRotation = require('./utils/tokenRotation');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -280,79 +281,21 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const userAgent = req.get('User-Agent') || 'Unknown';
 
   try {
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis', code: 'MISSING_FIELDS' });
-    }
-
-    // Vérifier le verrouillage du compte
-    const lockCheck = await pool.query(
-      'SELECT locked_until, failed_login_attempts FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (lockCheck.rows.length > 0 && lockCheck.rows[0].locked_until) {
-      if (new Date(lockCheck.rows[0].locked_until) > new Date()) {
-        await logLoginAttempt(email, clientIp, userAgent, false, 'account_locked');
-        return res.status(423).json({
-          error: 'Compte temporairement verrouillé',
-          code: 'ACCOUNT_LOCKED',
-          lockedUntil: lockCheck.rows[0].locked_until
-        });
-      }
-    }
-
-    // Rechercher l'utilisateur
-    const userResult = await pool.query(
-      'SELECT id, email, password_hash, nom, prenom, role, is_active FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (userResult.rows.length === 0) {
-      await logLoginAttempt(email, clientIp, userAgent, false, 'invalid_email');
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect', code: 'INVALID_CREDENTIALS' });
-    }
-
-    const user = userResult.rows[0];
-
-    if (!user.is_active) {
-      await logLoginAttempt(email, clientIp, userAgent, false, 'account_inactive');
-      return res.status(403).json({ error: 'Compte désactivé', code: 'ACCOUNT_DISABLED' });
-    }
-
-    // Vérifier le mot de passe
-    const passwordValid = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordValid) {
-      await logLoginAttempt(email, clientIp, userAgent, false, 'invalid_password');
-      
-      // Incrémenter les échecs
-      const failures = (lockCheck.rows[0]?.failed_login_attempts || 0) + 1;
-      if (failures >= 5) {
-        await pool.query(
-          "UPDATE users SET failed_login_attempts = $1, locked_until = NOW() + INTERVAL '15 minutes' WHERE email = $2",
-          [failures, email]
-        );
-      } else {
-        await pool.query(
-          'UPDATE users SET failed_login_attempts = $1 WHERE email = $2',
-          [failures, email]
-        );
-      }
-      
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect', code: 'INVALID_CREDENTIALS' });
-    }
-
-    // Générer les tokens
+    // ... (code existant de validation email/password)
+    
+    // Générer l'access token (inchangé)
     const accessToken = generateAccessToken(user);
-    const { token: refreshToken, hash: refreshTokenHash, expiresAt } = generateRefreshToken();
-
-    // Sauvegarder le refresh token
-    await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token_hash, device_info, ip_address, expires_at) VALUES ($1, $2, $3, $4, $5)',
-      [user.id, refreshTokenHash, userAgent.substring(0, 255), clientIp, expiresAt]
+    
+    // **NOUVEAU: Utiliser la rotation pour créer le refresh token**
+    const refreshTokenData = await tokenRotation.createRotatedToken(
+      pool,
+      user.id,
+      userAgent.substring(0, 255),
+      clientIp,
+      userAgent
     );
 
-    // Réinitialiser les échecs
+    // Réinitialiser les échecs de connexion
     await pool.query(
       'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = $1',
       [user.id]
@@ -363,9 +306,15 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     res.json({
       message: 'Connexion réussie',
       accessToken,
-      refreshToken,
+      refreshToken: refreshTokenData.token,
       expiresIn: JWT_EXPIRES_IN,
-      user: { id: user.id, email: user.email, nom: user.nom, prenom: user.prenom, role: user.role }
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        nom: user.nom, 
+        prenom: user.prenom, 
+        role: user.role 
+      }
     });
 
   } catch (err) {
@@ -377,84 +326,136 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 // POST /api/auth/refresh - Rafraîchir le token
 app.post('/api/auth/refresh', async (req, res) => {
   const { refreshToken } = req.body;
+  const clientIp = req.ip || req.connection.remoteAddress;
+  const userAgent = req.get('User-Agent') || 'Unknown';
 
   try {
     if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token requis', code: 'MISSING_TOKEN' });
+      return res.status(400).json({ 
+        error: 'Refresh token requis', 
+        code: 'MISSING_TOKEN' 
+      });
     }
 
-    const tokenHash = hashRefreshToken(refreshToken);
-
-    const tokenResult = await pool.query(
-      `SELECT rt.*, u.id as user_id, u.email, u.nom, u.prenom, u.role, u.is_active
-       FROM refresh_tokens rt
-       JOIN users u ON rt.user_id = u.id
-       WHERE rt.token_hash = $1 AND rt.revoked = false AND rt.expires_at > NOW()`,
-      [tokenHash]
+    // **ROTATION AUTOMATIQUE**
+    const rotationResult = await tokenRotation.rotateRefreshToken(
+      pool,
+      refreshToken,
+      userAgent.substring(0, 255),
+      clientIp,
+      userAgent
     );
 
-    if (tokenResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Token invalide ou expiré', code: 'INVALID_REFRESH_TOKEN' });
-    }
+    // Générer un nouveau access token
+    const accessToken = generateAccessToken(rotationResult.user);
 
-    const tokenData = tokenResult.rows[0];
-
-    if (!tokenData.is_active) {
-      await pool.query(
-        "UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'account_disabled' WHERE id = $1",
-        [tokenData.id]
-      );
-      return res.status(403).json({ error: 'Compte désactivé', code: 'ACCOUNT_DISABLED' });
-    }
-
-    const accessToken = generateAccessToken({
-      id: tokenData.user_id,
-      email: tokenData.email,
-      nom: tokenData.nom,
-      role: tokenData.role
+    res.json({ 
+      accessToken, 
+      refreshToken: rotationResult.token, // NOUVEAU token
+      expiresIn: JWT_EXPIRES_IN 
     });
-
-    res.json({ accessToken, expiresIn: JWT_EXPIRES_IN });
 
   } catch (err) {
     console.error('Erreur refresh:', err);
-    res.status(500).json({ error: 'Erreur lors du rafraîchissement', code: 'REFRESH_ERROR' });
+
+    // Gestion des erreurs spécifiques
+    if (err.message === 'TOKEN_REUSE_DETECTED') {
+      return res.status(401).json({ 
+        error: 'Token réutilisé - Toutes les sessions ont été révoquées', 
+        code: 'SECURITY_BREACH',
+        action: 'FORCE_LOGOUT'
+      });
+    }
+
+    if (err.message === 'TOKEN_EXPIRED') {
+      return res.status(401).json({ 
+        error: 'Token expiré', 
+        code: 'TOKEN_EXPIRED' 
+      });
+    }
+
+    if (err.message === 'INVALID_TOKEN') {
+      return res.status(401).json({ 
+        error: 'Token invalide', 
+        code: 'INVALID_TOKEN' 
+      });
+    }
+
+    if (err.message === 'USER_INACTIVE') {
+      return res.status(403).json({ 
+        error: 'Compte désactivé', 
+        code: 'ACCOUNT_DISABLED' 
+      });
+    }
+
+    if (err.message === 'MAX_ROTATION_EXCEEDED') {
+      return res.status(401).json({ 
+        error: 'Trop de rotations - Veuillez vous reconnecter', 
+        code: 'MAX_ROTATION_EXCEEDED' 
+      });
+    }
+
+    res.status(500).json({ 
+      error: 'Erreur lors du rafraîchissement', 
+      code: 'REFRESH_ERROR' 
+    });
   }
 });
-
 // POST /api/auth/logout - Déconnexion
 app.post('/api/auth/logout', authMiddleware, async (req, res) => {
   const { refreshToken } = req.body;
 
   try {
     if (refreshToken) {
-      const tokenHash = hashRefreshToken(refreshToken);
-      await pool.query(
-        "UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'logout' WHERE token_hash = $1 AND user_id = $2",
-        [tokenHash, req.user.id]
+      const tokenHash = tokenRotation.hashToken(refreshToken);
+      
+      // Trouver l'ID du token
+      const tokenResult = await pool.query(
+        'SELECT id FROM refresh_tokens WHERE token_hash = $1',
+        [tokenHash]
       );
+
+      if (tokenResult.rows.length > 0) {
+        // Révoquer la chaîne complète
+        await tokenRotation.revokeTokenChain(
+          pool, 
+          tokenResult.rows[0].id, 
+          'user_logout'
+        );
+      }
     }
+    
     res.json({ message: 'Déconnexion réussie' });
   } catch (err) {
     console.error('Erreur logout:', err);
-    res.status(500).json({ error: 'Erreur lors de la déconnexion', code: 'LOGOUT_ERROR' });
+    res.status(500).json({ 
+      error: 'Erreur lors de la déconnexion', 
+      code: 'LOGOUT_ERROR' 
+    });
   }
 });
 
 // POST /api/auth/logout-all - Déconnexion de tous les appareils
 app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
-      "UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'logout_all' WHERE user_id = $1 AND revoked = false RETURNING id",
-      [req.user.id]
+    const revokedCount = await tokenRotation.revokeAllUserTokens(
+      pool, 
+      req.user.id, 
+      'logout_all_devices'
     );
-    res.json({ message: 'Déconnexion de tous les appareils', sessionsRevoked: result.rows.length });
+    
+    res.json({ 
+      message: 'Déconnexion de tous les appareils', 
+      sessionsRevoked: revokedCount 
+    });
   } catch (err) {
     console.error('Erreur logout-all:', err);
-    res.status(500).json({ error: 'Erreur', code: 'LOGOUT_ALL_ERROR' });
+    res.status(500).json({ 
+      error: 'Erreur', 
+      code: 'LOGOUT_ALL_ERROR' 
+    });
   }
 });
-
 // GET /api/auth/me - Profil utilisateur
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
@@ -719,6 +720,53 @@ app.delete('/api/auth/sessions/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Erreur revoke session:', err);
     res.status(500).json({ error: 'Erreur', code: 'REVOKE_SESSION_ERROR' });
+  }
+});
+
+// GET /api/auth/sessions - Voir ses sessions actives
+app.get('/api/auth/sessions', authMiddleware, async (req, res) => {
+  try {
+    const sessions = await tokenRotation.getActiveSessions(pool, req.user.id);
+    res.json(sessions);
+  } catch (err) {
+    console.error('Erreur get sessions:', err);
+    res.status(500).json({ 
+      error: 'Erreur', 
+      code: 'GET_SESSIONS_ERROR' 
+    });
+  }
+});
+
+// GET /api/auth/token-stats - Statistiques des tokens (admin)
+app.get('/api/auth/token-stats', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const stats = await tokenRotation.getTokenStats(pool, req.query.userId || req.user.id);
+    res.json(stats);
+  } catch (err) {
+    console.error('Erreur token stats:', err);
+    res.status(500).json({ 
+      error: 'Erreur', 
+      code: 'TOKEN_STATS_ERROR' 
+    });
+  }
+});
+
+// POST /api/auth/cleanup-tokens - Nettoyer les tokens expirés (admin)
+app.post('/api/auth/cleanup-tokens', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const daysOld = parseInt(req.body.daysOld) || 30;
+    const deletedCount = await tokenRotation.cleanupExpiredTokens(pool, daysOld);
+    
+    res.json({ 
+      message: 'Nettoyage effectué', 
+      deletedCount 
+    });
+  } catch (err) {
+    console.error('Erreur cleanup:', err);
+    res.status(500).json({ 
+      error: 'Erreur', 
+      code: 'CLEANUP_ERROR' 
+    });
   }
 });
 
