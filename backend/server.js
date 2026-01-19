@@ -25,29 +25,84 @@ const PORT = process.env.PORT || 3001;
 // ============================================================
 
 // Configuration JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGEZ_MOI_EN_PRODUCTION_minimum_64_caracteres_de_securite';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET manquant !');
+  process.exit(1);
+}
+
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_TOKEN_EXPIRES_DAYS = parseInt(process.env.REFRESH_TOKEN_EXPIRES_DAYS) || 7;
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
 
 // Configuration base de données
 const pool = new Pool({
-  host: process.env.DB_HOST || 'postgres',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'truffiere',
-  user: process.env.DB_USER || 'unstuffed1004',
-  password: process.env.DB_PASSWORD || 'WeR87fFC8SN5IJUGz4w6Tl87t1Fm2840GepKl82Xe666J0D7hD',
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
 });
 
-// Test de connexion à la base de données
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('âÃ…â€™ Erreur de connexion Ã  la base de données:', err.stack);
-  } else {
-    console.log('âÃ…â€œâ€¦ Connecté Ã  la base de données PostgreSQL');
-    release();
+// Vérifications de sécurité au démarrage
+const requiredEnvVars = ['JWT_SECRET', 'DB_PASSWORD', 'DB_USER', 'DB_NAME'];
+for (const varName of requiredEnvVars) {
+  if (!process.env[varName]) {
+    console.error(`❌ Variable d'environnement manquante : ${varName}`);
+    process.exit(1);
   }
+}
+
+
+
+// ============================================================
+// TEST DE CONNEXION À LA BASE DE DONNÉES (avec gestion d'erreur)
+// ============================================================
+
+const testDatabaseConnection = async () => {
+  try {
+    const client = await pool.connect();
+    console.log('✅ Connexion à la base de données PostgreSQL réussie');
+    console.log(`📦 Base: ${process.env.DB_NAME} | Hôte: ${process.env.DB_HOST}`);
+    
+    // Test simple de requête
+    const result = await client.query('SELECT NOW()');
+    console.log('🕐 Heure serveur DB:', result.rows[0].now);
+    
+    client.release();
+    return true;
+  } catch (err) {
+    console.error('❌ Erreur de connexion à la base de données');
+    console.error('Message:', err.message);
+    console.error('Configuration:', {
+      host: process.env.DB_HOST || 'NON DÉFINI',
+      port: process.env.DB_PORT || 'NON DÉFINI',
+      database: process.env.DB_NAME || 'NON DÉFINI',
+      user: process.env.DB_USER || 'NON DÉFINI'
+    });
+    console.error('\n⚠️  Vérifiez vos variables d\'environnement et que PostgreSQL est démarré\n');
+    return false;
+  }
+};
+
+// Tester la connexion avant de démarrer le serveur
+testDatabaseConnection().then((connected) => {
+  if (!connected) {
+    console.error('❌ Impossible de démarrer le serveur sans connexion DB');
+    process.exit(1);
+  }
+  
+  // Démarrer le serveur seulement si la connexion DB fonctionne
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log(`║  🚀 Serveur API Truffière démarré      ║`);
+    console.log(`║  📡 Port: ${PORT.toString().padEnd(28)} ║`);
+    console.log(`║  🌍 URL: http://localhost:${PORT}        ║`);
+    console.log('╚════════════════════════════════════════╝\n');
+  });
 });
+
+
 
 // ============================================================
 // MIDDLEWARES GLOBAUX
@@ -62,12 +117,10 @@ app.use(helmet({
 // CORS configuré
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'https://m-a-truffes.sytes.net',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000'
-    ];
+    const allowedOrigins = (process.env.CORS_ORIGINS || "")
+		  .split(",")
+		  .map(s => s.trim())
+		  .filter(Boolean);
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -3292,15 +3345,6 @@ app.use((err, req, res, next) => {
 		code: 'INTERNAL_ERROR', 
 		details: process.env.NODE_ENV === 'development' ? err.message : undefined 
 	}); 
-});
-
-// ============================================================
-// DÉMARRAGE DU SERVEUR
-// ============================================================
-
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(``);
 });
 
 module.exports = app;
