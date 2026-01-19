@@ -1820,18 +1820,26 @@ const handleSubmit = async (e) => {
                 Parcelle{renderSortIcon('parcelleNom')}
               </th>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Arbres</th>
-              <th 
-                style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('date_prevue')}
-              >
-                Date prévue{renderSortIcon('date_prevue')}
-              </th>
-              <th 
-                style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('statut')}
-              >
-                Statut{renderSortIcon('statut')}
-              </th>
+			<th 
+			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
+			  onClick={() => handleSort('date_prevue')}
+			>
+			  Date prévue{renderSortIcon('date_prevue')}
+			</th>
+			<th 
+			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
+			  onClick={() => handleSort('date_realisee')}
+			>
+			  Date réalisée{renderSortIcon('date_realisee')}
+			</th>
+			<th 
+			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
+			  onClick={() => handleSort('statut')}
+			>
+			  Statut{renderSortIcon('statut')}
+			</th>
+
+
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Description</th>
               <th 
                 style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
@@ -1845,7 +1853,7 @@ const handleSubmit = async (e) => {
           <tbody>
             {paginatedInterventions.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                <td colSpan="10" style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
                   Aucune intervention trouvée
                 </td>
               </tr>
@@ -1889,6 +1897,7 @@ const handleSubmit = async (e) => {
 				  })()}
                   </td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue')}</td>
+				  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_realisee')}</td>
                   <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'statut')}</td>
                   <td style={{ padding: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {intervention.description || '-'}
