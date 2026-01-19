@@ -428,6 +428,19 @@ function Interventions() {
   // Hook pour les paramètres de colonnes
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
 
+// ========================================
+  // OBTENIR LE NOM DU TYPE
+  // ========================================
+  const getTypeName = (typeId) => {
+    const type = typesIntervention.find(t => t.id === typeId);
+    return type ? type.nom : '-';
+  };
+
+  // Obtenir l'icône du type
+  const getTypeIcon = (typeName) => {
+    return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
+  };
+
   // Charger les données au montage
   useEffect(() => {
     loadData();
@@ -901,18 +914,7 @@ const arbresFiltered = useMemo(() => {
   const config = COLONNES_CONFIG.interventions;
   const colonnesValides = colonnesAffichees.filter(col => config[col]);
 
-  // ========================================
-  // OBTENIR LE NOM DU TYPE
-  // ========================================
-  const getTypeName = (typeId) => {
-    const type = typesIntervention.find(t => t.id === typeId);
-    return type ? type.nom : '-';
-  };
 
-  // Obtenir l'icône du type
-  const getTypeIcon = (typeName) => {
-    return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
-  };
    // ========================================
   // RENDU D'UNE CELLULE DU TABLEAU
   // ========================================
