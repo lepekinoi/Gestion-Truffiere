@@ -14,8 +14,6 @@
 .env.test
 .env.production
 .env.*.local
-#backend/.env
-#frontend/.env
 
 # Fichiers de configuration avec secrets
 config/secrets.json
