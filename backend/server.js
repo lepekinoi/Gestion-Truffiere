@@ -274,19 +274,104 @@ app.get('/api/health', (req, res) => {
 // ROUTES D'AUTHENTIFICATION
 // ============================================================
 
-// POST /api/auth/login - Connexion
+// POST /api/auth/login - Connexion  
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   const clientIp = req.ip || req.connection.remoteAddress;
   const userAgent = req.get('User-Agent') || 'Unknown';
 
   try {
-    // ... (code existant de validation email/password)
+    // ✅ VALIDATION DES ENTRÉES
+    if (!email || !password) {
+      await logLoginAttempt(email, clientIp, userAgent, false, 'MISSING_CREDENTIALS');
+      return res.status(400).json({ 
+        error: 'Email et mot de passe requis', 
+        code: 'MISSING_CREDENTIALS' 
+      });
+    }
+
+    // ✅ RÉCUPÉRER L'UTILISATEUR DEPUIS LA BASE
+    const userResult = await pool.query(
+      `SELECT id, email, passwordhash, nom, prenom, role, isactive, 
+              failedloginattempts, lockeduntil
+       FROM users 
+       WHERE email = $1`,
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      await logLoginAttempt(email, clientIp, userAgent, false, 'USER_NOT_FOUND');
+      return res.status(401).json({ 
+        error: 'Identifiants invalides', 
+        code: 'INVALID_CREDENTIALS' 
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // ✅ VÉRIFIER SI LE COMPTE EST ACTIF
+    if (!user.isactive) {
+      await logLoginAttempt(email, clientIp, userAgent, false, 'ACCOUNT_DISABLED');
+      return res.status(403).json({ 
+        error: 'Compte désactivé', 
+        code: 'ACCOUNT_DISABLED' 
+      });
+    }
+
+    // ✅ VÉRIFIER SI LE COMPTE EST VERROUILLÉ
+    if (user.lockeduntil && new Date(user.lockeduntil) > new Date()) {
+      await logLoginAttempt(email, clientIp, userAgent, false, 'ACCOUNT_LOCKED');
+      return res.status(403).json({ 
+        error: 'Compte temporairement verrouillé', 
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: user.lockeduntil
+      });
+    }
+
+    // ✅ VÉRIFIER LE MOT DE PASSE
+    const passwordValid = await bcrypt.compare(password, user.passwordhash);
     
-    // Générer l'access token (inchangé)
+    if (!passwordValid) {
+      // Incrémenter les tentatives échouées
+      const newFailedAttempts = (user.failedloginattempts || 0) + 1;
+      const maxAttempts = 5;
+      
+      if (newFailedAttempts >= maxAttempts) {
+        // Verrouiller le compte pour 15 minutes
+        const lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await pool.query(
+          `UPDATE users 
+           SET failedloginattempts = $1, lockeduntil = $2 
+           WHERE id = $3`,
+          [newFailedAttempts, lockUntil, user.id]
+        );
+        await logLoginAttempt(email, clientIp, userAgent, false, 'MAX_ATTEMPTS_EXCEEDED');
+        return res.status(403).json({ 
+          error: 'Trop de tentatives échouées. Compte verrouillé pour 15 minutes', 
+          code: 'ACCOUNT_LOCKED',
+          lockedUntil: lockUntil
+        });
+      }
+      
+      await pool.query(
+        `UPDATE users 
+         SET failedloginattempts = $1 
+         WHERE id = $2`,
+        [newFailedAttempts, user.id]
+      );
+      
+      await logLoginAttempt(email, clientIp, userAgent, false, 'INVALID_PASSWORD');
+      return res.status(401).json({ 
+        error: 'Identifiants invalides', 
+        code: 'INVALID_CREDENTIALS',
+        attemptsRemaining: maxAttempts - newFailedAttempts
+      });
+    }
+
+    // ✅ GÉNÉRER L'ACCESS TOKEN
     const accessToken = generateAccessToken(user);
     
-    // **NOUVEAU: Utiliser la rotation pour créer le refresh token**
+    // ✅ UTILISER LA ROTATION POUR CRÉER LE REFRESH TOKEN
     const refreshTokenData = await tokenRotation.createRotatedToken(
       pool,
       user.id,
@@ -295,33 +380,40 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       userAgent
     );
 
-    // Réinitialiser les échecs de connexion
+    // ✅ RÉINITIALISER LES ÉCHECS DE CONNEXION
     await pool.query(
-      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = $1',
+      `UPDATE users 
+       SET failedloginattempts = 0, lockeduntil = NULL, lastlogin = NOW() 
+       WHERE id = $1`,
       [user.id]
     );
 
     await logLoginAttempt(email, clientIp, userAgent, true, null);
 
+    // ✅ RETOURNER LA RÉPONSE
     res.json({
       message: 'Connexion réussie',
       accessToken,
       refreshToken: refreshTokenData.token,
       expiresIn: JWT_EXPIRES_IN,
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        nom: user.nom, 
-        prenom: user.prenom, 
-        role: user.role 
+      user: {
+        id: user.id,
+        email: user.email,
+        nom: user.nom,
+        prenom: user.prenom,
+        role: user.role
       }
     });
 
   } catch (err) {
     console.error('Erreur login:', err);
-    res.status(500).json({ error: 'Erreur lors de la connexion', code: 'LOGIN_ERROR' });
+    res.status(500).json({ 
+      error: 'Erreur lors de la connexion', 
+      code: 'LOGIN_ERROR' 
+    });
   }
 });
+
 
 // POST /api/auth/refresh - Rafraîchir le token
 app.post('/api/auth/refresh', async (req, res) => {
