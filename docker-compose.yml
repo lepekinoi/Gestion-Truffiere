@@ -1,11 +1,5 @@
-# ========================================
-# DOCKER COMPOSE - GESTION TRUFFIÈRE V2.0
-# Configuration avec variables d'environnement
-# ========================================
-
 services:
-
-  # Base de données PostgreSQL avec PostGIS
+  # Base de données PostgreSQL
   postgres:
     image: postgis/postgis:16-3.4
     container_name: truffiere_db
@@ -21,7 +15,7 @@ services:
     networks:
       - truffiere_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U unstuffed1004 -d truffiere"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,13 +26,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: truffiere_backend
-    # ✅ CORRECTION: Charger automatiquement le fichier .env
     env_file:
-      - .env
+      - .env  # ← Charge toutes les variables du fichier .env    
     environment:
-      # Variables spécifiques à Docker (surchargent le .env si nécessaire)
-      NODE_ENV: production
-      DB_HOST: postgres  # Nom du conteneur PostgreSQL
+      NODE_ENV: production  # ← production au lieu de development
+      DB_HOST: postgres     # ← Garder postgres (nom du conteneur)
     ports:
       - "3002:3001"
     volumes:
@@ -49,14 +41,9 @@ services:
         condition: service_healthy
     networks:
       - truffiere_network
-    command: npm run start
+    command: npm run start  # ← start au lieu de dev (pas de nodemon)
     restart: unless-stopped
-    # Logs pour déboguer
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+
 
   # Frontend React
   frontend:
@@ -76,7 +63,6 @@ services:
     networks:
       - truffiere_network
     command: npm start
-    restart: unless-stopped
 
 volumes:
   postgres_data:
