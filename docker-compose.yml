@@ -1,0 +1,86 @@
+# ========================================
+# DOCKER COMPOSE - GESTION TRUFFIÈRE V2.0
+# Configuration avec variables d'environnement
+# ========================================
+
+services:
+
+  # Base de données PostgreSQL avec PostGIS
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: truffiere_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - truffiere_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Node.js/Express
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: truffiere_backend
+    # ✅ CORRECTION: Charger automatiquement le fichier .env
+    env_file:
+      - .env
+    environment:
+      # Variables spécifiques à Docker (surchargent le .env si nécessaire)
+      NODE_ENV: production
+      DB_HOST: postgres  # Nom du conteneur PostgreSQL
+    ports:
+      - "3002:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - truffiere_network
+    command: npm run start
+    restart: unless-stopped
+    # Logs pour déboguer
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: truffiere_frontend
+    environment:
+      - REACT_APP_API_URL=${BACKEND_PUBLIC_URL}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - truffiere_network
+    command: npm start
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  truffiere_network:
+    driver: bridge
