@@ -1643,8 +1643,17 @@ app.post('/api/interventions', requireWriteAccess, async (req, res) => {
     };
 
     // Filtrer pour ne garder que les champs réellement renseignés
-    const detailFields = Object.entries(detailsRaw)
-      .filter(([_, value]) => value !== undefined && value !== null && value !== '');
+	const ALLOWED_DETAIL_COLUMNS = [
+	  'volume_eau_m3', 'methode_irrigation', 'nom_commercial', 
+	  'dose_produit_ha', 'utilisable_bio', /* ... */
+	];
+	const detailFields = Object.entries(detailsRaw)
+	  .filter(([key, value]) => 
+		ALLOWED_DETAIL_COLUMNS.includes(key) && 
+		value !== undefined && value !== null
+	  );
+
+
 
     if (detailFields.length > 0) {
       const columns = ['intervention_id'];
