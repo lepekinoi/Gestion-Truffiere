@@ -527,50 +527,51 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-		{/* État des arbres */}
-		<div style={styles.chartCard}>
-		  <h3 style={styles.chartTitle}>
-			<span>🌳</span> État sanitaire des arbres
-		  </h3>
-		  {(stats.arbres?.parEtat || []).length > 0 ? (
-			<div style={styles.pieContainer}>  {/* 👈 AJOUTEZ CE WRAPPER */}
-			  <ResponsiveContainer width="100%" height={200}>
-				<PieChart>
-				  <Pie
-					data={(stats.arbres?.parEtat || []).map(item => ({
-					  etat: item?.etat || 'Inconnu',
-					  count: parseInt(item?.count || 0)
-					}))}
-					dataKey="count"
-					nameKey="etat"
-					cx="50%"
-					cy="50%"
-					innerRadius={50}
-					outerRadius={80}
-				  >
-					{(stats.arbres?.parEtat || []).map((entry, index) => (  {/* 👈 PROTÉGEZ AUSSI ICI */}
-					  <Cell 
-						key={`cell-${index}`} 
-						fill={ETAT_COLORS[entry?.etat] || '#999'}  {/* 👈 OPTIONAL CHAINING */}
-					  />
-					))}
-				  </Pie>
-				  <Tooltip />
-				</PieChart>
-			  </ResponsiveContainer>
-			  <div style={styles.pieLegend}>
-				{(stats.arbres?.parEtat || []).map((item, idx) => (  {/* 👈 PROTÉGEZ AUSSI ICI */}
-				  <div key={idx} style={styles.legendItem}>
-					<span style={{...styles.legendDot, background: ETAT_COLORS[item?.etat] || '#999'}}></span>
-					<span>{item?.etat || 'Inconnu'}: {item?.count || 0}</span>  {/* 👈 PROTÉGEZ */}
-				  </div>
-				))}
-			  </div>
-			</div>  {/* 👈 FERMEZ LE WRAPPER */}
-		  ) : (
-			<div style={styles.noData}>Aucune donnée disponible</div>
-		  )}
-		</div>
+          {/* État des arbres */}
+          <div style={styles.chartCard}>
+            <h3 style={styles.chartTitle}>
+              <span>🌳</span> État sanitaire des arbres
+            </h3>
+            {(stats.arbres?.parEtat || []).length > 0 ? (
+              <div style={styles.pieContainer}>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={(stats.arbres?.parEtat || []).map(item => ({
+                        etat: item?.etat || 'Inconnu',
+                        count: parseInt(item?.count || 0)
+                      }))}
+                      dataKey="count"
+                      nameKey="etat"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                    >
+                      {(stats.arbres?.parEtat || []).map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={ETAT_COLORS[entry?.etat] || '#999'}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={styles.pieLegend}>
+                  {(stats.arbres?.parEtat || []).map((item, idx) => (
+                    <div key={idx} style={styles.legendItem}>
+                      <span style={{...styles.legendDot, background: ETAT_COLORS[item?.etat] || '#999'}}></span>
+                      <span>{item?.etat || 'Inconnu'}: {item?.count || 0}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={styles.noData}>Aucune donnée disponible</div>
+            )}
+          </div>
+
         </div>
       </section>
 
