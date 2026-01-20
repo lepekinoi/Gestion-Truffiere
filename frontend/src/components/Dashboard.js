@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? null
+    : 'http://localhost:3001/api');
+
+if (!API_URL) {
+  throw new Error('REACT_APP_API_URL must be defined in production');
+}
 
 // Couleurs cohérentes
 const COLORS = {
@@ -148,21 +155,22 @@ function Dashboard() {
       const statsRes = await axios.get(`${API_URL}/stats/dashboard`);
       setStats(statsRes.data);
 
-      const [
-        recoltesRes,
-        interventionsRes,
-        commandesRes,
-        ventesRes,
-        recoltesMensuellesRes,
-        stockRes
-      ] = await Promise.all([
-        axios.get(`${API_URL}/recoltes`),
-        axios.get(`${API_URL}/interventions`),
-        axios.get(`${API_URL}/commandes`),
-        axios.get(`${API_URL}/ventes`),
-        axios.get(`${API_URL}/stats/recoltes-mensuelles`),
-        axios.get(`${API_URL}/stock`)
-      ]);
+		const [
+		  recoltesRes,
+		  interventionsRes,
+		  commandesRes,
+		  ventesRes,
+		  recoltesMensuellesRes,
+		  stockRes
+		] = await Promise.allSettled([
+		  axios.get(`${API_URL}/recoltes`).catch(() => ({ data: [] })),
+		  axios.get(`${API_URL}/interventions`).catch(() => ({ data: [] })),
+		  axios.get(`${API_URL}/commandes`).catch(() => ({ data: [] })),
+		  axios.get(`${API_URL}/ventes`).catch(() => ({ data: [] })),
+		  axios.get(`${API_URL}/stats/recoltes-mensuelles`).catch(() => ({ data: [] })),
+		  axios.get(`${API_URL}/stock`).catch(() => ({ data: { stock_disponible_grammes: 0 } }))
+		]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [] }));
+
 
       setStockData(stockRes.data);
 
@@ -174,9 +182,10 @@ function Dashboard() {
       ).length;
       setAlertes({ commandesEnAttente, ventesEnAttente });
 
-      const sortedRecoltes = [...recoltesRes.data]
-        .sort((a, b) => new Date(b.date_recolte) - new Date(a.date_recolte))
-        .slice(0, 5);
+      const sortedRecoltes = [...(recoltesRes.data || [])]
+	  .sort((a, b) => new Date(b.date_recolte || 0) - new Date(a.date_recolte || 0))
+	  .slice(0, 5);
+
       setRecentRecoltes(sortedRecoltes);
 
       const today = new Date();
@@ -196,11 +205,13 @@ function Dashboard() {
       setProductionParMois(productionMensuelle);
 
       const prodParParcelle = {};
-      recoltesRes.data.forEach(recolte => {
-        const parcelle = recolte.parcelle_nom || 'Non défini';
-        if (!prodParParcelle[parcelle]) prodParParcelle[parcelle] = 0;
-        prodParParcelle[parcelle] += parseFloat(recolte.poids_grammes || 0) / 1000;
-      });
+      (recoltesRes.data || []).forEach(recolte => {
+		  if (!recolte) return; // Protection
+		  const parcelle = recolte.parcelle_nom || 'Non défini';
+		  const poids = parseFloat(recolte.poids_grammes) || 0;
+		  if (!prodParParcelle[parcelle]) prodParParcelle[parcelle] = 0;
+		  prodParParcelle[parcelle] += poids / 1000;
+		});
       setProductionParParcelle(
         Object.entries(prodParParcelle)
           .map(([nom, kg]) => ({ nom, kg: parseFloat(kg.toFixed(2)) }))
@@ -235,10 +246,12 @@ function Dashboard() {
   };
 
   // ==================== FONCTIONS UTILITAIRES ====================
-  const formatDateShort = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-  };
+	const formatDateShort = (dateString) => {
+	  if (!dateString) return '-';
+	  const date = new Date(dateString);
+	  if (isNaN(date.getTime())) return '-';
+	  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+	};
 
   const getDayName = (date) => {
     const today = new Date();
@@ -514,50 +527,50 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* État des arbres */}
-          <div style={styles.chartCard}>
-            <h3 style={styles.chartTitle}>
-              <span>🌳</span> État sanitaire des arbres
-            </h3>
-            {stats.arbres.parEtat.length > 0 ? (
-              <div style={styles.pieContainer}>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={stats.arbres.parEtat.map(item => ({
-                        etat: item.etat,
-                        count: parseInt(item.count)
-                      }))}
-                      dataKey="count"
-                      nameKey="etat"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                    >
-                      {stats.arbres.parEtat.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={ETAT_COLORS[entry.etat] || '#999'} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={styles.pieLegend}>
-                  {stats.arbres.parEtat.map((item, idx) => (
-                    <div key={idx} style={styles.legendItem}>
-                      <span style={{...styles.legendDot, background: ETAT_COLORS[item.etat] || '#999'}}></span>
-                      <span>{item.etat}: {item.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={styles.noData}>Aucune donnée disponible</div>
-            )}
-          </div>
+		{/* État des arbres */}
+		<div style={styles.chartCard}>
+		  <h3 style={styles.chartTitle}>
+			<span>🌳</span> État sanitaire des arbres
+		  </h3>
+		  {(stats.arbres?.parEtat || []).length > 0 ? (
+			<div style={styles.pieContainer}>  {/* 👈 AJOUTEZ CE WRAPPER */}
+			  <ResponsiveContainer width="100%" height={200}>
+				<PieChart>
+				  <Pie
+					data={(stats.arbres?.parEtat || []).map(item => ({
+					  etat: item?.etat || 'Inconnu',
+					  count: parseInt(item?.count || 0)
+					}))}
+					dataKey="count"
+					nameKey="etat"
+					cx="50%"
+					cy="50%"
+					innerRadius={50}
+					outerRadius={80}
+				  >
+					{(stats.arbres?.parEtat || []).map((entry, index) => (  {/* 👈 PROTÉGEZ AUSSI ICI */}
+					  <Cell 
+						key={`cell-${index}`} 
+						fill={ETAT_COLORS[entry?.etat] || '#999'}  {/* 👈 OPTIONAL CHAINING */}
+					  />
+					))}
+				  </Pie>
+				  <Tooltip />
+				</PieChart>
+			  </ResponsiveContainer>
+			  <div style={styles.pieLegend}>
+				{(stats.arbres?.parEtat || []).map((item, idx) => (  {/* 👈 PROTÉGEZ AUSSI ICI */}
+				  <div key={idx} style={styles.legendItem}>
+					<span style={{...styles.legendDot, background: ETAT_COLORS[item?.etat] || '#999'}}></span>
+					<span>{item?.etat || 'Inconnu'}: {item?.count || 0}</span>  {/* 👈 PROTÉGEZ */}
+				  </div>
+				))}
+			  </div>
+			</div>  {/* 👈 FERMEZ LE WRAPPER */}
+		  ) : (
+			<div style={styles.noData}>Aucune donnée disponible</div>
+		  )}
+		</div>
         </div>
       </section>
 

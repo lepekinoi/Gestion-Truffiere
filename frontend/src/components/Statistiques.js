@@ -3,7 +3,14 @@ import axios from 'axios';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { exportProductionPDF } from '../utils/pdfExport';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? null
+    : 'http://localhost:3001/api');
+
+if (!API_URL) {
+  throw new Error('REACT_APP_API_URL must be defined in production');
+}
 
 // Options d'exposition
 const EXPOSITIONS = [
@@ -35,7 +42,10 @@ const EXPOSURE_COLORS = {
 // Composant visuel Vue de dessus de l'arbre avec expositions colorées
 function ArbreExpositionView({ expositionStats, arbreNumero }) {
   // Trouver l'exposition la plus fréquente
-  const maxCount = Math.max(...expositionStats.map(e => e.count), 0);
+  const maxCount = expositionStats.length > 0 
+  ? Math.max(...expositionStats.map(e => e.count || 0)) 
+  : 0;
+
   const totalRecoltes = expositionStats.reduce((sum, e) => sum + e.count, 0);
   
   // Fonction pour obtenir la couleur selon le nombre de récoltes
@@ -586,7 +596,7 @@ function Statistiques() {
               <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <h4 style={{ color: '#2c5f2d', marginBottom: '1rem' }}>🏆 Top 5 arbres producteurs</h4>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={stats.arbres.slice(0, 5)} layout="vertical">
+                  <BarChart data={(stats.arbres || []).slice(0, 5)} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis dataKey="numero" type="category" width={70} />
