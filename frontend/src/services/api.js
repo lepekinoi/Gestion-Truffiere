@@ -3,8 +3,15 @@
 // Service API avec gestion automatique des tokens JWT
 // ============================================================
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+// Frontend - axiosConfig.js et api.js
+const API_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? null  // Force une erreur si non configuré
+    : 'http://localhost:3001/api');
 
+if (!API_URL) {
+  throw new Error('REACT_APP_API_URL must be defined in production');
+}
 // Clés de stockage
 const ACCESS_TOKEN_KEY = 'truffiere_access_token';
 const REFRESH_TOKEN_KEY = 'truffiere_refresh_token';
