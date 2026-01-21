@@ -1472,14 +1472,39 @@ app.delete('/api/arbres/corbeille/:id', requireWriteAccess, async (req, res) => 
 });
 
 app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
+  const client = await pool.connect();
+  
   try {
-    const result = await pool.query('DELETE FROM arbres WHERE deleted_at IS NOT NULL RETURNING id');
+    await client.query('BEGIN');
+    
+    // Récupérer les IDs des arbres à supprimer
+    const treesToDelete = await client.query(
+      'SELECT id FROM arbres WHERE deleted_at IS NOT NULL'
+    );
+    const treeIds = treesToDelete.rows.map(row => row.id);
+    
+    if (treeIds.length === 0) {
+      await client.query('COMMIT');
+      return res.json({ message: 'Corbeille vide', count: 0 });
+    }
+    
+    // Supprimer les références en cascade
+    await client.query('DELETE FROM interventions WHERE arbre_id = ANY($1)', [treeIds]);
+    await client.query('DELETE FROM recoltes WHERE arbre_id = ANY($1)', [treeIds]);
+    
+    // Enfin, supprimer les arbres
+    const result = await client.query('DELETE FROM arbres WHERE deleted_at IS NOT NULL RETURNING id');
+    
+    await client.query('COMMIT');
     res.json({ message: 'Corbeille vidée', count: result.rows.length });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur' });
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erreur lors du vidage de la corbeille', details: err.message });
+  } finally {
+    client.release();
   }
 });
+
 
 // ==================== ROUTES TYPES INTERVENTION ====================
 app.get('/api/types-intervention', async (req, res) => {
