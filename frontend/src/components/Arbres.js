@@ -400,7 +400,7 @@ function Arbres() {
     try {
       if (editingArbre) {
         await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
-        showMessage('Arbre mis àÂ  jour avec succès !', 'success');
+        showMessage('Arbre mis à jour avec succès !', 'success');
       } else {
         await axios.post(`${API_URL}/arbres`, formData);
         showMessage('Arbre créé avec succès !', 'success');
@@ -565,7 +565,7 @@ function Arbres() {
       if (bulkEditData.hauteur_m) updates.hauteur_m = bulkEditData.hauteur_m;
 
       if (Object.keys(updates).length === 0) {
-        showMessage('Aucune modification àÂ  appliquer', 'error');
+        showMessage('Aucune modification à appliquer', 'error');
         setIsProcessing(false);
         return;
       }
@@ -1355,7 +1355,7 @@ function Arbres() {
           
           {itemsPerPage !== 'all' && (
             <div style={{ color: '#666', fontSize: '0.9rem' }}>
-              Affichage de {((currentPage - 1) * itemsPerPage) + 1} àÂ  {Math.min(currentPage * itemsPerPage, totalArbres)} sur {totalArbres} arbres
+              Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, totalArbres)} sur {totalArbres} arbres
             </div>
           )}
         </div>
@@ -1679,7 +1679,7 @@ function Arbres() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre àÂ  jour' : 'Créer')}
+                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre à jour' : 'Créer')}
                 </button>
               </div>
             </form>
@@ -1785,7 +1785,7 @@ function Arbres() {
                 onClick={handleBulkEditSubmit}
                 disabled={isProcessing}
               >
-                {isProcessing ? 'En cours...' : `Appliquer àÂ  ${selectedArbres.size} arbre(s)`}
+                {isProcessing ? 'En cours...' : `Appliquer à ${selectedArbres.size} arbre(s)`}
               </button>
             </div>
           </div>
