@@ -247,7 +247,7 @@ function Dashboard() {
     }
   }, [selectedYearRange, availableYears]);
 
-  // ✅ NOUVEAU: Remplir productionParMois depuis recolteMensuellesBrutes
+  // ✅ Remplir productionParMois depuis recolteMensuellesBrutes
   useEffect(() => {
     if (recolteMensuellesBrutes.length > 0) {
       // Créer un tableau de 12 mois (janvier à décembre)
@@ -270,7 +270,6 @@ function Dashboard() {
         }
       });
       
-      console.log('✅ productionParMois rempli:', parMois);
       setProductionParMois(parMois);
     }
   }, [recolteMensuellesBrutes]);
@@ -561,39 +560,46 @@ function Dashboard() {
     return result;
   };
 
-  // ✅ NOUVEAU: Formater les données FILTRÉES par intervalle
+  // ✅ RESTRUCTURÉ: Formater les données par MOIS (12 points fixes) au lieu de dates chronologiques
   const formatComparisonData = () => {
+    // Créer un objet avec les 12 mois
+    const moisNoms = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    
+    // Initialiser les données pour les 12 mois
+    const data = moisNoms.map((nom, idx) => ({
+      mois: nom,
+      monthIndex: idx + 1
+    }));
+    
+    // Filtrer les données par années sélectionnées
     const filtered = recolteMensuellesBrutes.filter(item => {
       if (!item || !item.mois) return false;
-      const [year, month] = item.mois.split('-').map(Number);
-      return year >= selectedYearRange.start && year <= selectedYearRange.end;
+      const [year] = item.mois.split('-').map(Number);
+      return selectedYears.includes(year);
     });
-
-    // Créer un mapping mois -> données par année
-    const dataByMonth = {};
+    
+    // Remplir les données par mois et par année
     filtered.forEach(item => {
-      const [year, month] = item.mois.split('-');
-      const key = `${year}-${month}`;
-      if (!dataByMonth[key]) {
-        dataByMonth[key] = {};
+      const [year, month] = item.mois.split('-').map(Number);
+      const monthIndex = month - 1; // 0-11
+      const production = safeParseFloat((item.total_grammes / 1000).toFixed(2), 0);
+      
+      // Ajouter la production de cette année pour ce mois
+      if (data[monthIndex]) {
+        data[monthIndex][`${year}`] = production;
       }
-      dataByMonth[key][year] = safeParseFloat((item.total_grammes / 1000).toFixed(2), 0);
     });
-
-    // Trier par ordre chronologique
-    const sortedKeys = Object.keys(dataByMonth).sort();
-
-    return sortedKeys.map(key => {
-      const [year, month] = key.split('-');
-      const moisNom = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
-      const row = { mois: moisNom };
-      
-      selectedYears.forEach(y => {
-        row[`${y}`] = dataByMonth[key]?.[y] || 0;
+    
+    // S'assurer que chaque année a une valeur pour chaque mois (0 si pas de données)
+    selectedYears.forEach(year => {
+      data.forEach(row => {
+        if (!row[`${year}`]) {
+          row[`${year}`] = 0;
+        }
       });
-      
-      return row;
     });
+    
+    return data;
   };
 
   const toggleYearVisibility = (year) => {
@@ -656,7 +662,7 @@ function Dashboard() {
     }));
   };
 
-  // ✅ NOUVEAU: Handlers pour changer les bornes
+  // ✅ Handlers pour changer les bornes
   const handleStartYearChange = (e) => {
     const newStart = parseInt(e.target.value);
     setSelectedYearRange(prev => ({
@@ -1015,7 +1021,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ✅ GRAPHIQUE AMÉLIORÉ AVEC FILTRAGE PAR DATES */}
+      {/* ✅ GRAPHIQUE RESTRUCTURÉ: 12 mois sur X, années en courbes séparées */}
       {recolteMensuellesBrutes.length > 0 && (
         <section style={styles.chartSection}>
           <div style={styles.chartCardFull}>
@@ -1024,7 +1030,6 @@ function Dashboard() {
                 <span>📈</span> Comparaison Production Multi-Années {selectedYearRange.showAll ? '(Toutes)' : `(${selectedYearRange.start}-${selectedYearRange.end})`}
               </h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* ✅ Sélecteurs d'années */}
                 {!selectedYearRange.showAll && (
                   <>
                     <label style={{ fontSize: '14px', fontWeight: '500', marginRight: '4px' }}>De:</label>
@@ -1109,27 +1114,34 @@ function Dashboard() {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={formatComparisonData()}>
+              <LineChart data={formatComparisonData()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <XAxis 
+                  dataKey="mois" 
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Mois', position: 'insideBottom', offset: -5, fontSize: 14, fontWeight: 600 }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Production (kg)', angle: -90, position: 'insideLeft', fontSize: 14, fontWeight: 600 }}
+                />
                 <Tooltip 
                   formatter={(value) => `${value} kg`}
                   contentStyle={styles.tooltipStyle}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ paddingTop: '10px' }} />
                 {selectedYears.map(year => (
-                  <Area
+                  <Line
                     key={year}
                     type="monotone"
                     dataKey={`${year}`}
                     stroke={getYearColor(year)}
-                    fill={getYearColor(year)}
-                    fillOpacity={0.3}
-                    strokeWidth={2}
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
                   />
                 ))}
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </section>
