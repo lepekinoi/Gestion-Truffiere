@@ -506,16 +506,11 @@ function Dashboard() {
     }
   };
 
+  // ✅ FIX: Ne récupérer QUE les années avec des données réelles
   const getAvailableYears = (data) => {
     const years = new Set();
-    const now = new Date();
     
-    // Ajouter les 3 dernières années par défaut
-    for (let i = 0; i < 3; i++) {
-      years.add(now.getFullYear() - i);
-    }
-    
-    // Ajouter les années des données
+    // Extraire les années des données de récoltes mensuelles
     safeArray(data).forEach(item => {
       if (item && item.mois) {
         const year = parseInt(item.mois.split('-')[0]);
@@ -523,6 +518,7 @@ function Dashboard() {
       }
     });
     
+    // Retourner triées du plus récent au plus ancien
     return Array.from(years).sort((a, b) => b - a);
   };
 
