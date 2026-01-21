@@ -216,17 +216,24 @@ function Dashboard() {
     loadWeather();
   }, []);
 
-  // 🆕 Charger les données pour toutes les années disponibles
+  // 🆕 ✅ FIX: Initialiser selectedYearRange avec les 3 dernières années DE DONNÉES
   useEffect(() => {
     if (availableYears.length > 0) {
+      // Prendre les 3 dernières années disponibles dans les données
+      const last3Years = availableYears.slice(0, 3);
+      const minYear = Math.min(...last3Years);
+      const maxYear = Math.max(...last3Years);
+      
+      setSelectedYearRange({
+        start: minYear,
+        end: maxYear,
+        showAll: false
+      });
+      
       loadAllYearsData();
-      // Initialiser selectedYears avec les 3 dernières années
-      const defaultYears = selectedYearRange.showAll 
-        ? availableYears 
-        : availableYears.filter(y => y >= selectedYearRange.start && y <= selectedYearRange.end);
-      setSelectedYears(defaultYears);
+      setSelectedYears(last3Years);
     }
-  }, [availableYears]);
+  }, [availableYears.length]); // Déclencher seulement quand availableYears change
 
   // 🆕 Mettre à jour selectedYears quand selectedYearRange change
   useEffect(() => {
