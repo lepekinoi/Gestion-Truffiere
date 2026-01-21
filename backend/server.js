@@ -1315,7 +1315,6 @@ app.delete('/api/parcelles/:id', requireWriteAccess, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la suppression' });
   }
 });
-
 // ==================== ROUTES ARBRES ====================
 app.get('/api/arbres', async (req, res) => {
   try {
@@ -1356,7 +1355,6 @@ app.get('/api/arbres/corbeille', async (req, res) => {
   }
 });
 
-// Route POST - Créer un arbre
 app.post('/api/arbres', requireWriteAccess, async (req, res) => {
   try {
     const { parcelle_id, numero, espece, variete_truffe, date_plantation, etat, circonference_cm, hauteur_m, latitude, longitude, notes } = req.body;
@@ -1384,7 +1382,6 @@ app.post('/api/arbres', requireWriteAccess, async (req, res) => {
   }
 });
 
-// Route PUT - Modifier un arbre
 app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1420,23 +1417,7 @@ app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
   }
 });
 
-app.delete('/api/arbres/:id', requireWriteAccess, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(
-      'UPDATE arbres SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL RETURNING *',
-      [id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Arbre non trouvé' });
-    }
-    res.json({ message: 'Arbre mis Ã  la corbeille', arbre: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
+// Routes corbeille (spécifiques) AVANT la route générique /:id
 app.post('/api/arbres/corbeille/:id/restaurer', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1502,6 +1483,24 @@ app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors du vidage de la corbeille', details: err.message });
   } finally {
     client.release();
+  }
+});
+
+// Route générique APRÈS les routes /corbeille
+app.delete('/api/arbres/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE arbres SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL RETURNING *',
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Arbre non trouvé' });
+    }
+    res.json({ message: 'Arbre mis Ã  la corbeille', arbre: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
   }
 });
 
