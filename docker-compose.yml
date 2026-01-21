@@ -1,4 +1,5 @@
 services:
+
   # Base de données PostgreSQL
   postgres:
     image: postgis/postgis:16-3.4
@@ -11,14 +12,16 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init_database.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - truffiere_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U unstuffed1004 -d truffiere"]
+      # ✅ CORRIGÉ : Utilise les variables du .env au lieu des valeurs en dur
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Backend Node.js/Express
   backend:
@@ -27,10 +30,10 @@ services:
       dockerfile: Dockerfile
     container_name: truffiere_backend
     env_file:
-      - .env  # ← Charge toutes les variables du fichier .env    
+      - .env
     environment:
-      NODE_ENV: production  # ← production au lieu de development
-      DB_HOST: postgres     # ← Garder postgres (nom du conteneur)
+      NODE_ENV: production
+      DB_HOST: postgres
     ports:
       - "3002:3001"
     volumes:
@@ -41,9 +44,15 @@ services:
         condition: service_healthy
     networks:
       - truffiere_network
-    command: npm run start  # ← start au lieu de dev (pas de nodemon)
+    command: npm run start
+    healthcheck:
+      # ✅ CORRIGÉ : Utilise wget (présent dans la plupart des images Node) au lieu de curl
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
-
 
   # Frontend React
   frontend:
@@ -59,10 +68,18 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - truffiere_network
     command: npm start
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/health.txt | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
 volumes:
   postgres_data:

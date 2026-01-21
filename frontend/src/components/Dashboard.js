@@ -280,6 +280,11 @@ function Dashboard() {
     return { label: 'Bon', color: COLORS.success };
   };
 
+  const formatWeight = (grammes) => {
+    if (grammes >= 1000) return `${(grammes / 1000).toFixed(2)} kg`;
+    return `${grammes?.toFixed(0) || 0} g`;
+  };
+
   // ==================== RENDU CONDITIONNEL ====================
   if (loading) {
     return (
@@ -508,4 +513,673 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={productionParMois}>
                 <defs>
-                  <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1": 
+                  <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value) => [`${value} kg`, 'Production']}
+                  contentStyle={styles.tooltipStyle}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="production" 
+                  stroke={COLORS.primary}
+                  strokeWidth={3}
+                  fill="url(#colorProd)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* État des arbres */}
+          <div style={styles.chartCard}>
+            <h3 style={styles.chartTitle}>
+              <span>🌳</span> État sanitaire des arbres
+            </h3>
+            {(stats?.arbres?.parEtat || []).length > 0 ? ( // ✅ Ajouter stats?.
+              <div style={styles.pieContainer}>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={(stats.arbres?.parEtat || []).map(item => ({
+                        etat: item?.etat || 'Inconnu',
+                        count: parseInt(item?.count || 0)
+                      }))}
+                      dataKey="count"
+                      nameKey="etat"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                    >
+                      {(stats.arbres?.parEtat || []).map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={ETAT_COLORS[entry?.etat] || '#999'}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={styles.pieLegend}>
+                  {(stats.arbres?.parEtat || []).map((item, idx) => (
+                    <div key={idx} style={styles.legendItem}>
+                      <span style={{...styles.legendDot, background: ETAT_COLORS[item?.etat] || '#999'}}></span>
+                      <span>{item?.etat || 'Inconnu'}: {item?.count || 0}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={styles.noData}>Aucune donnée disponible</div>
+            )}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 5: TIMELINE ACTIVITÉS RÉCENTES
+      ═══════════════════════════════════════════════════════════════ */}
+      <section style={styles.activitiesSection}>
+        <h2 style={styles.sectionTitle}>
+          <span>📋</span> Activités récentes
+        </h2>
+        
+        <div style={styles.activitiesGrid}>
+			{/* Dernières récoltes */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>🍄</span>
+				<span>Dernières récoltes</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{recentRecoltes.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune récolte</div>
+				) : (
+				  recentRecoltes.map(recolte => (
+					recolte && (
+					  <div key={recolte.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: '#8e44ad'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityDate}>
+							{formatDateShort(recolte.date_recolte)}
+						  </div>
+						  <div style={styles.activityInfo}>
+							{recolte.parcelle_nom || '-'} • 
+							<strong> {safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
+						  </div>
+						  {recolte.qualite && (
+							<div style={styles.activityQuality}>{recolte.qualite}</div>
+						  )}
+						</div>
+					  </div>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+			{/* Interventions à venir */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>🛠️</span>
+				<span>Interventions à venir</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{interventionsAVenir.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
+				) : (
+				  interventionsAVenir.map(intervention => (
+					intervention && (
+					  <div key={intervention.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityDate}>
+							{formatDateShort(intervention?.date_prevue)}
+						  </div>
+						  <div style={styles.activityBadge}>
+							<span style={{
+							  ...styles.typeBadge,
+							  background: intervention?.type_couleur || '#ccc'
+							}}>
+							  {intervention?.type_nom}
+							</span>
+						  </div>
+						  <div style={styles.activityInfo}>
+							{intervention?.parcelle_nom || '-'}
+						  </div>
+						</div>
+					  </div>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+			{/* Commandes en cours */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>📦</span>
+				<span>Commandes en cours</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{commandesRecentes.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune commande</div>
+				) : (
+				  commandesRecentes.map(commande => (
+					commande && (
+					  <div key={commande.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: '#3498db'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityHeader2}>
+							<span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
+							<span style={{
+							  ...styles.statusBadge,
+							  background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
+							  color: commande?.statut === 'En attente' ? '#856404' : '#004085'
+							}}>
+							  {commande?.statut}
+							</span>
+						  </div>
+						  <div style={styles.activityInfo}>
+							{safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
+							<strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
+						  </div>
+						</div>
+					  </div>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 6: PRODUCTION PAR PARCELLE
+      ═══════════════════════════════════════════════════════════════ */}
+      <section style={styles.bottomSection}>
+        <div style={styles.chartCardFull}>
+          <h3 style={styles.chartTitle}>
+            <span>📊</span> Production par parcelle
+          </h3>
+          {productionParParcelle.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={productionParParcelle} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="nom" type="category" width={120} tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value) => [`${value} kg`, 'Production']}
+                  contentStyle={styles.tooltipStyle}
+                />
+                <Bar 
+                  dataKey="kg" 
+                  fill={COLORS.primaryLight} 
+                  radius={[0, 4, 4, 0]}
+                  barSize={24}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={styles.noData}>Aucune récolte enregistrée</div>
+          )}
+        </div>
+      </section>
+
+      <style>{`
+        @keyframes loadingPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes loadingBar {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ==================== STYLES ====================
+const styles = {
+  pageContainer: {
+    padding: '1.5rem',
+    maxWidth: '1600px',
+    margin: '0 auto',
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
+  },
+
+  // Loading & Error
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '60vh',
+    gap: '1rem'
+  },
+  loadingIcon: {
+    fontSize: '4rem',
+    animation: 'loadingPulse 1.5s ease-in-out infinite'
+  },
+  loadingText: {
+    color: COLORS.muted,
+    fontSize: '1.1rem'
+  },
+  loadingBar: {
+    width: '200px',
+    height: '4px',
+    background: '#eee',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  loadingProgress: {
+    width: '100%',
+    height: '100%',
+    background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.primaryLight})`,
+    animation: 'loadingBar 1.5s ease-in-out infinite'
+  },
+  errorContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '50vh',
+    gap: '1rem'
+  },
+  retryButton: {
+    padding: '0.75rem 1.5rem',
+    background: COLORS.primary,
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
+
+  // Weather Banner
+  weatherBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2rem',
+    padding: '1.25rem 2rem',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderRadius: '16px',
+    color: 'white',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
+    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)'
+  },
+  weatherMain: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
+  },
+  weatherIcon: {
+    fontSize: '3rem'
+  },
+  weatherTemp: {
+    fontSize: '2.5rem',
+    fontWeight: '700'
+  },
+  weatherDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem'
+  },
+  weatherCity: {
+    fontSize: '0.9rem',
+    opacity: 0.9
+  },
+  weatherDesc: {
+    fontSize: '1rem',
+    textTransform: 'capitalize',
+    fontWeight: '500'
+  },
+  weatherMeta: {
+    display: 'flex',
+    gap: '1rem',
+    fontSize: '0.85rem',
+    opacity: 0.8
+  },
+  weatherDivider: {
+    width: '1px',
+    height: '60px',
+    background: 'rgba(255,255,255,0.3)'
+  },
+  forecastContainer: {
+    display: 'flex',
+    gap: '1.5rem',
+    flex: 1,
+    justifyContent: 'center'
+  },
+  forecastDay: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.25rem',
+    padding: '0.5rem 0.75rem',
+    background: 'rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    minWidth: '70px'
+  },
+  forecastDayName: {
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    textTransform: 'capitalize'
+  },
+  forecastIcon: {
+    fontSize: '1.5rem'
+  },
+  forecastTemps: {
+    display: 'flex',
+    gap: '0.5rem',
+    fontSize: '0.85rem'
+  },
+  tempMax: {
+    fontWeight: '600'
+  },
+  tempMin: {
+    opacity: 0.7
+  },
+  forecastPop: {
+    fontSize: '0.75rem',
+    opacity: 0.8
+  },
+  weatherTip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 1rem',
+    background: 'rgba(255,255,255,0.15)',
+    borderRadius: '8px',
+    fontSize: '0.85rem'
+  },
+  tipIcon: {
+    fontSize: '1.2rem'
+  },
+
+  // Alerts
+  alertsSection: {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap'
+  },
+  alertCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    padding: '1rem 1.5rem',
+    background: '#fff3cd',
+    border: '1px solid #ffc107',
+    borderRadius: '12px',
+    flex: '1 1 280px'
+  },
+  alertInfo: {
+    background: '#d1ecf1',
+    borderColor: '#17a2b8'
+  },
+  alertIcon: {
+    fontSize: '2rem'
+  },
+  alertContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem'
+  },
+
+  // KPI Section
+  kpiSection: {
+    marginBottom: '2rem'
+  },
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1.25rem'
+  },
+  kpiCard: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    cursor: 'default'
+  },
+  kpiCardAccent: {
+    background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryLight} 100%)`,
+    color: 'white'
+  },
+  kpiIconWrapper: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    background: '#f5f5f5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  kpiIcon: {
+    fontSize: '1.5rem'
+  },
+  kpiContent: {
+    flex: 1
+  },
+  kpiValue: {
+    fontSize: '2rem',
+    fontWeight: '700',
+    lineHeight: 1.2
+  },
+  kpiLabel: {
+    fontSize: '0.9rem',
+    opacity: 0.8,
+    marginTop: '0.25rem'
+  },
+  kpiMeta: {
+    display: 'flex',
+    gap: '0.5rem',
+    flexWrap: 'wrap'
+  },
+  kpiTag: {
+    fontSize: '0.8rem',
+    padding: '0.25rem 0.5rem',
+    background: '#f0f0f0',
+    borderRadius: '6px',
+    opacity: 0.9
+  },
+  kpiStatus: {
+    fontSize: '0.75rem',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '12px',
+    color: 'white',
+    fontWeight: '500'
+  },
+
+  // Charts Section
+  chartsSection: {
+    marginBottom: '2rem'
+  },
+  chartsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    gap: '1.5rem'
+  },
+  chartCard: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+  },
+  chartTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    margin: '0 0 1rem 0',
+    color: COLORS.primary,
+    fontSize: '1.1rem',
+    fontWeight: '600'
+  },
+  tooltipStyle: {
+    background: 'white',
+    border: '1px solid #eee',
+    borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+  },
+  pieContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  pieLegend: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: '1rem',
+    marginTop: '0.5rem'
+  },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.85rem'
+  },
+  legendDot: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '3px'
+  },
+  noData: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '200px',
+    color: COLORS.muted
+  },
+
+  // Activities Section
+  activitiesSection: {
+    marginBottom: '2rem'
+  },
+  sectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    margin: '0 0 1.25rem 0',
+    color: COLORS.primary,
+    fontSize: '1.25rem',
+    fontWeight: '600'
+  },
+  activitiesGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '1.5rem'
+  },
+  activityCard: {
+    background: 'white',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+  },
+  activityHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '1rem 1.25rem',
+    background: '#f8f9fa',
+    fontWeight: '600',
+    color: COLORS.dark
+  },
+  activityHeaderIcon: {
+    fontSize: '1.25rem'
+  },
+  activityList: {
+    padding: '1rem'
+  },
+  activityEmpty: {
+    padding: '1rem',
+    textAlign: 'center',
+    color: COLORS.muted
+  },
+  activityItem: {
+    display: 'flex',
+    gap: '0.75rem',
+    padding: '0.75rem 0',
+    borderBottom: '1px solid #f0f0f0'
+  },
+  activityDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    marginTop: '0.3rem',
+    flexShrink: 0
+  },
+  activityContent: {
+    flex: 1
+  },
+  activityDate: {
+    fontWeight: '600',
+    fontSize: '0.9rem',
+    marginBottom: '0.25rem'
+  },
+  activityInfo: {
+    fontSize: '0.85rem',
+    color: '#666'
+  },
+  activityQuality: {
+    fontSize: '0.8rem',
+    color: COLORS.muted,
+    marginTop: '0.25rem'
+  },
+  activityBadge: {
+    marginBottom: '0.25rem'
+  },
+  typeBadge: {
+    display: 'inline-block',
+    padding: '0.15rem 0.5rem',
+    borderRadius: '4px',
+    color: 'white',
+    fontSize: '0.75rem'
+  },
+  activityHeader2: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.25rem',
+    fontWeight: '500'
+  },
+  statusBadge: {
+    fontSize: '0.7rem',
+    padding: '0.15rem 0.5rem',
+    borderRadius: '10px'
+  },
+
+  // Bottom Section
+  bottomSection: {
+    marginBottom: '2rem'
+  },
+  chartCardFull: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+  }
+};
+
+// Media queries via inline check (pour responsive)
+if (typeof window !== 'undefined' && window.innerWidth < 768) {
+  styles.chartsGrid.gridTemplateColumns = '1fr';
+  styles.activitiesGrid.gridTemplateColumns = '1fr';
+  styles.forecastContainer.display = 'none';
+  styles.weatherDivider.display = 'none';
+}
+
+export default Dashboard;

@@ -93,6 +93,17 @@ testDatabaseConnection().then((connected) => {
     process.exit(1);
   }
   
+// ✅ Endpoint de santé pour Docker healthcheck
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    database: 'connected' // Tu peux ajouter une vraie vérification de DB si tu veux
+  });
+});
+
+  
   // Démarrer le serveur seulement si la connexion DB fonctionne
   app.listen(PORT, '0.0.0.0', () => {
     console.log('\n╔════════════════════════════════════════╗');
@@ -3481,20 +3492,17 @@ app.post('/api/factures/generer-numero', requireWriteAccess, async (req, res) =>
 // GESTION DES ERREURS
 // ============================================================
 
-// 404
+// ✅ 1. ENDPOINT /HEALTH EN PREMIER (avant le middleware 404)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// ✅ 2. MIDDLEWARE 404 (capture tout ce qui n'a pas été défini avant)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route non trouvée', code: 'NOT_FOUND', path: req.path });
 });
 
-// Erreur globale
-// app.use((err, req, res, next) => {
-  // console.error('Erreur serveur:', err);
-  // if (err.message === 'Non autorisé par CORS') {
-    // return res.status(403).json({ error: 'Origine non autorisée', code: 'CORS_ERROR' });
-  // }
-  // res.status(500).json({ error: 'Erreur interne', code: 'INTERNAL_ERROR' });
-// });
-
+// ✅ 3. GESTIONNAIRE D'ERREURS GLOBAL (toujours en dernier)
 app.use((err, req, res, next) => {
 	console.error('Erreur serveur:', {
 		message: err.message, 
