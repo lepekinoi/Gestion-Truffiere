@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  safeParseFloat,
+  safeArray,
+  formatWeight
+} from '../utils/safeDataHandling';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const API_URL = process.env.REACT_APP_API_URL || 
@@ -174,29 +179,31 @@ function Dashboard() {
 
       setStockData(stockRes.data);
 
-      const commandesEnAttente = commandesRes.data.filter(c => 
-        c.statut === 'En attente' || c.statut === 'Confirmée'
+      const commandesEnAttente = safeArray(commandesRes.data).filter(c => // ✅
+        c && (c.statut === 'En attente' || c.statut === 'Confirmée') // ✅
       ).length;
-      const ventesEnAttente = ventesRes.data.filter(v => 
-        v.statut === 'En attente'
+      const ventesEnAttente = safeArray(ventesRes.data).filter(v => // ✅
+        v && v.statut === 'En attente' // ✅
       ).length;
       setAlertes({ commandesEnAttente, ventesEnAttente });
 
-      const sortedRecoltes = [...(recoltesRes.data || [])]
-	  .sort((a, b) => new Date(b.date_recolte || 0) - new Date(a.date_recolte || 0))
-	  .slice(0, 5);
+      const sortedRecoltes = safeArray(recoltesRes.data) // ✅ Safe array
+        .filter(r => r) // ✅ Filter null
+        .sort((a, b) => new Date(b.date_recolte || 0) - new Date(a.date_recolte || 0))
+        .slice(0, 5);
+
 
       setRecentRecoltes(sortedRecoltes);
 
       const today = new Date();
-      const sortedInterventions = interventionsRes.data
-        .filter(i => new Date(i.date_prevue) >= today && i.statut === 'Planifié')
+      const sortedInterventions = safeArray(interventionsRes.data) // ✅
+        .filter(i => i && new Date(i.date_prevue) >= today && i.statut === 'Planifié') // ✅
         .sort((a, b) => new Date(a.date_prevue) - new Date(b.date_prevue))
         .slice(0, 5);
       setInterventionsAVenir(sortedInterventions);
 
-      const sortedCommandes = commandesRes.data
-        .filter(c => c.statut !== 'Annulée' && c.statut !== 'Livrée')
+      const sortedCommandes = safeArray(commandesRes.data) // ✅
+        .filter(c => c && c.statut !== 'Annulée' && c.statut !== 'Livrée') // ✅
         .sort((a, b) => new Date(b.date_commande) - new Date(a.date_commande))
         .slice(0, 5);
       setCommandesRecentes(sortedCommandes);
@@ -206,12 +213,13 @@ function Dashboard() {
 
       const prodParParcelle = {};
       (recoltesRes.data || []).forEach(recolte => {
-		  if (!recolte) return; // Protection
-		  const parcelle = recolte.parcelle_nom || 'Non défini';
-		  const poids = parseFloat(recolte.poids_grammes) || 0;
-		  if (!prodParParcelle[parcelle]) prodParParcelle[parcelle] = 0;
-		  prodParParcelle[parcelle] += poids / 1000;
-		});
+        if (!recolte) return; // ✅ Protection
+        const parcelle = recolte.parcelle_nom || 'Non défini';
+        const poids = safeParseFloat(recolte.poids_grammes, 0); // ✅ Utility
+        if (!prodParParcelle[parcelle]) prodParParcelle[parcelle] = 0;
+        prodParParcelle[parcelle] += poids / 1000;
+      });
+
       setProductionParParcelle(
         Object.entries(prodParParcelle)
           .map(([nom, kg]) => ({ nom, kg: parseFloat(kg.toFixed(2)) }))
@@ -227,23 +235,24 @@ function Dashboard() {
   };
 
   const prepareProductionMensuelle = (data) => {
-    const now = new Date();
-    const result = [];
+  const now = new Date();
+  const result = [];
+  const safeData = safeArray(data); // ✅ Protection
+  
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const moisNom = d.toLocaleDateString('fr-FR', { month: 'short' });
     
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const moisNom = d.toLocaleDateString('fr-FR', { month: 'short' });
-      
-      const found = data.find(item => item.mois === key);
-      result.push({
-        mois: moisNom,
-        production: found ? parseFloat((found.total_grammes / 1000).toFixed(2)) : 0
-      });
-    }
-    
-    return result;
-  };
+    const found = safeData.find(item => item && item.mois === key); // ✅
+    result.push({
+      mois: moisNom,
+      production: found ? safeParseFloat((found.total_grammes / 1000).toFixed(2), 0) : 0 // ✅
+    });
+  }
+  
+  return result;
+};
 
   // ==================== FONCTIONS UTILITAIRES ====================
 	const formatDateShort = (dateString) => {
@@ -532,7 +541,7 @@ function Dashboard() {
             <h3 style={styles.chartTitle}>
               <span>🌳</span> État sanitaire des arbres
             </h3>
-            {(stats.arbres?.parEtat || []).length > 0 ? (
+            {(stats?.arbres?.parEtat || []).length > 0 ? ( // ✅ Ajouter stats?.
               <div style={styles.pieContainer}>
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -595,16 +604,17 @@ function Dashboard() {
                 <div style={styles.activityEmpty}>Aucune récolte</div>
               ) : (
                 recentRecoltes.map(recolte => (
-                  <div key={recolte.id} style={styles.activityItem}>
-                    <div style={{...styles.activityDot, background: '#8e44ad'}}></div>
-                    <div style={styles.activityContent}>
-                      <div style={styles.activityDate}>
-                        {formatDateShort(recolte.date_recolte)}
-                      </div>
-                      <div style={styles.activityInfo}>
-                        {recolte.parcelle_nom || '-'} • 
-                        <strong> {parseFloat(recolte.poids_grammes).toFixed(0)} g</strong>
-                      </div>
+                  recolte && ( // ✅ Protection
+                    <div key={recolte.id} style={styles.activityItem}>
+                      <div style={{...styles.activityDot, background: '#8e44ad'}}></div>
+                      <div style={styles.activityContent}>
+                        <div style={styles.activityDate}>
+                          {formatDateShort(recolte.date_recolte)}
+                        </div>
+                        <div style={styles.activityInfo}>
+                          {recolte.parcelle_nom || '-'} • 
+                          <strong> {safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
+                        </div>
                       {recolte.qualite && (
                         <div style={styles.activityQuality}>{recolte.qualite}</div>
                       )}
@@ -626,19 +636,20 @@ function Dashboard() {
                 <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
               ) : (
                 interventionsAVenir.map(intervention => (
-                  <div key={intervention.id} style={styles.activityItem}>
-                    <div style={{...styles.activityDot, background: intervention.type_couleur || '#e67e22'}}></div>
-                    <div style={styles.activityContent}>
-                      <div style={styles.activityDate}>
-                        {formatDateShort(intervention.date_prevue)}
-                      </div>
-                      <div style={styles.activityBadge}>
-                        <span style={{
-                          ...styles.typeBadge,
-                          background: intervention.type_couleur || '#ccc'
-                        }}>
-                          {intervention.type_nom}
-                        </span>
+                  intervention && ( // ✅ Protection
+                    <div key={intervention.id} style={styles.activityItem}>
+                      <div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
+                      <div style={styles.activityContent}>
+                        <div style={styles.activityDate}>
+                          {formatDateShort(intervention?.date_prevue)}
+                        </div>
+                        <div style={styles.activityBadge}>
+                          <span style={{
+                            ...styles.typeBadge,
+                            background: intervention?.type_couleur || '#ccc'
+                          }}>
+                            {intervention?.type_nom}
+                          </span>
                       </div>
                       <div style={styles.activityInfo}>
                         {intervention.parcelle_nom || '-'}
@@ -661,22 +672,23 @@ function Dashboard() {
                 <div style={styles.activityEmpty}>Aucune commande</div>
               ) : (
                 commandesRecentes.map(commande => (
-                  <div key={commande.id} style={styles.activityItem}>
-                    <div style={{...styles.activityDot, background: '#3498db'}}></div>
-                    <div style={styles.activityContent}>
-                      <div style={styles.activityHeader2}>
-                        <span>{commande.numero_commande || `CMD-${commande.id}`}</span>
-                        <span style={{
-                          ...styles.statusBadge,
-                          background: commande.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
-                          color: commande.statut === 'En attente' ? '#856404' : '#004085'
-                        }}>
-                          {commande.statut}
-                        </span>
-                      </div>
-                      <div style={styles.activityInfo}>
-                        {parseFloat(commande.poids_grammes || 0).toFixed(0)} g • 
-                        <strong> {parseFloat(commande.montant_total || 0).toFixed(2)} €</strong>
+                  commande && ( // ✅ Protection
+                    <div key={commande.id} style={styles.activityItem}>
+                      <div style={{...styles.activityDot, background: '#3498db'}}></div>
+                      <div style={styles.activityContent}>
+                        <div style={styles.activityHeader2}>
+                          <span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
+                          <span style={{
+                            ...styles.statusBadge,
+                            background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
+                            color: commande?.statut === 'En attente' ? '#856404' : '#004085'
+                          }}>
+                            {commande?.statut}
+                          </span>
+                        </div>
+                        <div style={styles.activityInfo}>
+                          {safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
+                          <strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
                       </div>
                     </div>
                   </div>
