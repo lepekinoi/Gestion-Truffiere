@@ -5,7 +5,7 @@ import {
   safeArray,
   formatWeight
 } from '../utils/safeDataHandling';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts';
 
 const API_URL = process.env.REACT_APP_API_URL || 
   (process.env.NODE_ENV === 'production' 
@@ -28,6 +28,12 @@ const COLORS = {
   muted: '#95a5a6',
   dark: '#2c3e50',
   light: '#ecf0f1'
+};
+
+const YEAR_COLORS = {
+  year1: '#2c5f2d',
+  year2: '#667eea',
+  year3: '#764ba2'
 };
 
 // Icônes météo
@@ -82,8 +88,18 @@ function Dashboard() {
   // Données pour les graphiques
   const [productionParMois, setProductionParMois] = useState([]);
   const [productionParParcelle, setProductionParParcelle] = useState([]);
+  const [parcelleHealth, setParcelleHealth] = useState([]);
+  const [rentabiliteData, setRentabiliteData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
+  const [selectedYearsComparison, setSelectedYearsComparison] = useState([]);
+  const [productionComparison, setProductionComparison] = useState([]);
+  const [monthCalendar, setMonthCalendar] = useState([]);
+  const [trendData, setTrendData] = useState({
+    productionTrend: 0,
+    avgPerRecolte: 0,
+    productivityPerTree: 0
+  });
 
   // ==================== CHARGEMENT DES DONNÉES ====================
   useEffect(() => {
@@ -157,6 +173,58 @@ function Dashboard() {
     }
   };
 
+  const calculateTrendData = (recoltes, recoltesMensuelles) => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // Production du mois vs mois dernier
+    const thisMonthKey = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, '0')}`;
+    const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+    
+    const thisMonthData = safeArray(recoltesMensuelles).find(item => item && item.mois === thisMonthKey);
+    const lastMonthData = safeArray(recoltesMensuelles).find(item => item && item.mois === lastMonthKey);
+    
+    const thisMonthProd = thisMonthData ? safeParseFloat(thisMonthData.total_grammes, 0) : 0;
+    const lastMonthProd = lastMonthData ? safeParseFloat(lastMonthData.total_grammes, 0) : 0;
+    
+    const productionTrend = lastMonthProd > 0 ? ((thisMonthProd - lastMonthProd) / lastMonthProd * 100) : 0;
+
+    // Moyenne par récolte
+    const avgPerRecolte = stats.recoltes.count > 0 ? safeParseFloat(stats.recoltes.totalGrammes, 0) / stats.recoltes.count : 0;
+
+    // Productivité par arbre
+    const productivityPerTree = stats.arbres.count > 0 ? safeParseFloat(stats.recoltes.totalGrammes, 0) / stats.arbres.count : 0;
+
+    return {
+      productionTrend: Math.round(productionTrend * 100) / 100,
+      avgPerRecolte: Math.round(avgPerRecolte),
+      productivityPerTree: Math.round(productivityPerTree)
+    };
+  };
+
+  const buildMonthCalendar = (recoltes, interventions) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const calendar = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+      const dayRecoltes = safeArray(recoltes).filter(r => r && r.date_recolte?.startsWith(dateStr));
+      const dayInterventions = safeArray(interventions).filter(i => i && i.date_prevue?.startsWith(dateStr));
+      
+      calendar.push({
+        day,
+        recoltes: dayRecoltes,
+        interventions: dayInterventions,
+        hasActivity: dayRecoltes.length > 0 || dayInterventions.length > 0
+      });
+    }
+    return calendar;
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -211,9 +279,13 @@ function Dashboard() {
         .slice(0, 5);
       setCommandesRecentes(sortedCommandes);
 
-      // Production avec 3 années
+      // Production avec 3 années - PHASE 1
       const years = getAvailableYears(recoltesMensuellesRes.data);
       setAvailableYears(years);
+      
+      // Par défaut: 3 dernières années
+      const defaultYears = years.slice(0, 3);
+      setSelectedYearsComparison(defaultYears);
       if (!years.includes(selectedYear)) {
         setSelectedYear(years[0] || new Date().getFullYear());
       }
@@ -221,8 +293,13 @@ function Dashboard() {
       const productionMensuelle = prepareProductionMensuelle(recoltesMensuellesRes.data, selectedYear);
       setProductionParMois(productionMensuelle);
 
+      // Graphique comparaison années
+      const comparisonData = prepareProductionComparison(recoltesMensuellesRes.data, defaultYears);
+      setProductionComparison(comparisonData);
+
       // Production par parcelle avec détails
       const prodParParcelle = {};
+      const ventesParParcelle = {};
       (recoltesRes.data || []).forEach(recolte => {
         if (!recolte) return;
         const parcelle = recolte.parcelle_nom || 'Non défini';
@@ -234,15 +311,62 @@ function Dashboard() {
         prodParParcelle[parcelle].count += 1;
       });
 
-      setProductionParParcelle(
-        Object.entries(prodParParcelle)
-          .map(([nom, data]) => ({
-            nom,
-            kg: parseFloat(data.kg.toFixed(2)),
-            count: data.count
-          }))
-          .sort((a, b) => b.kg - a.kg)
-      );
+      (ventesRes.data || []).forEach(vente => {
+        if (!vente) return;
+        const parcelle = vente.parcelle_nom || 'Non défini';
+        if (!ventesParParcelle[parcelle]) {
+          ventesParParcelle[parcelle] = 0;
+        }
+        ventesParParcelle[parcelle] += safeParseFloat(vente.montant_total, 0);
+      });
+
+      const prodParcelleArray = Object.entries(prodParParcelle)
+        .map(([nom, data]) => ({
+          nom,
+          kg: parseFloat(data.kg.toFixed(2)),
+          count: data.count
+        }))
+        .sort((a, b) => b.kg - a.kg);
+
+      setProductionParParcelle(prodParcelleArray);
+
+      // Santé des parcelles - PHASE 1
+      const health = prodParcelleArray.map(p => {
+        const totalProd = prodParcelleArray.reduce((sum, x) => sum + x.kg, 0);
+        const percentage = totalProd > 0 ? (p.kg / totalProd) * 100 : 0;
+        let status = 'Mauvais';
+        if (percentage >= 15) status = 'Excellent';
+        else if (percentage >= 10) status = 'Bon';
+        else if (percentage >= 5) status = 'Moyen';
+        return {
+          nom: p.nom,
+          production: p.kg,
+          percentage,
+          status
+        };
+      });
+      setParcelleHealth(health);
+
+      // Rentabilité par parcelle - PHASE 2
+      const rentabilite = prodParcelleArray.map(p => {
+        const ventes = ventesParParcelle[p.nom] || 0;
+        const rentabilitePercent = p.kg > 0 ? ((ventes / p.kg) * 100).toFixed(2) : 0;
+        return {
+          nom: p.nom,
+          production: p.kg,
+          ventes: parseFloat(ventes.toFixed(2)),
+          rentabilite: parseFloat(rentabilitePercent)
+        };
+      });
+      setRentabiliteData(rentabilite);
+
+      // Calendrier du mois - PHASE 2
+      const calendar = buildMonthCalendar(recoltesRes.data, interventionsRes.data);
+      setMonthCalendar(calendar);
+
+      // Tendances - PHASE 1
+      const trends = calculateTrendData(recoltesRes.data, recoltesMensuellesRes.data);
+      setTrendData(trends);
 
       setLoading(false);
     } catch (err) {
@@ -289,6 +413,43 @@ function Dashboard() {
     }
     
     return result;
+  };
+
+  const prepareProductionComparison = (data, years) => {
+    const months = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jui', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+    const result = [];
+    const safeData = safeArray(data);
+
+    for (let i = 0; i < 12; i++) {
+      const monthData = { mois: months[i] };
+      years.forEach(year => {
+        const key = `${year}-${String(i + 1).padStart(2, '0')}`;
+        const found = safeData.find(item => item && item.mois === key);
+        monthData[`year${year}`] = found ? safeParseFloat((found.total_grammes / 1000).toFixed(2), 0) : 0;
+      });
+      result.push(monthData);
+    }
+    return result;
+  };
+
+  const getHealthColor = (status) => {
+    switch(status) {
+      case 'Excellent': return '#27ae60';
+      case 'Bon': return '#2196F3';
+      case 'Moyen': return '#f39c12';
+      case 'Mauvais': return '#e74c3c';
+      default: return '#95a5a6';
+    }
+  };
+
+  const getHealthIcon = (status) => {
+    switch(status) {
+      case 'Excellent': return '✨';
+      case 'Bon': return '✅';
+      case 'Moyen': return '⚠️';
+      case 'Mauvais': return '❌';
+      default: return '➖';
+    }
   };
 
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -374,9 +535,7 @@ function Dashboard() {
   return (
     <div style={styles.pageContainer}>
       
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 0: PATRIMOINE - MODERNE ET JOLIE
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 0: PATRIMOINE */}
       <section style={styles.patrimoneBanner}>
         <div style={styles.patrimoineContent}>
           <div style={styles.patrimoineStat}>
@@ -409,9 +568,7 @@ function Dashboard() {
         </div>
       </section>
       
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 1: BANNIÈRE MÉTÉO PROFESSIONNELLE AMÉLIORÉE
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 1: MÉTÉO */}
       {weather && (
         <section style={styles.weatherBanner}>
           <div style={styles.weatherHeader}>
@@ -484,9 +641,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 2: ALERTES (si présentes)
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 2: ALERTES */}
       {(alertes.commandesEnAttente > 0 || alertes.ventesEnAttente > 0) && (
         <section style={styles.alertsSection}>
           {alertes.commandesEnAttente > 0 && (
@@ -510,12 +665,9 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 3: KPIs - Cartes visuelles (sans patrimoine)
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 3: KPIs */}
       <section style={styles.kpiSection}>
         <div style={styles.kpiGrid}>
-          {/* Production */}
           <div style={{...styles.kpiCard, ...styles.kpiCardAccent}}>
             <div style={{...styles.kpiIconWrapper, background: 'rgba(255,255,255,0.2)'}}>
               <span style={styles.kpiIcon}>🍄</span>
@@ -526,12 +678,8 @@ function Dashboard() {
               </div>
               <div style={styles.kpiLabel}>Production saison</div>
             </div>
-            <div style={styles.kpiMeta}>
-              <span style={{...styles.kpiTag, background: 'rgba(255,255,255,0.2)', color: 'white'}}>{stats.recoltes.count} récoltes</span>
-            </div>
           </div>
 
-          {/* Stock */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: stockStatus.color + '20'}}>
               <span style={styles.kpiIcon}>📦</span>
@@ -542,14 +690,8 @@ function Dashboard() {
               </div>
               <div style={styles.kpiLabel}>Stock disponible</div>
             </div>
-            <div style={styles.kpiMeta}>
-              <span style={{...styles.kpiStatus, background: stockStatus.color}}>
-                {stockStatus.label}
-              </span>
-            </div>
           </div>
 
-          {/* Chiffre d'affaires */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#27ae6020'}}>
               <span style={styles.kpiIcon}>💰</span>
@@ -560,12 +702,8 @@ function Dashboard() {
               </div>
               <div style={styles.kpiLabel}>Chiffre d'affaires</div>
             </div>
-            <div style={styles.kpiMeta}>
-              <span style={styles.kpiTag}>{stats.ventes.count} ventes</span>
-            </div>
           </div>
 
-          {/* Interventions */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#f39c1220'}}>
               <span style={styles.kpiIcon}>🛠️</span>
@@ -578,7 +716,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Commandes */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#3498db20'}}>
               <span style={styles.kpiIcon}>🛒</span>
@@ -593,9 +730,184 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 4: PRODUCTION PAR PARCELLE (POSITIONNÉ PLUS HAUT)
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 4: KPIs TENDANCE - PHASE 1 */}
+      <section style={styles.trendSection}>
+        <h3 style={styles.sectionTitle}>📊 Indicateurs de tendance</h3>
+        <div style={styles.trendGrid}>
+          <div style={styles.trendCard}>
+            <div style={styles.trendIcon}>
+              {trendData.productionTrend >= 0 ? '📈' : '📉'}
+            </div>
+            <div style={styles.trendContent}>
+              <div style={{...styles.trendValue, color: trendData.productionTrend >= 0 ? COLORS.success : COLORS.danger}}>
+                {trendData.productionTrend > 0 ? '+' : ''}{trendData.productionTrend}%
+              </div>
+              <div style={styles.trendLabel}>Tendance production</div>
+              <div style={styles.trendMeta}>vs mois dernier</div>
+            </div>
+          </div>
+
+          <div style={styles.trendCard}>
+            <div style={styles.trendIcon}>⚖️</div>
+            <div style={styles.trendContent}>
+              <div style={styles.trendValue}>{trendData.avgPerRecolte} g</div>
+              <div style={styles.trendLabel}>Moyenne par récolte</div>
+              <div style={styles.trendMeta}>{stats.recoltes.count} récoltes</div>
+            </div>
+          </div>
+
+          <div style={styles.trendCard}>
+            <div style={styles.trendIcon}>🌳</div>
+            <div style={styles.trendContent}>
+              <div style={styles.trendValue}>{trendData.productivityPerTree} g</div>
+              <div style={styles.trendLabel}>Productivité par arbre</div>
+              <div style={styles.trendMeta}>{stats.arbres.count} arbres</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 5: SANTÉ DES PARCELLES - PHASE 1 */}
+      <section style={styles.chartSection}>
+        <div style={styles.chartCardFull}>
+          <h3 style={styles.chartTitle}>
+            <span>🌳</span> État de santé des parcelles
+          </h3>
+          <div style={styles.healthGrid}>
+            {parcelleHealth.map((parcelle, idx) => (
+              <div key={idx} style={styles.healthCard}>
+                <div style={styles.healthHeader}>
+                  <span style={styles.healthIcon}>{getHealthIcon(parcelle.status)}</span>
+                  <div style={styles.healthInfo}>
+                    <div style={styles.healthName}>{parcelle.nom}</div>
+                    <div style={{...styles.healthStatus, color: getHealthColor(parcelle.status)}}>
+                      {parcelle.status}
+                    </div>
+                  </div>
+                </div>
+                <div style={styles.healthBar}>
+                  <div style={{
+                    ...styles.healthBarFill,
+                    width: `${parcelle.percentage}%`,
+                    backgroundColor: getHealthColor(parcelle.status)
+                  }} />
+                </div>
+                <div style={styles.healthStats}>
+                  <span>{parcelle.production} kg</span>
+                  <span>{parcelle.percentage.toFixed(1)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 6: PRODUCTION MULTI-ANNÉES - PHASE 1 */}
+      <section style={styles.chartSection}>
+        <div style={styles.chartCardFull}>
+          <div style={styles.chartHeader}>
+            <h3 style={styles.chartTitle}>
+              <span>📈</span> Production - Comparaison années
+            </h3>
+            <div style={styles.yearToggleButtons}>
+              {availableYears.slice(0, 5).map(year => (
+                <button
+                  key={year}
+                  onClick={() => {
+                    let newSelection = [...selectedYearsComparison];
+                    if (newSelection.includes(year)) {
+                      newSelection = newSelection.filter(y => y !== year);
+                    } else {
+                      newSelection.push(year);
+                    }
+                    setSelectedYearsComparison(newSelection.sort((a, b) => b - a));
+                  }}
+                  style={{
+                    ...styles.toggleButton,
+                    background: selectedYearsComparison.includes(year) ? COLORS.primary : '#e0e0e0',
+                    color: selectedYearsComparison.includes(year) ? 'white' : COLORS.dark
+                  }}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={productionComparison}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip contentStyle={styles.tooltipStyle} />
+              <Legend />
+              {selectedYearsComparison.map((year, idx) => (
+                <Line
+                  key={year}
+                  type="monotone"
+                  dataKey={`year${year}`}
+                  stroke={Object.values(YEAR_COLORS)[idx % 3]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  name={`${year}`}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* SECTION 7: RENTABILITÉ PAR PARCELLE - PHASE 2 */}
+      <section style={styles.chartSection}>
+        <div style={styles.chartCardFull}>
+          <h3 style={styles.chartTitle}>
+            <span>💰</span> Rentabilité par parcelle
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={rentabiliteData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="nom" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+              <YAxis yAxisId="left" label={{ value: 'Production (kg)', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="right" orientation="right" label={{ value: 'Chiffre affaires (€)', angle: 90, position: 'insideRight' }} />
+              <Tooltip contentStyle={styles.tooltipStyle} />
+              <Legend />
+              <Bar yAxisId="left" dataKey="production" fill={COLORS.primary} name="Production (kg)" />
+              <Line yAxisId="right" type="monotone" dataKey="ventes" stroke={COLORS.success} strokeWidth={2} name="Chiffre affaires (€)" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* SECTION 8: CALENDRIER DU MOIS - PHASE 2 */}
+      <section style={styles.chartSection}>
+        <div style={styles.chartCardFull}>
+          <h3 style={styles.chartTitle}>
+            <span>📅</span> Calendrier du mois
+          </h3>
+          <div style={styles.calendar}>
+            <div style={styles.calendarGrid}>
+              {monthCalendar.map((day, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    ...styles.calendarDay,
+                    ...(day.hasActivity ? styles.calendarDayActive : {})
+                  }}
+                >
+                  <div style={styles.calendarDayNumber}>{day.day}</div>
+                  {day.recoltes.length > 0 && (
+                    <div style={styles.calendarActivity}>🍄 {day.recoltes.length}</div>
+                  )}
+                  {day.interventions.length > 0 && (
+                    <div style={styles.calendarActivity}>🛠️ {day.interventions.length}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 9: PRODUCTION PAR PARCELLE */}
       <section style={styles.chartSection}>
         <div style={styles.chartCardFull}>
           <div style={styles.chartHeader}>
@@ -640,9 +952,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 5: PRODUCTION AVEC SÉLECTEUR D'ANNÉE
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 10: PRODUCTION MENSUELLE */}
       <section style={styles.chartSection}>
         <div style={styles.chartCardFull}>
           <div style={styles.chartHeader}>
@@ -667,732 +977,4 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={productionParMois}>
               <defs>
-                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
-                formatter={(value) => [`${value} kg`, 'Production']}
-                contentStyle={styles.tooltipStyle}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="production" 
-                stroke={COLORS.primary}
-                strokeWidth={3}
-                fill="url(#colorProd)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 6: TIMELINE ACTIVITÉS RÉCENTES
-      ═══════════════════════════════════════════════════════════════ */}
-      <section style={styles.activitiesSection}>
-        <h2 style={styles.sectionTitle}>
-          <span>📋</span> Activités récentes
-        </h2>
-        
-        <div style={styles.activitiesGrid}>
-          {/* Dernières récoltes */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>🍄</span>
-              <span>Dernières récoltes</span>
-            </div>
-            <div style={styles.activityList}>
-              {recentRecoltes.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune récolte</div>
-              ) : (
-                recentRecoltes.map(recolte => (
-                  recolte && (
-                    <div key={recolte.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: '#8e44ad'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityDate}>
-                          {formatDateShort(recolte.date_recolte)}
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {recolte.parcelle_nom || '-'} • 
-                          <strong> {safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
-                        </div>
-                        {recolte.qualite && (
-                          <div style={styles.activityQuality}>{recolte.qualite}</div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                ))
-              )}
-            </div>
-          </div>
-          {/* Interventions à venir */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>🛠️</span>
-              <span>Interventions à venir</span>
-            </div>
-            <div style={styles.activityList}>
-              {interventionsAVenir.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
-              ) : (
-                interventionsAVenir.map(intervention => (
-                  intervention && (
-                    <div key={intervention.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityDate}>
-                          {formatDateShort(intervention?.date_prevue)}
-                        </div>
-                        <div style={styles.activityBadge}>
-                          <span style={{
-                            ...styles.typeBadge,
-                            background: intervention?.type_couleur || '#ccc'
-                          }}>
-                            {intervention?.type_nom}
-                          </span>
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {intervention?.parcelle_nom || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                ))
-              )}
-            </div>
-          </div>
-          {/* Commandes en cours */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>📦</span>
-              <span>Commandes en cours</span>
-            </div>
-            <div style={styles.activityList}>
-              {commandesRecentes.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune commande</div>
-              ) : (
-                commandesRecentes.map(commande => (
-                  commande && (
-                    <div key={commande.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: '#3498db'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityHeader2}>
-                          <span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
-                          <span style={{
-                            ...styles.statusBadge,
-                            background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
-                            color: commande?.statut === 'En attente' ? '#856404' : '#004085'
-                          }}>
-                            {commande?.statut}
-                          </span>
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
-                          <strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <style>{`
-        @keyframes loadingPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        @keyframes loadingBar {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// ==================== STYLES ====================
-const styles = {
-  pageContainer: {
-    padding: '1.5rem',
-    maxWidth: '1600px',
-    margin: '0 auto',
-    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
-  },
-
-  // Loading & Error
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '60vh',
-    gap: '1rem'
-  },
-  loadingIcon: {
-    fontSize: '4rem',
-    animation: 'loadingPulse 1.5s ease-in-out infinite'
-  },
-  loadingText: {
-    color: COLORS.muted,
-    fontSize: '1.1rem'
-  },
-  loadingBar: {
-    width: '200px',
-    height: '4px',
-    background: '#eee',
-    borderRadius: '4px',
-    overflow: 'hidden'
-  },
-  loadingProgress: {
-    width: '100%',
-    height: '100%',
-    background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.primaryLight})`,
-    animation: 'loadingBar 1.5s ease-in-out infinite'
-  },
-  errorContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '50vh',
-    gap: '1rem'
-  },
-  retryButton: {
-    padding: '0.75rem 1.5rem',
-    background: COLORS.primary,
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '1rem'
-  },
-
-  // Patrimoine Banner - MODERNE ET JOLIE
-  patrimoneBanner: {
-    display: 'flex',
-    alignItems: 'stretch',
-    padding: '0',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '16px',
-    marginBottom: '1.5rem',
-    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
-    overflow: 'hidden'
-  },
-  patrimoineContent: {
-    display: 'flex',
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    padding: '2rem 1.5rem'
-  },
-  patrimoineStat: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.5rem',
-    flex: 1,
-    justifyContent: 'center'
-  },
-  patrimoineIcon: {
-    fontSize: '2.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  patrimoineStatContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-    color: 'white'
-  },
-  patrimoineValue: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    lineHeight: 1
-  },
-  patrimoineLabel: {
-    fontSize: '0.9rem',
-    opacity: 0.85,
-    fontWeight: '500'
-  },
-  patrimoineDivider: {
-    width: '1px',
-    height: '60px',
-    background: 'rgba(255,255,255,0.3)',
-    margin: '0 1rem'
-  },
-
-  // Weather Banner - AMÉLIORÉ
-  weatherBanner: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-    padding: '1.5rem 2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '16px',
-    color: 'white',
-    marginBottom: '1.5rem',
-    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)'
-  },
-  weatherHeader: {
-    display: 'flex',
-    gap: '2rem',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between'
-  },
-  weatherMain: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    flex: 0
-  },
-  weatherIcon: {
-    fontSize: '3rem'
-  },
-  weatherTemp: {
-    fontSize: '2.5rem',
-    fontWeight: '700'
-  },
-  weatherDetails: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem'
-  },
-  weatherCity: {
-    fontSize: '0.9rem',
-    opacity: 0.9
-  },
-  weatherDesc: {
-    fontSize: '1rem',
-    textTransform: 'capitalize',
-    fontWeight: '500'
-  },
-  weatherGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-    gap: '1rem',
-    flex: 1
-  },
-  weatherMetric: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '0.75rem',
-    background: 'rgba(255,255,255,0.1)',
-    borderRadius: '12px',
-    fontSize: '0.85rem'
-  },
-  metricLabel: {
-    fontSize: '0.75rem',
-    opacity: 0.8,
-    marginBottom: '0.25rem'
-  },
-  metricValue: {
-    fontSize: '1.1rem',
-    fontWeight: '600'
-  },
-  windDir: {
-    fontSize: '0.75rem',
-    opacity: 0.8,
-    marginTop: '0.25rem'
-  },
-  riskMetric: {
-    background: 'rgba(255,255,255,0.15)'
-  },
-  weatherDivider: {
-    height: '1px',
-    background: 'rgba(255,255,255,0.3)',
-    width: '100%'
-  },
-  forecastSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.75rem'
-  },
-  forecastTitle: {
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    opacity: 0.9
-  },
-  forecastContainer: {
-    display: 'flex',
-    gap: '1rem',
-    justifyContent: 'space-between',
-    overflowX: 'auto'
-  },
-  forecastDay: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.25rem',
-    padding: '0.75rem',
-    background: 'rgba(255,255,255,0.1)',
-    borderRadius: '12px',
-    minWidth: '90px',
-    fontSize: '0.85rem'
-  },
-  forecastDayName: {
-    fontSize: '0.8rem',
-    fontWeight: '600',
-    textTransform: 'capitalize'
-  },
-  forecastIcon: {
-    fontSize: '1.75rem'
-  },
-  forecastTemps: {
-    display: 'flex',
-    gap: '0.5rem',
-    fontSize: '0.85rem'
-  },
-  tempMax: {
-    fontWeight: '600'
-  },
-  tempMin: {
-    opacity: 0.7
-  },
-  forecastMeta: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.25rem',
-    fontSize: '0.8rem',
-    marginTop: '0.25rem'
-  },
-  rainInfo: {
-    color: '#87ceeb'
-  },
-  humInfo: {
-    opacity: 0.9
-  },
-  forecastPop: {
-    fontSize: '0.75rem',
-    opacity: 0.8,
-    fontWeight: '500'
-  },
-
-  // Alerts
-  alertsSection: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-    flexWrap: 'wrap'
-  },
-  alertCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    padding: '1rem 1.5rem',
-    background: '#fff3cd',
-    border: '1px solid #ffc107',
-    borderRadius: '12px',
-    flex: '1 1 280px'
-  },
-  alertInfo: {
-    background: '#d1ecf1',
-    borderColor: '#17a2b8'
-  },
-  alertIcon: {
-    fontSize: '2rem'
-  },
-  alertContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem'
-  },
-
-  // KPI Section
-  kpiSection: {
-    marginBottom: '2rem'
-  },
-  kpiGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1.25rem'
-  },
-  kpiCard: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '1.5rem',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    cursor: 'default'
-  },
-  kpiCardAccent: {
-    background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryLight} 100%)`,
-    color: 'white'
-  },
-  kpiIconWrapper: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
-    background: '#f5f5f5',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  kpiIcon: {
-    fontSize: '1.5rem'
-  },
-  kpiContent: {
-    flex: 1
-  },
-  kpiValue: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    lineHeight: 1.2
-  },
-  kpiLabel: {
-    fontSize: '0.9rem',
-    opacity: 0.8,
-    marginTop: '0.25rem'
-  },
-  kpiMeta: {
-    display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap'
-  },
-  kpiTag: {
-    fontSize: '0.8rem',
-    padding: '0.25rem 0.5rem',
-    background: '#f0f0f0',
-    borderRadius: '6px',
-    opacity: 0.9
-  },
-  kpiStatus: {
-    fontSize: '0.75rem',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    color: 'white',
-    fontWeight: '500'
-  },
-
-  // Chart Section
-  chartSection: {
-    marginBottom: '2rem'
-  },
-  chartCardFull: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '1.5rem',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
-  },
-  chartHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem'
-  },
-  chartTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    margin: 0,
-    color: COLORS.primary,
-    fontSize: '1.1rem',
-    fontWeight: '600'
-  },
-  chartMeta: {
-    display: 'flex',
-    gap: '1rem',
-    alignItems: 'center'
-  },
-  totalProduction: {
-    fontSize: '0.95rem',
-    fontWeight: '500',
-    color: COLORS.primary,
-    padding: '0.5rem 1rem',
-    background: '#f0f7f0',
-    borderRadius: '8px'
-  },
-  yearSelector: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem'
-  },
-  yearLabel: {
-    fontSize: '0.9rem',
-    fontWeight: '500',
-    color: COLORS.dark
-  },
-  yearSelect: {
-    padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: `1px solid ${COLORS.primary}`,
-    fontSize: '0.9rem',
-    cursor: 'pointer',
-    background: 'white',
-    color: COLORS.dark
-  },
-  productionTable: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem'
-  },
-  tableHeader: {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr',
-    gap: '1rem',
-    padding: '1rem',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '0.9rem',
-    color: COLORS.dark,
-    borderBottom: `2px solid ${COLORS.primary}`
-  },
-  tableRow: {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr',
-    gap: '1rem',
-    padding: '1rem',
-    borderBottom: '1px solid #eee',
-    alignItems: 'center',
-    fontSize: '0.95rem',
-    transition: 'background 0.2s'
-  },
-  tableCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  },
-  percentage: {
-    fontSize: '0.8rem',
-    color: COLORS.muted,
-    marginLeft: '0.5rem'
-  },
-  tooltipStyle: {
-    background: 'white',
-    border: '1px solid #eee',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-  },
-  noData: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '200px',
-    color: COLORS.muted
-  },
-
-  // Activities Section
-  activitiesSection: {
-    marginBottom: '2rem'
-  },
-  sectionTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    margin: '0 0 1.25rem 0',
-    color: COLORS.primary,
-    fontSize: '1.25rem',
-    fontWeight: '600'
-  },
-  activitiesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '1.5rem'
-  },
-  activityCard: {
-    background: 'white',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
-  },
-  activityHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '1rem 1.25rem',
-    background: '#f8f9fa',
-    fontWeight: '600',
-    color: COLORS.dark
-  },
-  activityHeaderIcon: {
-    fontSize: '1.25rem'
-  },
-  activityList: {
-    padding: '1rem'
-  },
-  activityEmpty: {
-    padding: '1rem',
-    textAlign: 'center',
-    color: COLORS.muted
-  },
-  activityItem: {
-    display: 'flex',
-    gap: '0.75rem',
-    padding: '0.75rem 0',
-    borderBottom: '1px solid #f0f0f0'
-  },
-  activityDot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    marginTop: '0.3rem',
-    flexShrink: 0
-  },
-  activityContent: {
-    flex: 1
-  },
-  activityDate: {
-    fontWeight: '600',
-    fontSize: '0.9rem',
-    marginBottom: '0.25rem'
-  },
-  activityInfo: {
-    fontSize: '0.85rem',
-    color: '#666'
-  },
-  activityQuality: {
-    fontSize: '0.8rem',
-    color: COLORS.muted,
-    marginTop: '0.25rem'
-  },
-  activityBadge: {
-    marginBottom: '0.25rem'
-  },
-  typeBadge: {
-    display: 'inline-block',
-    padding: '0.15rem 0.5rem',
-    borderRadius: '4px',
-    color: 'white',
-    fontSize: '0.75rem'
-  },
-  activityHeader2: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.25rem',
-    fontWeight: '500'
-  },
-  statusBadge: {
-    fontSize: '0.7rem',
-    padding: '0.15rem 0.5rem',
-    borderRadius: '10px'
-  }
-};
-
-// Media queries via inline check (pour responsive)
-if (typeof window !== 'undefined' && window.innerWidth < 768) {
-  styles.weatherHeader.flexDirection = 'column';
-  styles.forecastContainer.display = 'grid';
-  styles.forecastContainer.gridTemplateColumns = 'repeat(2, 1fr)';
-  styles.weatherDivider.display = 'none';
-  styles.chartsGrid = { gridTemplateColumns: '1fr' };
-  styles.activitiesGrid.gridTemplateColumns = '1fr';
-}
-
-export default Dashboard;
+                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1": 
