@@ -1436,8 +1436,8 @@ const handleSubmit = async (e) => {
                   <label>Surface (ha) *</label>
 					<input 
 					  type="number" 
-					  name="surfaceha" 
-					  value={formData.surfaceha} 
+					  name="surface_ha" 
+					  value={formData.surface_ha} 
 					  onChange={handleInputChange} 
 					  required
 					  step="0.01" 
