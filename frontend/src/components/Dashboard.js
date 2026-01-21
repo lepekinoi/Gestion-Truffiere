@@ -375,6 +375,41 @@ function Dashboard() {
     <div style={styles.pageContainer}>
       
       {/* ═══════════════════════════════════════════════════════════════
+          SECTION 0: PATRIMOINE - MODERNE ET JOLIE
+      ═══════════════════════════════════════════════════════════════ */}
+      <section style={styles.patrimoneBanner}>
+        <div style={styles.patrimoineContent}>
+          <div style={styles.patrimoineStat}>
+            <div style={styles.patrimoineIcon}>🌳</div>
+            <div style={styles.patrimoineStatContent}>
+              <div style={styles.patrimoineValue}>{stats.arbres.count}</div>
+              <div style={styles.patrimoineLabel}>Arbres truffiers</div>
+            </div>
+          </div>
+          
+          <div style={styles.patrimoineDivider}></div>
+          
+          <div style={styles.patrimoineStat}>
+            <div style={styles.patrimoineIcon}>📋</div>
+            <div style={styles.patrimoineStatContent}>
+              <div style={styles.patrimoineValue}>{stats.parcelles.count}</div>
+              <div style={styles.patrimoineLabel}>Parcelles</div>
+            </div>
+          </div>
+          
+          <div style={styles.patrimoineDivider}></div>
+          
+          <div style={styles.patrimoineStat}>
+            <div style={styles.patrimoineIcon}>📐</div>
+            <div style={styles.patrimoineStatContent}>
+              <div style={styles.patrimoineValue}>{stats.parcelles.surface.toFixed(2)}</div>
+              <div style={styles.patrimoineLabel}>Hectares</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* ═══════════════════════════════════════════════════════════════
           SECTION 1: BANNIÈRE MÉTÉO PROFESSIONNELLE AMÉLIORÉE
       ═══════════════════════════════════════════════════════════════ */}
       {weather && (
@@ -476,29 +511,10 @@ function Dashboard() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 3: KPIs - Cartes visuelles
+          SECTION 3: KPIs - Cartes visuelles (sans patrimoine)
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.kpiSection}>
         <div style={styles.kpiGrid}>
-          {/* Patrimoine */}
-          <div style={styles.kpiCard}>
-            <div style={styles.kpiIconWrapper}>
-              <span style={styles.kpiIcon}>🌳</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={styles.kpiValue}>{stats.arbres.count}</div>
-              <div style={styles.kpiLabel}>Arbres truffiers</div>
-            </div>
-            <div style={styles.kpiMeta}>
-              <span style={styles.kpiTag}>
-                📋 {stats.parcelles.count} parcelles
-              </span>
-              <span style={styles.kpiTag}>
-                📐 {stats.parcelles.surface.toFixed(2)} ha
-              </span>
-            </div>
-          </div>
-
           {/* Production */}
           <div style={{...styles.kpiCard, ...styles.kpiCardAccent}}>
             <div style={{...styles.kpiIconWrapper, background: 'rgba(255,255,255,0.2)'}}>
@@ -862,6 +878,60 @@ const styles = {
     fontSize: '1rem'
   },
 
+  // Patrimoine Banner - MODERNE ET JOLIE
+  patrimoneBanner: {
+    display: 'flex',
+    alignItems: 'stretch',
+    padding: '0',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderRadius: '16px',
+    marginBottom: '1.5rem',
+    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+    overflow: 'hidden'
+  },
+  patrimoineContent: {
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    padding: '2rem 1.5rem'
+  },
+  patrimoineStat: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.5rem',
+    flex: 1,
+    justifyContent: 'center'
+  },
+  patrimoineIcon: {
+    fontSize: '2.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  patrimoineStatContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+    color: 'white'
+  },
+  patrimoineValue: {
+    fontSize: '2rem',
+    fontWeight: '700',
+    lineHeight: 1
+  },
+  patrimoineLabel: {
+    fontSize: '0.9rem',
+    opacity: 0.85,
+    fontWeight: '500'
+  },
+  patrimoineDivider: {
+    width: '1px',
+    height: '60px',
+    background: 'rgba(255,255,255,0.3)',
+    margin: '0 1rem'
+  },
+
   // Weather Banner - AMÉLIORÉ
   weatherBanner: {
     display: 'flex',
@@ -1046,7 +1116,7 @@ const styles = {
   },
   kpiGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '1.25rem'
   },
   kpiCard: {
