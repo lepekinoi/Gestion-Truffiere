@@ -593,74 +593,74 @@ function Dashboard() {
         </h2>
         
         <div style={styles.activitiesGrid}>
-          {/* Dernières récoltes */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>🍄</span>
-              <span>Dernières récoltes</span>
-            </div>
-            <div style={styles.activityList}>
-              {recentRecoltes.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune récolte</div>
-              ) : (
-                recentRecoltes.map(recolte => (
-                  recolte && ( // ✅ Protection
-                    <div key={recolte.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: '#8e44ad'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityDate}>
-                          {formatDateShort(recolte.date_recolte)}
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {recolte.parcelle_nom || '-'} • 
-                          <strong> {safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
-                        </div>
-                      {recolte.qualite && (
-                        <div style={styles.activityQuality}>{recolte.qualite}</div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Interventions à venir */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>🛠️</span>
-              <span>Interventions à venir</span>
-            </div>
-            <div style={styles.activityList}>
-              {interventionsAVenir.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
-              ) : (
-                interventionsAVenir.map(intervention => (
-                  intervention && ( // ✅ Protection
-                    <div key={intervention.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityDate}>
-                          {formatDateShort(intervention?.date_prevue)}
-                        </div>
-                        <div style={styles.activityBadge}>
-                          <span style={{
-                            ...styles.typeBadge,
-                            background: intervention?.type_couleur || '#ccc'
-                          }}>
-                            {intervention?.type_nom}
-                          </span>
-                      </div>
-                      <div style={styles.activityInfo}>
-                        {intervention.parcelle_nom || '-'}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
+			{/* Dernières récoltes */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>🍄</span>
+				<span>Dernières récoltes</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{recentRecoltes.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune récolte</div>
+				) : (
+				  recentRecoltes.map(recolte => (
+					recolte && (
+					  <div key={recolte.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: '#8e44ad'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityDate}>
+							{formatDateShort(recolte.date_recolte)}
+						  </div>
+						  <div style={styles.activityInfo}>
+							{recolte.parcelle_nom || '-'} • 
+							<strong> {safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
+						  </div>
+						  {recolte.qualite && (
+							<div style={styles.activityQuality}>{recolte.qualite}</div>
+						  )}
+						</div>
+					  </div>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+		{/* Interventions à venir */}
+		<div style={styles.activityCard}>
+		  <div style={styles.activityHeader}>
+			<span style={styles.activityHeaderIcon}>🛠️</span>
+			<span>Interventions à venir</span>
+		  </div>
+		  <div style={styles.activityList}>
+			{interventionsAVenir.length === 0 ? (
+			  <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
+			) : (
+			  interventionsAVenir.map(intervention => (
+				intervention && (
+				  <div key={intervention.id} style={styles.activityItem}>
+					<div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
+					<div style={styles.activityContent}>
+					  <div style={styles.activityDate}>
+						{formatDateShort(intervention?.date_prevue)}
+					  </div>
+					  <div style={styles.activityBadge}>
+						<span style={{
+						  ...styles.typeBadge,
+						  background: intervention?.type_couleur || '#ccc'
+						}}>
+						  {intervention?.type_nom}
+						</span>
+					  </div>
+					  <div style={styles.activityInfo}>
+						{intervention.parcelle_nom || '-'}
+					  </div>
+					</div>
+				  </div>
+				)
+			  ))
+			)}
+		  </div>
+		</div>
           {/* Commandes en cours */}
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
