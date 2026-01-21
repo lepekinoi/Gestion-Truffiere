@@ -560,15 +560,28 @@ function Dashboard() {
     return result;
   };
 
-  // ✅ RESTRUCTURÉ: Formater les données par MOIS (12 points fixes) au lieu de dates chronologiques
+  // ✅ ADAPTÉ: Axe des mois de JUIN À JUIN (saison truffière)
   const formatComparisonData = () => {
-    // Créer un objet avec les 12 mois
-    const moisNoms = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    // Ordre des mois pour la saison truffière: Juin à Mai
+    const moisOrdre = [
+      { nom: 'Juin', index: 6 },
+      { nom: 'Juil', index: 7 },
+      { nom: 'Aoû', index: 8 },
+      { nom: 'Sep', index: 9 },
+      { nom: 'Oct', index: 10 },
+      { nom: 'Nov', index: 11 },
+      { nom: 'Déc', index: 12 },
+      { nom: 'Jan', index: 1 },
+      { nom: 'Fév', index: 2 },
+      { nom: 'Mar', index: 3 },
+      { nom: 'Avr', index: 4 },
+      { nom: 'Mai', index: 5 }
+    ];
     
     // Initialiser les données pour les 12 mois
-    const data = moisNoms.map((nom, idx) => ({
+    const data = moisOrdre.map(({ nom, index }) => ({
       mois: nom,
-      monthIndex: idx + 1
+      monthIndex: index
     }));
     
     // Filtrer les données par années sélectionnées
@@ -581,12 +594,14 @@ function Dashboard() {
     // Remplir les données par mois et par année
     filtered.forEach(item => {
       const [year, month] = item.mois.split('-').map(Number);
-      const monthIndex = month - 1; // 0-11
       const production = safeParseFloat((item.total_grammes / 1000).toFixed(2), 0);
       
+      // Trouver l'index dans notre tableau réordonné
+      const dataIndex = moisOrdre.findIndex(m => m.index === month);
+      
       // Ajouter la production de cette année pour ce mois
-      if (data[monthIndex]) {
-        data[monthIndex][`${year}`] = production;
+      if (dataIndex !== -1 && data[dataIndex]) {
+        data[dataIndex][`${year}`] = production;
       }
     });
     
@@ -1021,7 +1036,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ✅ GRAPHIQUE RESTRUCTURÉ: 12 mois sur X, années en courbes séparées */}
+      {/* ✅ GRAPHIQUE ADAPTÉ: Axe de JUIN À JUIN (saison truffière) */}
       {recolteMensuellesBrutes.length > 0 && (
         <section style={styles.chartSection}>
           <div style={styles.chartCardFull}>
@@ -1119,7 +1134,7 @@ function Dashboard() {
                 <XAxis 
                   dataKey="mois" 
                   tick={{ fontSize: 12 }}
-                  label={{ value: 'Mois', position: 'insideBottom', offset: -5, fontSize: 14, fontWeight: 600 }}
+                  label={{ value: 'Mois (Saison truffière: Juin-Mai)', position: 'insideBottom', offset: -5, fontSize: 14, fontWeight: 600 }}
                 />
                 <YAxis 
                   tick={{ fontSize: 12 }}
