@@ -661,42 +661,42 @@ function Dashboard() {
 			)}
 		  </div>
 		</div>
-          {/* Commandes en cours */}
-          <div style={styles.activityCard}>
-            <div style={styles.activityHeader}>
-              <span style={styles.activityHeaderIcon}>📦</span>
-              <span>Commandes en cours</span>
-            </div>
-            <div style={styles.activityList}>
-              {commandesRecentes.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune commande</div>
-              ) : (
-                commandesRecentes.map(commande => (
-                  commande && ( // ✅ Protection
-                    <div key={commande.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: '#3498db'}}></div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityHeader2}>
-                          <span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
-                          <span style={{
-                            ...styles.statusBadge,
-                            background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
-                            color: commande?.statut === 'En attente' ? '#856404' : '#004085'
-                          }}>
-                            {commande?.statut}
-                          </span>
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
-                          <strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+		{/* Commandes en cours */}
+		<div style={styles.activityCard}>
+		  <div style={styles.activityHeader}>
+			<span style={styles.activityHeaderIcon}>📦</span>
+			<span>Commandes en cours</span>
+		  </div>
+		  <div style={styles.activityList}>
+			{commandesRecentes.length === 0 ? (
+			  <div style={styles.activityEmpty}>Aucune commande</div>
+			) : (
+			  commandesRecentes.map(commande => (
+				commande && (
+				  <div key={commande.id} style={styles.activityItem}>
+					<div style={{...styles.activityDot, background: '#3498db'}}></div>
+					<div style={styles.activityContent}>
+					  <div style={styles.activityHeader2}>
+						<span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
+						<span style={{
+						  ...styles.statusBadge,
+						  background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
+						  color: commande?.statut === 'En attente' ? '#856404' : '#004085'
+						}}>
+						  {commande?.statut}
+						</span>
+					  </div>
+					  <div style={styles.activityInfo}>
+						{safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
+						<strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
+					  </div>
+					</div>
+				  </div>
+				)
+			  ))
+			)}
+		  </div>
+		</div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
