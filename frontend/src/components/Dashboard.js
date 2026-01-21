@@ -643,24 +643,24 @@ function Dashboard() {
 					  <div style={styles.activityDate}>
 						{formatDateShort(intervention?.date_prevue)}
 					  </div>
-					  <div style={styles.activityBadge}>
-						<span style={{
-						  ...styles.typeBadge,
-						  background: intervention?.type_couleur || '#ccc'
-						}}>
-						  {intervention?.type_nom}
-						</span>
-					  </div>
-					  <div style={styles.activityInfo}>
-						{intervention.parcelle_nom || '-'}
-					  </div>
-					</div>
-				  </div>
-				)
-			  ))
-			)}
-		  </div>
-		</div>
+						<div style={styles.activityBadge}>
+                          <span style={{
+                            ...styles.typeBadge,
+                            background: intervention?.type_couleur || '#ccc'
+                          }}>
+                            {intervention?.type_nom}
+                          </span>
+                        </div>
+                        <div style={styles.activityInfo}>
+                          {intervention.parcelle_nom || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ))
+              )}
+            </div>
+          </div>
 		{/* Commandes en cours */}
 		<div style={styles.activityCard}>
 		  <div style={styles.activityHeader}>
@@ -698,7 +698,6 @@ function Dashboard() {
 		  </div>
 		</div>
       </section>
-
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 6: PRODUCTION PAR PARCELLE
       ═══════════════════════════════════════════════════════════════ */}
