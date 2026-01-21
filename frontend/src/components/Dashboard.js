@@ -16,7 +16,6 @@ if (!API_URL) {
   throw new Error('REACT_APP_API_URL must be defined in production');
 }
 
-// Couleurs cohérentes
 const COLORS = {
   primary: '#2c5f2d',
   primaryLight: '#4a8b4c',
@@ -36,7 +35,6 @@ const YEAR_COLORS = {
   year3: '#764ba2'
 };
 
-// Icônes météo
 const getWeatherIcon = (iconCode) => {
   const iconMap = {
     '01d': '☀️', '01n': '🌙',
@@ -53,11 +51,8 @@ const getWeatherIcon = (iconCode) => {
 };
 
 function Dashboard() {
-  // ==================== ÉTATS ====================
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Statistiques principales
   const [stats, setStats] = useState({
     parcelles: { count: 0, surface: 0 },
     arbres: { count: 0, parEtat: [] },
@@ -66,26 +61,10 @@ function Dashboard() {
     interventions: { aVenir: 0 },
     commandes: { enCours: 0 }
   });
-  
-  // Météo
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  
-  // Stock
   const [stockData, setStockData] = useState(null);
-  
-  // Alertes
-  const [alertes, setAlertes] = useState({
-    commandesEnAttente: 0,
-    ventesEnAttente: 0
-  });
-  
-  // Listes pour les activités récentes
-  const [recentRecoltes, setRecentRecoltes] = useState([]);
-  const [interventionsAVenir, setInterventionsAVenir] = useState([]);
-  const [commandesRecentes, setCommandesRecentes] = useState([]);
-  
-  // Données pour les graphiques
+  const [alertes, setAlertes] = useState({ commandesEnAttente: 0, ventesEnAttente: 0 });
   const [productionParMois, setProductionParMois] = useState([]);
   const [productionParParcelle, setProductionParParcelle] = useState([]);
   const [parcelleHealth, setParcelleHealth] = useState([]);
@@ -95,13 +74,8 @@ function Dashboard() {
   const [selectedYearsComparison, setSelectedYearsComparison] = useState([]);
   const [productionComparison, setProductionComparison] = useState([]);
   const [monthCalendar, setMonthCalendar] = useState([]);
-  const [trendData, setTrendData] = useState({
-    productionTrend: 0,
-    avgPerRecolte: 0,
-    productivityPerTree: 0
-  });
+  const [trendData, setTrendData] = useState({ productionTrend: 0, avgPerRecolte: 0, productivityPerTree: 0 });
 
-  // ==================== CHARGEMENT DES DONNÉES ====================
   useEffect(() => {
     loadDashboardData();
     loadWeather();
@@ -111,11 +85,9 @@ function Dashboard() {
     try {
       const API_KEY = 'bfa869b97ace2b1f8fd373765e64ed64';
       const location = 'Lusseray,FR';
-      
       const weatherRes = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${API_KEY}&units=metric&lang=fr`
       );
-
       if (weatherRes.ok) {
         const weatherData = await weatherRes.json();
         setWeather({
@@ -130,26 +102,20 @@ function Dashboard() {
           pressure: weatherData.main.pressure,
           visibility: (weatherData.visibility / 1000).toFixed(1),
           city: weatherData.name,
-          rain_1h: weatherData.rain?.['1h'] || 0,
-          sunrise: new Date(weatherData.sys.sunrise * 1000),
-          sunset: new Date(weatherData.sys.sunset * 1000)
+          rain_1h: weatherData.rain?.['1h'] || 0
         });
       }
-
       const forecastRes = await fetch(
         `https://api.openweathermap.org/data/2.5/forecast?q=${location}&appid=${API_KEY}&units=metric&lang=fr`
       );
-
       if (forecastRes.ok) {
         const forecastData = await forecastRes.json();
         const dailyForecast = [];
         const processedDays = new Set();
-        
         forecastData.list.forEach(item => {
           const date = new Date(item.dt * 1000);
           const dayKey = date.toDateString();
           const hour = date.getHours();
-          
           if (!processedDays.has(dayKey) && (hour >= 11 && hour <= 14)) {
             processedDays.add(dayKey);
             dailyForecast.push({
@@ -165,7 +131,6 @@ function Dashboard() {
             });
           }
         });
-
         setForecast(dailyForecast.slice(0, 5));
       }
     } catch (err) {
@@ -177,25 +142,15 @@ function Dashboard() {
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-    // Production du mois vs mois dernier
     const thisMonthKey = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, '0')}`;
     const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
-    
     const thisMonthData = safeArray(recoltesMensuelles).find(item => item && item.mois === thisMonthKey);
     const lastMonthData = safeArray(recoltesMensuelles).find(item => item && item.mois === lastMonthKey);
-    
     const thisMonthProd = thisMonthData ? safeParseFloat(thisMonthData.total_grammes, 0) : 0;
     const lastMonthProd = lastMonthData ? safeParseFloat(lastMonthData.total_grammes, 0) : 0;
-    
     const productionTrend = lastMonthProd > 0 ? ((thisMonthProd - lastMonthProd) / lastMonthProd * 100) : 0;
-
-    // Moyenne par récolte
     const avgPerRecolte = stats.recoltes.count > 0 ? safeParseFloat(stats.recoltes.totalGrammes, 0) / stats.recoltes.count : 0;
-
-    // Productivité par arbre
     const productivityPerTree = stats.arbres.count > 0 ? safeParseFloat(stats.recoltes.totalGrammes, 0) / stats.arbres.count : 0;
-
     return {
       productionTrend: Math.round(productionTrend * 100) / 100,
       avgPerRecolte: Math.round(avgPerRecolte),
@@ -208,13 +163,11 @@ function Dashboard() {
     const year = now.getFullYear();
     const month = now.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
     const calendar = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = new Date(year, month, day).toISOString().split('T')[0];
       const dayRecoltes = safeArray(recoltes).filter(r => r && r.date_recolte?.startsWith(dateStr));
       const dayInterventions = safeArray(interventions).filter(i => i && i.date_prevue?.startsWith(dateStr));
-      
       calendar.push({
         day,
         recoltes: dayRecoltes,
@@ -229,18 +182,9 @@ function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-
       const statsRes = await axios.get(`${API_URL}/stats/dashboard`);
       setStats(statsRes.data);
-
-      const [
-        recoltesRes,
-        interventionsRes,
-        commandesRes,
-        ventesRes,
-        recoltesMensuellesRes,
-        stockRes
-      ] = await Promise.allSettled([
+      const [recoltesRes, interventionsRes, commandesRes, ventesRes, recoltesMensuellesRes, stockRes] = await Promise.allSettled([
         axios.get(`${API_URL}/recoltes`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/interventions`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/commandes`).catch(() => ({ data: [] })),
@@ -248,89 +192,30 @@ function Dashboard() {
         axios.get(`${API_URL}/stats/recoltes-mensuelles`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/stock`).catch(() => ({ data: { stock_disponible_grammes: 0 } }))
       ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [] }));
-
       setStockData(stockRes.data);
-
-      const commandesEnAttente = safeArray(commandesRes.data).filter(c =>
-        c && (c.statut === 'En attente' || c.statut === 'Confirmée')
-      ).length;
-      const ventesEnAttente = safeArray(ventesRes.data).filter(v =>
-        v && v.statut === 'En attente'
-      ).length;
+      const commandesEnAttente = safeArray(commandesRes.data).filter(c => c && (c.statut === 'En attente' || c.statut === 'Confirmée')).length;
+      const ventesEnAttente = safeArray(ventesRes.data).filter(v => v && v.statut === 'En attente').length;
       setAlertes({ commandesEnAttente, ventesEnAttente });
-
-      const sortedRecoltes = safeArray(recoltesRes.data)
-        .filter(r => r)
-        .sort((a, b) => new Date(b.date_recolte || 0) - new Date(a.date_recolte || 0))
-        .slice(0, 5);
-
-      setRecentRecoltes(sortedRecoltes);
-
-      const today = new Date();
-      const sortedInterventions = safeArray(interventionsRes.data)
-        .filter(i => i && new Date(i.date_prevue) >= today && i.statut === 'Planifié')
-        .sort((a, b) => new Date(a.date_prevue) - new Date(b.date_prevue))
-        .slice(0, 5);
-      setInterventionsAVenir(sortedInterventions);
-
-      const sortedCommandes = safeArray(commandesRes.data)
-        .filter(c => c && c.statut !== 'Annulée' && c.statut !== 'Livrée')
-        .sort((a, b) => new Date(b.date_commande) - new Date(a.date_commande))
-        .slice(0, 5);
-      setCommandesRecentes(sortedCommandes);
-
-      // Production avec 3 années - PHASE 1
-      const years = getAvailableYears(recoltesMensuellesRes.data);
-      setAvailableYears(years);
-      
-      // Par défaut: 3 dernières années
-      const defaultYears = years.slice(0, 3);
-      setSelectedYearsComparison(defaultYears);
-      if (!years.includes(selectedYear)) {
-        setSelectedYear(years[0] || new Date().getFullYear());
-      }
-
-      const productionMensuelle = prepareProductionMensuelle(recoltesMensuellesRes.data, selectedYear);
-      setProductionParMois(productionMensuelle);
-
-      // Graphique comparaison années
-      const comparisonData = prepareProductionComparison(recoltesMensuellesRes.data, defaultYears);
-      setProductionComparison(comparisonData);
-
-      // Production par parcelle avec détails
       const prodParParcelle = {};
       const ventesParParcelle = {};
       (recoltesRes.data || []).forEach(recolte => {
         if (!recolte) return;
         const parcelle = recolte.parcelle_nom || 'Non défini';
         const poids = safeParseFloat(recolte.poids_grammes, 0);
-        if (!prodParParcelle[parcelle]) {
-          prodParParcelle[parcelle] = { kg: 0, count: 0 };
-        }
+        if (!prodParParcelle[parcelle]) prodParParcelle[parcelle] = { kg: 0, count: 0 };
         prodParParcelle[parcelle].kg += poids / 1000;
         prodParParcelle[parcelle].count += 1;
       });
-
       (ventesRes.data || []).forEach(vente => {
         if (!vente) return;
         const parcelle = vente.parcelle_nom || 'Non défini';
-        if (!ventesParParcelle[parcelle]) {
-          ventesParParcelle[parcelle] = 0;
-        }
+        if (!ventesParParcelle[parcelle]) ventesParParcelle[parcelle] = 0;
         ventesParParcelle[parcelle] += safeParseFloat(vente.montant_total, 0);
       });
-
       const prodParcelleArray = Object.entries(prodParParcelle)
-        .map(([nom, data]) => ({
-          nom,
-          kg: parseFloat(data.kg.toFixed(2)),
-          count: data.count
-        }))
+        .map(([nom, data]) => ({ nom, kg: parseFloat(data.kg.toFixed(2)), count: data.count }))
         .sort((a, b) => b.kg - a.kg);
-
       setProductionParParcelle(prodParcelleArray);
-
-      // Santé des parcelles - PHASE 1
       const health = prodParcelleArray.map(p => {
         const totalProd = prodParcelleArray.reduce((sum, x) => sum + x.kg, 0);
         const percentage = totalProd > 0 ? (p.kg / totalProd) * 100 : 0;
@@ -338,16 +223,9 @@ function Dashboard() {
         if (percentage >= 15) status = 'Excellent';
         else if (percentage >= 10) status = 'Bon';
         else if (percentage >= 5) status = 'Moyen';
-        return {
-          nom: p.nom,
-          production: p.kg,
-          percentage,
-          status
-        };
+        return { nom: p.nom, production: p.kg, percentage, status };
       });
       setParcelleHealth(health);
-
-      // Rentabilité par parcelle - PHASE 2
       const rentabilite = prodParcelleArray.map(p => {
         const ventes = ventesParParcelle[p.nom] || 0;
         const rentabilitePercent = p.kg > 0 ? ((ventes / p.kg) * 100).toFixed(2) : 0;
@@ -359,18 +237,22 @@ function Dashboard() {
         };
       });
       setRentabiliteData(rentabilite);
-
-      // Calendrier du mois - PHASE 2
       const calendar = buildMonthCalendar(recoltesRes.data, interventionsRes.data);
       setMonthCalendar(calendar);
-
-      // Tendances - PHASE 1
+      const years = getAvailableYears(recoltesMensuellesRes.data);
+      setAvailableYears(years);
+      const defaultYears = years.slice(0, 3);
+      setSelectedYearsComparison(defaultYears);
+      if (!years.includes(selectedYear)) setSelectedYear(years[0] || new Date().getFullYear());
+      const productionMensuelle = prepareProductionMensuelle(recoltesMensuellesRes.data, selectedYear);
+      setProductionParMois(productionMensuelle);
+      const comparisonData = prepareProductionComparison(recoltesMensuellesRes.data, defaultYears);
+      setProductionComparison(comparisonData);
       const trends = calculateTrendData(recoltesRes.data, recoltesMensuellesRes.data);
       setTrendData(trends);
-
       setLoading(false);
     } catch (err) {
-      console.error('Erreur lors du chargement du tableau de bord:', err);
+      console.error('Erreur lors du chargement:', err);
       setError('Impossible de charger les données du tableau de bord');
       setLoading(false);
     }
@@ -379,39 +261,29 @@ function Dashboard() {
   const getAvailableYears = (data) => {
     const years = new Set();
     const now = new Date();
-    
-    // Ajouter les 3 dernières années par défaut
-    for (let i = 0; i < 3; i++) {
-      years.add(now.getFullYear() - i);
-    }
-    
-    // Ajouter les années des données
+    for (let i = 0; i < 3; i++) years.add(now.getFullYear() - i);
     safeArray(data).forEach(item => {
       if (item && item.mois) {
         const year = parseInt(item.mois.split('-')[0]);
         if (!isNaN(year)) years.add(year);
       }
     });
-    
     return Array.from(years).sort((a, b) => b - a);
   };
 
   const prepareProductionMensuelle = (data, year) => {
     const result = [];
     const safeData = safeArray(data);
-    
     for (let i = 0; i < 12; i++) {
       const d = new Date(year, i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const moisNom = d.toLocaleDateString('fr-FR', { month: 'short' });
-      
       const found = safeData.find(item => item && item.mois === key);
       result.push({
         mois: moisNom,
         production: found ? safeParseFloat((found.total_grammes / 1000).toFixed(2), 0) : 0
       });
     }
-    
     return result;
   };
 
@@ -419,7 +291,6 @@ function Dashboard() {
     const months = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jui', 'aoû', 'sep', 'oct', 'nov', 'déc'];
     const result = [];
     const safeData = safeArray(data);
-
     for (let i = 0; i < 12; i++) {
       const monthData = { mois: months[i] };
       years.forEach(year => {
@@ -433,26 +304,15 @@ function Dashboard() {
   };
 
   const getHealthColor = (status) => {
-    switch(status) {
-      case 'Excellent': return '#27ae60';
-      case 'Bon': return '#2196F3';
-      case 'Moyen': return '#f39c12';
-      case 'Mauvais': return '#e74c3c';
-      default: return '#95a5a6';
-    }
+    const colorMap = { 'Excellent': '#27ae60', 'Bon': '#2196F3', 'Moyen': '#f39c12', 'Mauvais': '#e74c3c' };
+    return colorMap[status] || '#95a5a6';
   };
 
   const getHealthIcon = (status) => {
-    switch(status) {
-      case 'Excellent': return '✨';
-      case 'Bon': return '✅';
-      case 'Moyen': return '⚠️';
-      case 'Mauvais': return '❌';
-      default: return '➖';
-    }
+    const iconMap = { 'Excellent': '✨', 'Bon': '✅', 'Moyen': '⚠️', 'Mauvais': '❌' };
+    return iconMap[status] || '➖';
   };
 
-  // ==================== FONCTIONS UTILITAIRES ====================
   const formatDateShort = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -463,10 +323,8 @@ function Dashboard() {
   const getDayName = (date) => {
     const today = new Date();
     const tomorrow = new Date(today.getTime() + 24*60*60*1000);
-    
     if (date.toDateString() === today.toDateString()) return "Auj.";
     if (date.toDateString() === tomorrow.toDateString()) return "Dem.";
-    
     return date.toLocaleDateString('fr-FR', { weekday: 'short' });
   };
 
@@ -480,35 +338,25 @@ function Dashboard() {
 
   const getWindDirection = (deg) => {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-    const index = Math.round(deg / 22.5) % 16;
-    return directions[index];
+    return directions[Math.round(deg / 22.5) % 16];
   };
 
   const getRiskLevel = (weather) => {
     if (!weather) return { text: '-', color: COLORS.success, icon: '✅' };
-    
-    const temp = weather.temp;
-    const humidity = weather.humidity;
-    const rain = weather.rain_1h || 0;
-    
+    const temp = weather.temp, humidity = weather.humidity, rain = weather.rain_1h || 0;
     if (rain > 1) return { text: 'Pluie', color: COLORS.danger, icon: '🌧️' };
     if (temp < 5) return { text: 'Gel', color: COLORS.danger, icon: '❄️' };
     if (temp > 25 && humidity < 40) return { text: 'Stress hydrique', color: COLORS.warning, icon: '🔥' };
     if (humidity > 80) return { text: 'Humidité haute', color: COLORS.info, icon: '💧' };
-    
     return { text: 'Normal', color: COLORS.success, icon: '✅' };
   };
 
-  // ==================== RENDU CONDITIONNEL ====================
   if (loading) {
     return (
       <div style={styles.pageContainer}>
         <div style={styles.loadingContainer}>
           <div style={styles.loadingIcon}>🍄</div>
-          <div style={styles.loadingText}>Chargement du tableau de bord...</div>
-          <div style={styles.loadingBar}>
-            <div style={styles.loadingProgress}></div>
-          </div>
+          <div>Chargement...</div>
         </div>
       </div>
     );
@@ -518,11 +366,9 @@ function Dashboard() {
     return (
       <div style={styles.pageContainer}>
         <div style={styles.errorContainer}>
-          <span style={{ fontSize: '3rem' }}>⚠️</span>
-          <p style={{ color: COLORS.danger }}>{error}</p>
-          <button onClick={loadDashboardData} style={styles.retryButton}>
-            Réessayer
-          </button>
+          <span>⚠️</span>
+          <p>{error}</p>
+          <button onClick={loadDashboardData}>Réessayer</button>
         </div>
       </div>
     );
@@ -531,450 +377,280 @@ function Dashboard() {
   const stockStatus = getStockStatus(stockData?.stock_disponible_grammes || 0);
   const riskLevel = getRiskLevel(weather);
 
-  // ==================== RENDU PRINCIPAL ====================
   return (
     <div style={styles.pageContainer}>
-      
-      {/* SECTION 0: PATRIMOINE */}
       <section style={styles.patrimoneBanner}>
         <div style={styles.patrimoineContent}>
           <div style={styles.patrimoineStat}>
-            <div style={styles.patrimoineIcon}>🌳</div>
-            <div style={styles.patrimoineStatContent}>
+            <span>🌳</span>
+            <div>
               <div style={styles.patrimoineValue}>{stats.arbres.count}</div>
-              <div style={styles.patrimoineLabel}>Arbres truffiers</div>
+              <div>Arbres truffiers</div>
             </div>
           </div>
-          
-          <div style={styles.patrimoineDivider}></div>
-          
           <div style={styles.patrimoineStat}>
-            <div style={styles.patrimoineIcon}>📋</div>
-            <div style={styles.patrimoineStatContent}>
+            <span>📋</span>
+            <div>
               <div style={styles.patrimoineValue}>{stats.parcelles.count}</div>
-              <div style={styles.patrimoineLabel}>Parcelles</div>
+              <div>Parcelles</div>
             </div>
           </div>
-          
-          <div style={styles.patrimoineDivider}></div>
-          
           <div style={styles.patrimoineStat}>
-            <div style={styles.patrimoineIcon}>📐</div>
-            <div style={styles.patrimoineStatContent}>
+            <span>📐</span>
+            <div>
               <div style={styles.patrimoineValue}>{stats.parcelles.surface.toFixed(2)}</div>
-              <div style={styles.patrimoineLabel}>Hectares</div>
+              <div>Hectares</div>
             </div>
           </div>
         </div>
       </section>
-      
-      {/* SECTION 1: MÉTÉO */}
+
       {weather && (
         <section style={styles.weatherBanner}>
-          <div style={styles.weatherHeader}>
-            <div style={styles.weatherMain}>
-              <div style={styles.weatherIcon}>{getWeatherIcon(weather.icon)}</div>
-              <div style={styles.weatherTemp}>{weather.temp}°C</div>
-              <div style={styles.weatherDetails}>
-                <div style={styles.weatherCity}>📍 {weather.city}</div>
-                <div style={styles.weatherDesc}>{weather.description}</div>
-              </div>
-            </div>
-            
-            <div style={styles.weatherGrid}>
-              <div style={styles.weatherMetric}>
-                <div style={styles.metricLabel}>Ressenti</div>
-                <div style={styles.metricValue}>{weather.feels_like}°C</div>
-              </div>
-              <div style={styles.weatherMetric}>
-                <div style={styles.metricLabel}>Humidité</div>
-                <div style={styles.metricValue}>{weather.humidity}%</div>
-              </div>
-              <div style={styles.weatherMetric}>
-                <div style={styles.metricLabel}>Vent</div>
-                <div style={styles.metricValue}>{weather.wind_speed} km/h</div>
-                <div style={styles.windDir}>{getWindDirection(weather.wind_deg)}</div>
-              </div>
-              <div style={styles.weatherMetric}>
-                <div style={styles.metricLabel}>Pression</div>
-                <div style={styles.metricValue}>{weather.pressure} mb</div>
-              </div>
-              <div style={styles.weatherMetric}>
-                <div style={styles.metricLabel}>Visibilité</div>
-                <div style={styles.metricValue}>{weather.visibility} km</div>
-              </div>
-              <div style={{...styles.weatherMetric, ...styles.riskMetric}}>
-                <div style={styles.metricLabel}>Risque</div>
-                <div style={{...styles.metricValue, color: riskLevel.color}}>
-                  {riskLevel.icon} {riskLevel.text}
-                </div>
-              </div>
-            </div>
+          <div style={styles.weatherMain}>
+            <div style={styles.weatherIcon}>{getWeatherIcon(weather.icon)}</div>
+            <div>{weather.temp}°C</div>
+            <div>{weather.description}</div>
           </div>
-          
-          <div style={styles.weatherDivider}></div>
-          
-          <div style={styles.forecastSection}>
-            <div style={styles.forecastTitle}>⛅ Prévisions 5 jours</div>
-            <div style={styles.forecastContainer}>
-              {forecast.map((day, idx) => (
-                <div key={idx} style={styles.forecastDay}>
-                  <div style={styles.forecastDayName}>{getDayName(day.date)}</div>
-                  <div style={styles.forecastIcon}>{getWeatherIcon(day.icon)}</div>
-                  <div style={styles.forecastTemps}>
-                    <span style={styles.tempMax}>{day.temp_max}°</span>
-                    <span style={styles.tempMin}>{day.temp_min}°</span>
-                  </div>
-                  <div style={styles.forecastMeta}>
-                    {day.rain > 0 && (
-                      <div style={styles.rainInfo}>🌧️ {day.rain.toFixed(1)}mm</div>
-                    )}
-                    <div style={styles.humInfo}>💧 {day.humidity}%</div>
-                  </div>
-                  {day.pop > 0 && (
-                    <div style={styles.forecastPop}>Pluie {day.pop}%</div>
-                  )}
-                </div>
-              ))}
-            </div>
+          <div style={styles.weatherGrid}>
+            <div>Ressenti: {weather.feels_like}°C</div>
+            <div>Humidité: {weather.humidity}%</div>
+            <div>Vent: {weather.wind_speed} km/h</div>
+            <div>Pression: {weather.pressure} mb</div>
           </div>
         </section>
       )}
 
-      {/* SECTION 2: ALERTES */}
-      {(alertes.commandesEnAttente > 0 || alertes.ventesEnAttente > 0) && (
-        <section style={styles.alertsSection}>
-          {alertes.commandesEnAttente > 0 && (
-            <div style={styles.alertCard}>
-              <span style={styles.alertIcon}>📦</span>
-              <div style={styles.alertContent}>
-                <strong>{alertes.commandesEnAttente} commande(s) en attente</strong>
-                <span>À traiter dans Commercial</span>
-              </div>
-            </div>
-          )}
-          {alertes.ventesEnAttente > 0 && (
-            <div style={{...styles.alertCard, ...styles.alertInfo}}>
-              <span style={styles.alertIcon}>💳</span>
-              <div style={styles.alertContent}>
-                <strong>{alertes.ventesEnAttente} vente(s) en attente</strong>
-                <span>Paiement à suivre</span>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* SECTION 3: KPIs */}
       <section style={styles.kpiSection}>
         <div style={styles.kpiGrid}>
           <div style={{...styles.kpiCard, ...styles.kpiCardAccent}}>
-            <div style={{...styles.kpiIconWrapper, background: 'rgba(255,255,255,0.2)'}}>
-              <span style={styles.kpiIcon}>🍄</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={{...styles.kpiValue, color: 'white'}}>
-                {(stats.recoltes.totalGrammes / 1000).toFixed(2)} kg
-              </div>
-              <div style={styles.kpiLabel}>Production saison</div>
+            <span>🍄</span>
+            <div>
+              <div style={{...styles.kpiValue, color: 'white'}}>{(stats.recoltes.totalGrammes / 1000).toFixed(2)} kg</div>
+              <div>Production</div>
             </div>
           </div>
-
           <div style={styles.kpiCard}>
-            <div style={{...styles.kpiIconWrapper, background: stockStatus.color + '20'}}>
-              <span style={styles.kpiIcon}>📦</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={{...styles.kpiValue, color: stockStatus.color}}>
-                {formatWeight(stockData?.stock_disponible_grammes || 0)}
-              </div>
-              <div style={styles.kpiLabel}>Stock disponible</div>
+            <span>📦</span>
+            <div>
+              <div style={{...styles.kpiValue, color: stockStatus.color}}>{formatWeight(stockData?.stock_disponible_grammes || 0)}</div>
+              <div>Stock</div>
             </div>
           </div>
-
           <div style={styles.kpiCard}>
-            <div style={{...styles.kpiIconWrapper, background: '#27ae6020'}}>
-              <span style={styles.kpiIcon}>💰</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={{...styles.kpiValue, color: COLORS.success}}>
-                {stats.ventes.chiffreAffaires.toFixed(2)} €
-              </div>
-              <div style={styles.kpiLabel}>Chiffre d'affaires</div>
-            </div>
-          </div>
-
-          <div style={styles.kpiCard}>
-            <div style={{...styles.kpiIconWrapper, background: '#f39c1220'}}>
-              <span style={styles.kpiIcon}>🛠️</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={{...styles.kpiValue, color: stats.interventions.aVenir > 0 ? COLORS.warning : COLORS.success}}>
-                {stats.interventions.aVenir}
-              </div>
-              <div style={styles.kpiLabel}>Interventions prévues</div>
-            </div>
-          </div>
-
-          <div style={styles.kpiCard}>
-            <div style={{...styles.kpiIconWrapper, background: '#3498db20'}}>
-              <span style={styles.kpiIcon}>🛒</span>
-            </div>
-            <div style={styles.kpiContent}>
-              <div style={{...styles.kpiValue, color: COLORS.info}}>
-                {stats.commandes.enCours}
-              </div>
-              <div style={styles.kpiLabel}>Commandes en cours</div>
+            <span>💰</span>
+            <div>
+              <div style={{...styles.kpiValue, color: COLORS.success}}>{stats.ventes.chiffreAffaires.toFixed(2)} €</div>
+              <div>Chiffre d'affaires</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION 4: KPIs TENDANCE - PHASE 1 */}
       <section style={styles.trendSection}>
-        <h3 style={styles.sectionTitle}>📊 Indicateurs de tendance</h3>
+        <h3>Indicateurs de tendance</h3>
         <div style={styles.trendGrid}>
           <div style={styles.trendCard}>
-            <div style={styles.trendIcon}>
-              {trendData.productionTrend >= 0 ? '📈' : '📉'}
-            </div>
-            <div style={styles.trendContent}>
-              <div style={{...styles.trendValue, color: trendData.productionTrend >= 0 ? COLORS.success : COLORS.danger}}>
+            <div>{trendData.productionTrend >= 0 ? '📈' : '📉'}</div>
+            <div>
+              <div style={{color: trendData.productionTrend >= 0 ? COLORS.success : COLORS.danger}}>
                 {trendData.productionTrend > 0 ? '+' : ''}{trendData.productionTrend}%
               </div>
-              <div style={styles.trendLabel}>Tendance production</div>
-              <div style={styles.trendMeta}>vs mois dernier</div>
+              <div>Tendance production</div>
             </div>
           </div>
-
           <div style={styles.trendCard}>
-            <div style={styles.trendIcon}>⚖️</div>
-            <div style={styles.trendContent}>
-              <div style={styles.trendValue}>{trendData.avgPerRecolte} g</div>
-              <div style={styles.trendLabel}>Moyenne par récolte</div>
-              <div style={styles.trendMeta}>{stats.recoltes.count} récoltes</div>
+            <div>⚖️</div>
+            <div>
+              <div>{trendData.avgPerRecolte} g</div>
+              <div>Moyenne/récolte</div>
             </div>
           </div>
-
           <div style={styles.trendCard}>
-            <div style={styles.trendIcon}>🌳</div>
-            <div style={styles.trendContent}>
-              <div style={styles.trendValue}>{trendData.productivityPerTree} g</div>
-              <div style={styles.trendLabel}>Productivité par arbre</div>
-              <div style={styles.trendMeta}>{stats.arbres.count} arbres</div>
+            <div>🌳</div>
+            <div>
+              <div>{trendData.productivityPerTree} g</div>
+              <div>Productivité/arbre</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION 5: SANTÉ DES PARCELLES - PHASE 1 */}
       <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <h3 style={styles.chartTitle}>
-            <span>🌳</span> État de santé des parcelles
-          </h3>
-          <div style={styles.healthGrid}>
-            {parcelleHealth.map((parcelle, idx) => (
-              <div key={idx} style={styles.healthCard}>
-                <div style={styles.healthHeader}>
-                  <span style={styles.healthIcon}>{getHealthIcon(parcelle.status)}</span>
-                  <div style={styles.healthInfo}>
-                    <div style={styles.healthName}>{parcelle.nom}</div>
-                    <div style={{...styles.healthStatus, color: getHealthColor(parcelle.status)}}>
-                      {parcelle.status}
-                    </div>
-                  </div>
-                </div>
-                <div style={styles.healthBar}>
-                  <div style={{
-                    ...styles.healthBarFill,
-                    width: `${parcelle.percentage}%`,
-                    backgroundColor: getHealthColor(parcelle.status)
-                  }} />
-                </div>
-                <div style={styles.healthStats}>
-                  <span>{parcelle.production} kg</span>
-                  <span>{parcelle.percentage.toFixed(1)}%</span>
-                </div>
+        <h3>Santé des parcelles</h3>
+        <div style={styles.healthGrid}>
+          {parcelleHealth.map((parcelle, idx) => (
+            <div key={idx} style={styles.healthCard}>
+              <div>{getHealthIcon(parcelle.status)} {parcelle.nom}</div>
+              <div style={{...styles.healthStatus, color: getHealthColor(parcelle.status)}}>{parcelle.status}</div>
+              <div style={styles.healthBar}>
+                <div style={{
+                  ...styles.healthBarFill,
+                  width: `${parcelle.percentage}%`,
+                  backgroundColor: getHealthColor(parcelle.status)
+                }} />
+              </div>
+              <div>{parcelle.production} kg - {parcelle.percentage.toFixed(1)}%</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={styles.chartSection}>
+        <h3>Production - Comparaison années</h3>
+        <div style={styles.yearToggleButtons}>
+          {availableYears.slice(0, 5).map(year => (
+            <button
+              key={year}
+              onClick={() => {
+                let newSelection = [...selectedYearsComparison];
+                if (newSelection.includes(year)) {
+                  newSelection = newSelection.filter(y => y !== year);
+                } else {
+                  newSelection.push(year);
+                }
+                setSelectedYearsComparison(newSelection.sort((a, b) => b - a));
+              }}
+              style={{
+                ...styles.toggleButton,
+                background: selectedYearsComparison.includes(year) ? COLORS.primary : '#e0e0e0',
+                color: selectedYearsComparison.includes(year) ? 'white' : COLORS.dark
+              }}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={productionComparison}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <XAxis dataKey="mois" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {selectedYearsComparison.map((year) => (
+              <Line key={year} type="monotone" dataKey={`year${year}`} stroke={COLORS.primary} strokeWidth={2} name={`${year}`} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </section>
+
+      <section style={styles.chartSection}>
+        <h3>Rentabilité par parcelle</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={rentabiliteData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <XAxis dataKey="nom" />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip />
+            <Legend />
+            <Bar yAxisId="left" dataKey="production" fill={COLORS.primary} name="Production (kg)" />
+            <Line yAxisId="right" type="monotone" dataKey="ventes" stroke={COLORS.success} strokeWidth={2} name="Ventes (€)" />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </section>
+
+      <section style={styles.chartSection}>
+        <h3>Calendrier du mois</h3>
+        <div style={styles.calendar}>
+          <div style={styles.calendarGrid}>
+            {monthCalendar.map((day, idx) => (
+              <div key={idx} style={{...styles.calendarDay, ...(day.hasActivity ? styles.calendarDayActive : {})}}>
+                <div>{day.day}</div>
+                {day.recoltes.length > 0 && <div>🍄 {day.recoltes.length}</div>}
+                {day.interventions.length > 0 && <div>🛠️ {day.interventions.length}</div>}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* SECTION 6: PRODUCTION MULTI-ANNÉES - PHASE 1 */}
       <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>
-              <span>📈</span> Production - Comparaison années
-            </h3>
-            <div style={styles.yearToggleButtons}>
-              {availableYears.slice(0, 5).map(year => (
-                <button
-                  key={year}
-                  onClick={() => {
-                    let newSelection = [...selectedYearsComparison];
-                    if (newSelection.includes(year)) {
-                      newSelection = newSelection.filter(y => y !== year);
-                    } else {
-                      newSelection.push(year);
-                    }
-                    setSelectedYearsComparison(newSelection.sort((a, b) => b - a));
-                  }}
-                  style={{
-                    ...styles.toggleButton,
-                    background: selectedYearsComparison.includes(year) ? COLORS.primary : '#e0e0e0',
-                    color: selectedYearsComparison.includes(year) ? 'white' : COLORS.dark
-                  }}
-                >
-                  {year}
-                </button>
-              ))}
-            </div>
+        <h3>Production par parcelle</h3>
+        <div style={styles.productionTable}>
+          <div style={styles.tableHeader}>
+            <div>Parcelle</div>
+            <div>Production (kg)</div>
+            <div>Récoltes</div>
+            <div>Moy/Récolte</div>
           </div>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={productionComparison}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip contentStyle={styles.tooltipStyle} />
-              <Legend />
-              {selectedYearsComparison.map((year, idx) => (
-                <Line
-                  key={year}
-                  type="monotone"
-                  dataKey={`year${year}`}
-                  stroke={Object.values(YEAR_COLORS)[idx % 3]}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  name={`${year}`}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* SECTION 7: RENTABILITÉ PAR PARCELLE - PHASE 2 */}
-      <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <h3 style={styles.chartTitle}>
-            <span>💰</span> Rentabilité par parcelle
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={rentabiliteData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="nom" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
-              <YAxis yAxisId="left" label={{ value: 'Production (kg)', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" label={{ value: 'Chiffre affaires (€)', angle: 90, position: 'insideRight' }} />
-              <Tooltip contentStyle={styles.tooltipStyle} />
-              <Legend />
-              <Bar yAxisId="left" dataKey="production" fill={COLORS.primary} name="Production (kg)" />
-              <Line yAxisId="right" type="monotone" dataKey="ventes" stroke={COLORS.success} strokeWidth={2} name="Chiffre affaires (€)" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* SECTION 8: CALENDRIER DU MOIS - PHASE 2 */}
-      <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <h3 style={styles.chartTitle}>
-            <span>📅</span> Calendrier du mois
-          </h3>
-          <div style={styles.calendar}>
-            <div style={styles.calendarGrid}>
-              {monthCalendar.map((day, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    ...styles.calendarDay,
-                    ...(day.hasActivity ? styles.calendarDayActive : {})
-                  }}
-                >
-                  <div style={styles.calendarDayNumber}>{day.day}</div>
-                  {day.recoltes.length > 0 && (
-                    <div style={styles.calendarActivity}>🍄 {day.recoltes.length}</div>
-                  )}
-                  {day.interventions.length > 0 && (
-                    <div style={styles.calendarActivity}>🛠️ {day.interventions.length}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 9: PRODUCTION PAR PARCELLE */}
-      <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>
-              <span>📊</span> Production par parcelle
-            </h3>
-            <div style={styles.chartMeta}>
-              <span style={styles.totalProduction}>
-                Total: {productionParParcelle.reduce((sum, p) => sum + p.kg, 0).toFixed(2)} kg
-              </span>
-            </div>
-          </div>
-          {productionParParcelle.length > 0 ? (
-            <div style={styles.productionTable}>
-              <div style={styles.tableHeader}>
-                <div style={{...styles.tableCell, flex: 2}}>Parcelle</div>
-                <div style={styles.tableCell}>Production (kg)</div>
-                <div style={styles.tableCell}>Récoltes</div>
-                <div style={styles.tableCell}>Moyenne/Récolte</div>
+          {productionParParcelle.map((parcelle, idx) => {
+            const moyenne = parcelle.count > 0 ? (parcelle.kg * 1000 / parcelle.count).toFixed(0) : 0;
+            return (
+              <div key={idx} style={styles.tableRow}>
+                <div>{parcelle.nom}</div>
+                <div style={{color: COLORS.primary}}>{parcelle.kg} kg</div>
+                <div>{parcelle.count}</div>
+                <div>{moyenne} g</div>
               </div>
-              {productionParParcelle.map((parcelle, idx) => {
-                const moyenne = parcelle.count > 0 ? (parcelle.kg * 1000 / parcelle.count).toFixed(0) : 0;
-                const percentage = productionParParcelle.reduce((sum, p) => sum + p.kg, 0) > 0
-                  ? ((parcelle.kg / productionParParcelle.reduce((sum, p) => sum + p.kg, 0)) * 100).toFixed(1)
-                  : 0;
-                return (
-                  <div key={idx} style={styles.tableRow}>
-                    <div style={{...styles.tableCell, flex: 2, fontWeight: '500'}}>{parcelle.nom}</div>
-                    <div style={{...styles.tableCell, color: COLORS.primary, fontWeight: '600'}}>
-                      {parcelle.kg} kg
-                      <span style={styles.percentage}>({percentage}%)</span>
-                    </div>
-                    <div style={styles.tableCell}>{parcelle.count}</div>
-                    <div style={styles.tableCell}>{moyenne} g</div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={styles.noData}>Aucune récolte enregistrée</div>
-          )}
+            );
+          })}
         </div>
       </section>
 
-      {/* SECTION 10: PRODUCTION MENSUELLE */}
       <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>
-              <span>📈</span> Production mensuelle
-            </h3>
-            <div style={styles.yearSelector}>
-              <label style={styles.yearLabel}>Année:</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={styles.yearSelect}
-              >
-                {availableYears.map(year => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={productionParMois}>
-              <defs>
-                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1": 
+        <h3>Production mensuelle</h3>
+        <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} style={styles.yearSelect}>
+          {availableYears.map(year => (<option key={year} value={year}>{year}</option>))}
+        </select>
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={productionParMois}>
+            <defs>
+              <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.8}/>
+                <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <XAxis dataKey="mois" />
+            <YAxis />
+            <Tooltip />
+            <Area type="monotone" dataKey="production" stroke={COLORS.primary} fillOpacity={1} fill="url(#colorProd)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </section>
+    </div>
+  );
+}
+
+const styles = {
+  pageContainer: { padding: '20px', backgroundColor: '#f5f5f5', minHeight: '100vh' },
+  patrimoneBanner: { backgroundColor: COLORS.primary, color: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' },
+  patrimoineContent: { display: 'flex', justifyContent: 'space-around', alignItems: 'center', gap: '20px' },
+  patrimoineStat: { display: 'flex', alignItems: 'center', gap: '15px' },
+  patrimoineValue: { fontSize: '24px', fontWeight: 'bold' },
+  weatherBanner: { backgroundColor: '#e3f2fd', padding: '20px', borderRadius: '8px', marginBottom: '20px' },
+  weatherMain: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' },
+  weatherIcon: { fontSize: '48px' },
+  weatherGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' },
+  kpiSection: { marginBottom: '20px' },
+  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' },
+  kpiCard: { backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '15px' },
+  kpiCardAccent: { backgroundColor: COLORS.primary, color: 'white' },
+  kpiValue: { fontSize: '20px', fontWeight: 'bold' },
+  trendSection: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' },
+  trendGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginTop: '15px' },
+  trendCard: { padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', borderLeft: `4px solid ${COLORS.primary}` },
+  chartSection: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' },
+  healthGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px' },
+  healthCard: { padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' },
+  healthStatus: { fontSize: '12px', fontWeight: 'bold' },
+  healthBar: { height: '8px', backgroundColor: '#e0e0e0', borderRadius: '4px', marginTop: '8px', overflow: 'hidden' },
+  healthBarFill: { height: '100%', transition: 'width 0.3s' },
+  yearToggleButtons: { display: 'flex', gap: '10px', marginBottom: '15px' },
+  toggleButton: { padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '14px' },
+  calendar: { marginTop: '15px' },
+  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px' },
+  calendarDay: { padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px', fontSize: '12px' },
+  calendarDayActive: { backgroundColor: '#e8f5e9', borderColor: COLORS.success },
+  productionTable: { marginTop: '15px' },
+  tableHeader: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', fontWeight: 'bold', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px' },
+  tableRow: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', padding: '10px', borderBottom: '1px solid #eee' },
+  yearSelect: { padding: '8px', borderRadius: '4px', border: '1px solid #ccc' },
+  loadingContainer: { textAlign: 'center', marginTop: '50px' },
+  errorContainer: { textAlign: 'center', marginTop: '50px', color: COLORS.danger },
+  tooltipStyle: { backgroundColor: 'white', border: `1px solid ${COLORS.primary}`, borderRadius: '4px', padding: '10px' }
+};
+
+export default Dashboard;
