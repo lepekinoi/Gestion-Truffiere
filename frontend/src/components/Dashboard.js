@@ -625,79 +625,81 @@ function Dashboard() {
 				)}
 			  </div>
 			</div>
-		{/* Interventions à venir */}
-		<div style={styles.activityCard}>
-		  <div style={styles.activityHeader}>
-			<span style={styles.activityHeaderIcon}>🛠️</span>
-			<span>Interventions à venir</span>
-		  </div>
-		  <div style={styles.activityList}>
-			{interventionsAVenir.length === 0 ? (
-			  <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
-			) : (
-			  interventionsAVenir.map(intervention => (
-				intervention && (
-				  <div key={intervention.id} style={styles.activityItem}>
-					<div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
-					<div style={styles.activityContent}>
-					  <div style={styles.activityDate}>
-						{formatDateShort(intervention?.date_prevue)}
+			{/* Interventions à venir */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>🛠️</span>
+				<span>Interventions à venir</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{interventionsAVenir.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
+				) : (
+				  interventionsAVenir.map(intervention => (
+					intervention && (
+					  <div key={intervention.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityDate}>
+							{formatDateShort(intervention?.date_prevue)}
+						  </div>
+						  <div style={styles.activityBadge}>
+							<span style={{
+							  ...styles.typeBadge,
+							  background: intervention?.type_couleur || '#ccc'
+							}}>
+							  {intervention?.type_nom}
+							</span>
+						  </div>
+						  <div style={styles.activityInfo}>
+							{intervention?.parcelle_nom || '-'}
+						  </div>
+						</div>
 					  </div>
-						<div style={styles.activityBadge}>
-                          <span style={{
-                            ...styles.typeBadge,
-                            background: intervention?.type_couleur || '#ccc'
-                          }}>
-                            {intervention?.type_nom}
-                          </span>
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {intervention.parcelle_nom || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                ))
-              )}
-            </div>
-          </div>
-		{/* Commandes en cours */}
-		<div style={styles.activityCard}>
-		  <div style={styles.activityHeader}>
-			<span style={styles.activityHeaderIcon}>📦</span>
-			<span>Commandes en cours</span>
-		  </div>
-		  <div style={styles.activityList}>
-			{commandesRecentes.length === 0 ? (
-			  <div style={styles.activityEmpty}>Aucune commande</div>
-			) : (
-			  commandesRecentes.map(commande => (
-				commande && (
-				  <div key={commande.id} style={styles.activityItem}>
-					<div style={{...styles.activityDot, background: '#3498db'}}></div>
-					<div style={styles.activityContent}>
-					  <div style={styles.activityHeader2}>
-						<span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
-						<span style={{
-						  ...styles.statusBadge,
-						  background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
-						  color: commande?.statut === 'En attente' ? '#856404' : '#004085'
-						}}>
-						  {commande?.statut}
-						</span>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+			{/* Commandes en cours */}
+			<div style={styles.activityCard}>
+			  <div style={styles.activityHeader}>
+				<span style={styles.activityHeaderIcon}>📦</span>
+				<span>Commandes en cours</span>
+			  </div>
+			  <div style={styles.activityList}>
+				{commandesRecentes.length === 0 ? (
+				  <div style={styles.activityEmpty}>Aucune commande</div>
+				) : (
+				  commandesRecentes.map(commande => (
+					commande && (
+					  <div key={commande.id} style={styles.activityItem}>
+						<div style={{...styles.activityDot, background: '#3498db'}}></div>
+						<div style={styles.activityContent}>
+						  <div style={styles.activityHeader2}>
+							<span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
+							<span style={{
+							  ...styles.statusBadge,
+							  background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff',
+							  color: commande?.statut === 'En attente' ? '#856404' : '#004085'
+							}}>
+							  {commande?.statut}
+							</span>
+						  </div>
+						  <div style={styles.activityInfo}>
+							{safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
+							<strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
+						  </div>
+						</div>
 					  </div>
-					  <div style={styles.activityInfo}>
-						{safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • 
-						<strong> {safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
-					  </div>
-					</div>
-				  </div>
-				)
-			  ))
-			)}
-		  </div>
-		</div>
+					)
+				  ))
+				)}
+			  </div>
+			</div>
+        </div>
       </section>
+
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 6: PRODUCTION PAR PARCELLE
       ═══════════════════════════════════════════════════════════════ */}
