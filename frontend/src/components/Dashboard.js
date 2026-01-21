@@ -27,7 +27,112 @@ const COLORS = {
   info: '#3498db',
   muted: '#95a5a6',
   dark: '#2c3e50',
-  light: '#ecf0f1'
+  light: '#ecf0f1',
+  yearColors: ['#2c5f2d', '#4a8b4c', '#8b5a2b', '#3498db', '#e74c3c', '#9b59b6']
+};
+
+// ==================== COMPOSANT KPI CARD ====================
+const KPICard = ({ title, valeur, unite, pct, trend, icon, subtitle }) => {
+  const getTrendIcon = () => {
+    if (trend === 'up') return '📈';
+    if (trend === 'down') return '📉';
+    return '➡️';
+  };
+
+  const getTrendColor = () => {
+    if (trend === 'up') return COLORS.success;
+    if (trend === 'down') return COLORS.danger;
+    return COLORS.muted;
+  };
+
+  return (
+    <div style={{
+      backgroundColor: '#fff',
+      border: `2px solid ${getTrendColor()}`,
+      borderRadius: '12px',
+      padding: '1.25rem',
+      minWidth: '220px',
+      flex: 1,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      transition: 'transform 0.2s, box-shadow 0.2s'
+    }}>
+      <div style={{ fontSize: '28px', marginBottom: '8px' }}>{icon}</div>
+      <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#666', fontWeight: '500' }}>{title}</h4>
+      {subtitle && <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#999' }}>{subtitle}</p>}
+      <div style={{ fontSize: '32px', fontWeight: 'bold', color: COLORS.primary, lineHeight: 1 }}>
+        {valeur} <span style={{ fontSize: '18px', color: '#999', fontWeight: 'normal' }}>{unite}</span>
+      </div>
+      {pct !== null && pct !== undefined && (
+        <div style={{ 
+          marginTop: '10px', 
+          fontSize: '14px', 
+          color: getTrendColor(),
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          {getTrendIcon()} {pct > 0 ? '+' : ''}{pct}% vs mois dernier
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== COMPOSANT ALERTE ====================
+const AlertCard = ({ alert }) => {
+  const severityColors = {
+    danger: COLORS.danger,
+    warning: COLORS.warning,
+    info: COLORS.info
+  };
+
+  const severityBg = {
+    danger: '#fee',
+    warning: '#fff3cd',
+    info: '#d1ecf1'
+  };
+
+  return (
+    <div style={{
+      backgroundColor: severityBg[alert.severity] || '#f8f9fa',
+      border: `2px solid ${severityColors[alert.severity]}`,
+      borderLeft: `6px solid ${severityColors[alert.severity]}`,
+      borderRadius: '8px',
+      padding: '14px 16px',
+      marginBottom: '12px',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+    }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '15px', color: '#333' }}>
+        {alert.title}
+      </div>
+      <div style={{ fontSize: '14px', color: '#666', marginBottom: alert.details ? '8px' : '0' }}>
+        {alert.message}
+      </div>
+      {alert.details && alert.details.length > 0 && (
+        <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px' }}>
+          {alert.details.map((detail, idx) => (
+            <li key={idx} style={{ color: '#555', marginBottom: '3px' }}>{detail}</li>
+          ))}
+        </ul>
+      )}
+      {alert.action && (
+        <button style={{
+          backgroundColor: severityColors[alert.severity],
+          color: 'white',
+          border: 'none',
+          padding: '6px 14px',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          marginTop: '10px',
+          fontWeight: '500'
+        }}>
+          {alert.action}
+        </button>
+      )}
+    </div>
+  );
 };
 
 // Icônes météo
@@ -74,6 +179,16 @@ function Dashboard() {
     ventesEnAttente: 0
   });
   
+  // 🆕 PHASE 1: KPIs de tendance
+  const [kpis, setKpis] = useState({
+    productionTendance: { valeur: 0, pct: 0, trend: 'stable' },
+    moyenneParRecolte: { valeur: 0, unite: 'g' },
+    productiviteParArbre: { valeur: 0, unite: 'g/arbre' }
+  });
+
+  // 🆕 PHASE 1: Alertes intelligentes
+  const [intelligentAlertes, setIntelligentAlertes] = useState([]);
+  
   // Listes pour les activités récentes
   const [recentRecoltes, setRecentRecoltes] = useState([]);
   const [interventionsAVenir, setInterventionsAVenir] = useState([]);
@@ -85,11 +200,30 @@ function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
 
+  // 🆕 PHASE 1: Comparaison multi-années
+  const [productionParMoisMultiAnnee, setProductionParMoisMultiAnnee] = useState({});
+  const [selectedYears, setSelectedYears] = useState([]);
+
   // ==================== CHARGEMENT DES DONNÉES ====================
   useEffect(() => {
     loadDashboardData();
     loadWeather();
-  }, [selectedYear]);
+  }, []);
+
+  // 🆕 PHASE 1: Charger les données pour toutes les années
+  useEffect(() => {
+    if (availableYears.length > 0) {
+      loadAllYearsData();
+    }
+  }, [availableYears]);
+
+  // 🆕 PHASE 1: Calculer KPIs et alertes quand les données changent
+  useEffect(() => {
+    if (stats && stockData && weather && productionParMois.length > 0) {
+      calculateTrends();
+      calculateSmartAlertes();
+    }
+  }, [stats, stockData, weather, productionParMois, interventionsAVenir]);
 
   const loadWeather = async () => {
     try {
@@ -211,15 +345,10 @@ function Dashboard() {
         .slice(0, 5);
       setCommandesRecentes(sortedCommandes);
 
-      // Production avec 3 années
+      // Production avec années disponibles
       const years = getAvailableYears(recoltesMensuellesRes.data);
       setAvailableYears(years);
-      if (!years.includes(selectedYear)) {
-        setSelectedYear(years[0] || new Date().getFullYear());
-      }
-
-      const productionMensuelle = prepareProductionMensuelle(recoltesMensuellesRes.data, selectedYear);
-      setProductionParMois(productionMensuelle);
+      setSelectedYears(years); // Par défaut, toutes visibles
 
       // Production par parcelle avec détails
       const prodParParcelle = {};
@@ -249,6 +378,126 @@ function Dashboard() {
       console.error('Erreur lors du chargement du tableau de bord:', err);
       setError('Impossible de charger les données du tableau de bord');
       setLoading(false);
+    }
+  };
+
+  // 🆕 PHASE 1: Charger les données pour toutes les années
+  const loadAllYearsData = async () => {
+    try {
+      const allData = {};
+      for (const year of availableYears) {
+        const res = await axios.get(`${API_URL}/stats/recoltes-mensuelles?year=${year}`).catch(() => ({ data: [] }));
+        allData[year] = prepareProductionMensuelle(res.data, year);
+      }
+      setProductionParMoisMultiAnnee(allData);
+    } catch (err) {
+      console.error('Erreur chargement données multi-années:', err);
+    }
+  };
+
+  // 🆕 PHASE 1: Calculer les KPIs de tendance
+  const calculateTrends = () => {
+    try {
+      const thisMonth = new Date().getMonth();
+      const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+
+      const productionCeMois = productionParMois[thisMonth]?.production || 0;
+      const productionMoisDernier = productionParMois[lastMonth]?.production || 0;
+      
+      const pct = productionMoisDernier > 0 
+        ? Math.round(((productionCeMois - productionMoisDernier) / productionMoisDernier) * 100)
+        : 0;
+
+      // Moyenne par récolte
+      const totalGrammes = stats.recoltes.totalGrammes || 0;
+      const nbRecoltes = stats.recoltes.count || 1;
+      const moyenneParRecolte = (totalGrammes / nbRecoltes).toFixed(0);
+
+      // Productivité par arbre
+      const nbArbres = stats.arbres.count || 1;
+      const productiviteParArbre = (totalGrammes / nbArbres).toFixed(2);
+
+      setKpis({
+        productionTendance: { 
+          valeur: productionCeMois.toFixed(1),
+          pct: pct,
+          trend: pct > 0 ? 'up' : pct < 0 ? 'down' : 'stable'
+        },
+        moyenneParRecolte: { valeur: moyenneParRecolte, unite: 'g' },
+        productiviteParArbre: { valeur: productiviteParArbre, unite: 'g/arbre' }
+      });
+    } catch (err) {
+      console.error('Erreur calcul tendances:', err);
+    }
+  };
+
+  // 🆕 PHASE 1: Calculer les alertes intelligentes
+  const calculateSmartAlertes = () => {
+    const alertes = [];
+
+    try {
+      const today = new Date();
+
+      // 1. Stock critique
+      const stockStatus = getStockStatus(stockData?.stock_disponible_grammes || 0);
+      if (stockStatus.label === 'Critique' || stockStatus.label === 'Épuisé') {
+        alertes.push({
+          type: 'stock_critique',
+          severity: 'danger',
+          title: '🚨 Stock Critique',
+          message: `Stock disponible: ${(stockData?.stock_disponible_grammes / 1000).toFixed(1)}kg`,
+          action: 'Planifier une récolte d\'urgence'
+        });
+      }
+
+      // 2. Interventions urgentes (< 3 jours)
+      const upcomingInterventions = interventionsAVenir.filter(i => {
+        const daysUntil = (new Date(i.date_prevue).getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+        return daysUntil <= 3 && i.statut === 'Planifié';
+      });
+
+      if (upcomingInterventions.length > 0) {
+        alertes.push({
+          type: 'interventions_urgentes',
+          severity: 'info',
+          title: '🛠️ Interventions prévues sous 3 jours',
+          message: `${upcomingInterventions.length} intervention(s) à faire dans les 3 prochains jours`,
+          details: upcomingInterventions.map(i => `${i.type_nom || 'Intervention'} - ${i.parcelle_nom}`)
+        });
+      }
+
+      // 3. Conditions météo défavorables
+      if (weather && getRiskLevel(weather).text !== 'Normal') {
+        const risk = getRiskLevel(weather);
+        alertes.push({
+          type: 'meteo',
+          severity: risk.text === 'Pluie' || risk.text === 'Gel' ? 'danger' : 'warning',
+          title: `${risk.icon} Condition météo défavorable`,
+          message: `Risque: ${risk.text} - Température: ${weather.temp}°C, Humidité: ${weather.humidity}%`,
+          action: 'Protéger les parcelles'
+        });
+      }
+
+      // 4. Production en retard (saison automne/hiver)
+      const thisMonth = today.getMonth();
+      if (thisMonth >= 8 && thisMonth <= 11) { // Sept-Déc
+        const avgProduction = productionParMois.reduce((a, b) => a + (b.production || 0), 0) / 12;
+        const thisMonthProduction = productionParMois[thisMonth]?.production || 0;
+        
+        if (thisMonthProduction < avgProduction * 0.7 && avgProduction > 0) {
+          alertes.push({
+            type: 'retard_production',
+            severity: 'warning',
+            title: '⚠️ Production en retard',
+            message: `Production du mois: ${thisMonthProduction.toFixed(1)}kg vs moyenne: ${avgProduction.toFixed(1)}kg`,
+            action: 'Vérifier l\'état des parcelles'
+          });
+        }
+      }
+
+      setIntelligentAlertes(alertes);
+    } catch (err) {
+      console.error('Erreur calcul alertes:', err);
     }
   };
 
@@ -289,6 +538,36 @@ function Dashboard() {
     }
     
     return result;
+  };
+
+  // 🆕 PHASE 1: Formater les données pour comparaison multi-années
+  const formatComparisonData = () => {
+    const monthKeys = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    return monthKeys.map((month, idx) => {
+      const moisNom = new Date(2024, idx, 1).toLocaleDateString('fr-FR', { month: 'short' });
+      const row = { mois: moisNom };
+      
+      selectedYears.forEach(year => {
+        const data = productionParMoisMultiAnnee[year] || [];
+        row[`${year}`] = data[idx]?.production || 0;
+      });
+      return row;
+    });
+  };
+
+  // 🆕 PHASE 1: Toggle visibilité d'une année
+  const toggleYearVisibility = (year) => {
+    setSelectedYears(prev => 
+      prev.includes(year) 
+        ? prev.filter(y => y !== year)
+        : [...prev, year]
+    );
+  };
+
+  // 🆕 PHASE 1: Couleur par année
+  const getYearColor = (year) => {
+    const yearIndex = availableYears.indexOf(year);
+    return COLORS.yearColors[yearIndex % COLORS.yearColors.length];
   };
 
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -375,7 +654,7 @@ function Dashboard() {
     <div style={styles.pageContainer}>
       
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 0: PATRIMOINE - MODERNE ET JOLIE
+          SECTION 0: PATRIMOINE
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.patrimoneBanner}>
         <div style={styles.patrimoineContent}>
@@ -410,7 +689,7 @@ function Dashboard() {
       </section>
       
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 1: BANNIÈRE MÉTÉO PROFESSIONNELLE AMÉLIORÉE
+          SECTION 1: BANNIÈRE MÉTÉO
       ═══════════════════════════════════════════════════════════════ */}
       {weather && (
         <section style={styles.weatherBanner}>
@@ -485,7 +764,23 @@ function Dashboard() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 2: ALERTES (si présentes)
+          🆕 PHASE 1: SECTION ALERTES INTELLIGENTES
+      ═══════════════════════════════════════════════════════════════ */}
+      {intelligentAlertes.length > 0 && (
+        <section style={{ marginBottom: '2rem' }}>
+          <h2 style={styles.sectionTitle}>
+            <span>⚠️</span> Alertes Intelligentes
+          </h2>
+          <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            {intelligentAlertes.map((alert, idx) => (
+              <AlertCard key={idx} alert={alert} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 2: ALERTES STANDARDS
       ═══════════════════════════════════════════════════════════════ */}
       {(alertes.commandesEnAttente > 0 || alertes.ventesEnAttente > 0) && (
         <section style={styles.alertsSection}>
@@ -511,7 +806,45 @@ function Dashboard() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 3: KPIs - Cartes visuelles (sans patrimoine)
+          🆕 PHASE 1: SECTION KPIs DE TENDANCE
+      ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ marginBottom: '2rem' }}>
+        <h2 style={styles.sectionTitle}>
+          <span>🎯</span> Indicateurs Clés de Performance
+        </h2>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          <KPICard 
+            title="Production du Mois"
+            subtitle="Évolution vs mois dernier"
+            valeur={kpis.productionTendance.valeur}
+            unite="kg"
+            pct={kpis.productionTendance.pct}
+            trend={kpis.productionTendance.trend}
+            icon="📊"
+          />
+          <KPICard 
+            title="Moyenne par Récolte"
+            subtitle="Poids moyen collecté"
+            valeur={kpis.moyenneParRecolte.valeur}
+            unite={kpis.moyenneParRecolte.unite}
+            pct={null}
+            trend="stable"
+            icon="🎯"
+          />
+          <KPICard 
+            title="Productivité par Arbre"
+            subtitle="Rendement moyen"
+            valeur={kpis.productiviteParArbre.valeur}
+            unite={kpis.productiviteParArbre.unite}
+            pct={null}
+            trend="stable"
+            icon="🌳"
+          />
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 3: KPIs STANDARDS
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.kpiSection}>
         <div style={styles.kpiGrid}>
@@ -594,7 +927,67 @@ function Dashboard() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 4: PRODUCTION PAR PARCELLE (POSITIONNÉ PLUS HAUT)
+          🆕 PHASE 1: COMPARAISON PRODUCTION MULTI-ANNÉES
+      ═══════════════════════════════════════════════════════════════ */}
+      {Object.keys(productionParMoisMultiAnnee).length > 0 && (
+        <section style={styles.chartSection}>
+          <div style={styles.chartCardFull}>
+            <div style={styles.chartHeader}>
+              <h3 style={styles.chartTitle}>
+                <span>📈</span> Comparaison Production Multi-Années
+              </h3>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {availableYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => toggleYearVisibility(year)}
+                    style={{
+                      backgroundColor: selectedYears.includes(year) ? getYearColor(year) : '#e0e0e0',
+                      opacity: selectedYears.includes(year) ? 1 : 0.6,
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={350}>
+              <AreaChart data={formatComparisonData()}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value) => `${value} kg`}
+                  contentStyle={styles.tooltipStyle}
+                />
+                <Legend />
+                {selectedYears.map(year => (
+                  <Area
+                    key={year}
+                    type="monotone"
+                    dataKey={`${year}`}
+                    stroke={getYearColor(year)}
+                    fill={getYearColor(year)}
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                  />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 4: PRODUCTION PAR PARCELLE
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.chartSection}>
         <div style={styles.chartCardFull}>
@@ -641,58 +1034,7 @@ function Dashboard() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 5: PRODUCTION AVEC SÉLECTEUR D'ANNÉE
-      ═══════════════════════════════════════════════════════════════ */}
-      <section style={styles.chartSection}>
-        <div style={styles.chartCardFull}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>
-              <span>📈</span> Production mensuelle
-            </h3>
-            <div style={styles.yearSelector}>
-              <label style={styles.yearLabel}>Année:</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={styles.yearSelect}
-              >
-                {availableYears.map(year => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={productionParMois}>
-              <defs>
-                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
-                formatter={(value) => [`${value} kg`, 'Production']}
-                contentStyle={styles.tooltipStyle}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="production" 
-                stroke={COLORS.primary}
-                strokeWidth={3}
-                fill="url(#colorProd)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 6: TIMELINE ACTIVITÉS RÉCENTES
+          SECTION 5: TIMELINE ACTIVITÉS RÉCENTES
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.activitiesSection}>
         <h2 style={styles.sectionTitle}>
@@ -878,7 +1220,7 @@ const styles = {
     fontSize: '1rem'
   },
 
-  // Patrimoine Banner - MODERNE ET JOLIE
+  // Patrimoine Banner
   patrimoneBanner: {
     display: 'flex',
     alignItems: 'stretch',
@@ -932,7 +1274,7 @@ const styles = {
     margin: '0 1rem'
   },
 
-  // Weather Banner - AMÉLIORÉ
+  // Weather Banner
   weatherBanner: {
     display: 'flex',
     flexDirection: 'column',
@@ -1193,7 +1535,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '1rem'
+    marginBottom: '1rem',
+    flexWrap: 'wrap',
+    gap: '1rem'
   },
   chartTitle: {
     display: 'flex',
@@ -1216,25 +1560,6 @@ const styles = {
     padding: '0.5rem 1rem',
     background: '#f0f7f0',
     borderRadius: '8px'
-  },
-  yearSelector: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem'
-  },
-  yearLabel: {
-    fontSize: '0.9rem',
-    fontWeight: '500',
-    color: COLORS.dark
-  },
-  yearSelect: {
-    padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: `1px solid ${COLORS.primary}`,
-    fontSize: '0.9rem',
-    cursor: 'pointer',
-    background: 'white',
-    color: COLORS.dark
   },
   productionTable: {
     display: 'flex',
@@ -1384,15 +1709,5 @@ const styles = {
     borderRadius: '10px'
   }
 };
-
-// Media queries via inline check (pour responsive)
-if (typeof window !== 'undefined' && window.innerWidth < 768) {
-  styles.weatherHeader.flexDirection = 'column';
-  styles.forecastContainer.display = 'grid';
-  styles.forecastContainer.gridTemplateColumns = 'repeat(2, 1fr)';
-  styles.weatherDivider.display = 'none';
-  styles.chartsGrid = { gridTemplateColumns: '1fr' };
-  styles.activitiesGrid.gridTemplateColumns = '1fr';
-}
 
 export default Dashboard;
