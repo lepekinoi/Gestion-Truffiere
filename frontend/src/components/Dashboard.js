@@ -28,7 +28,7 @@ const COLORS = {
   muted: '#95a5a6',
   dark: '#2c3e50',
   light: '#ecf0f1',
-  yearColors: ['#2c5f2d', '#4a8b4c', '#8b5a2b', '#3498db', '#e74c3c', '#9b59b6']
+  yearColors: ['#2c5f2d', '#4a8b4c', '#8b5a2b', '#3498db', '#e74c3c', '#9b59b6', '#16a085', '#f39c12']
 };
 
 // ==================== COMPOSANT KPI CARD ====================
@@ -196,13 +196,19 @@ function Dashboard() {
   
   // Données pour les graphiques
   const [productionParMois, setProductionParMois] = useState([]);
-  const [productionParParcelle, setProductionParParcelle] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
 
-  // 🆕 PHASE 1: Comparaison multi-années
+  // 🆕 PHASE 1 AMÉLIORÉ: Gestion dynamique des années
+  const currentYear = new Date().getFullYear();
+  const [selectedYearRange, setSelectedYearRange] = useState({
+    start: currentYear - 2,
+    end: currentYear,
+    showAll: false
+  });
   const [productionParMoisMultiAnnee, setProductionParMoisMultiAnnee] = useState({});
   const [selectedYears, setSelectedYears] = useState([]);
+  const [recoltesData, setRecoltesData] = useState([]);
 
   // ==================== CHARGEMENT DES DONNÉES ====================
   useEffect(() => {
@@ -210,14 +216,29 @@ function Dashboard() {
     loadWeather();
   }, []);
 
-  // 🆕 PHASE 1: Charger les données pour toutes les années
+  // 🆕 Charger les données pour toutes les années disponibles
   useEffect(() => {
     if (availableYears.length > 0) {
       loadAllYearsData();
+      // Initialiser selectedYears avec les 3 dernières années
+      const defaultYears = selectedYearRange.showAll 
+        ? availableYears 
+        : availableYears.filter(y => y >= selectedYearRange.start && y <= selectedYearRange.end);
+      setSelectedYears(defaultYears);
     }
   }, [availableYears]);
 
-  // 🆕 PHASE 1: Calculer KPIs et alertes quand les données changent
+  // 🆕 Mettre à jour selectedYears quand selectedYearRange change
+  useEffect(() => {
+    if (availableYears.length > 0) {
+      const filteredYears = selectedYearRange.showAll 
+        ? availableYears 
+        : availableYears.filter(y => y >= selectedYearRange.start && y <= selectedYearRange.end);
+      setSelectedYears(filteredYears);
+    }
+  }, [selectedYearRange, availableYears]);
+
+  // Calculer KPIs et alertes quand les données changent
   useEffect(() => {
     if (stats && stockData && weather && productionParMois.length > 0) {
       calculateTrends();
@@ -316,6 +337,7 @@ function Dashboard() {
       ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [] }));
 
       setStockData(stockRes.data);
+      setRecoltesData(recoltesRes.data || []); // 🆕 Stocker pour calculs par parcelle
 
       const commandesEnAttente = safeArray(commandesRes.data).filter(c =>
         c && (c.statut === 'En attente' || c.statut === 'Confirmée')
@@ -348,30 +370,6 @@ function Dashboard() {
       // Production avec années disponibles
       const years = getAvailableYears(recoltesMensuellesRes.data);
       setAvailableYears(years);
-      setSelectedYears(years); // Par défaut, toutes visibles
-
-      // Production par parcelle avec détails
-      const prodParParcelle = {};
-      (recoltesRes.data || []).forEach(recolte => {
-        if (!recolte) return;
-        const parcelle = recolte.parcelle_nom || 'Non défini';
-        const poids = safeParseFloat(recolte.poids_grammes, 0);
-        if (!prodParParcelle[parcelle]) {
-          prodParParcelle[parcelle] = { kg: 0, count: 0 };
-        }
-        prodParParcelle[parcelle].kg += poids / 1000;
-        prodParParcelle[parcelle].count += 1;
-      });
-
-      setProductionParParcelle(
-        Object.entries(prodParParcelle)
-          .map(([nom, data]) => ({
-            nom,
-            kg: parseFloat(data.kg.toFixed(2)),
-            count: data.count
-          }))
-          .sort((a, b) => b.kg - a.kg)
-      );
 
       setLoading(false);
     } catch (err) {
@@ -381,7 +379,7 @@ function Dashboard() {
     }
   };
 
-  // 🆕 PHASE 1: Charger les données pour toutes les années
+  // 🆕 Charger les données pour toutes les années
   const loadAllYearsData = async () => {
     try {
       const allData = {};
@@ -395,7 +393,7 @@ function Dashboard() {
     }
   };
 
-  // 🆕 PHASE 1: Calculer les KPIs de tendance
+  // Calculer les KPIs de tendance
   const calculateTrends = () => {
     try {
       const thisMonth = new Date().getMonth();
@@ -431,7 +429,7 @@ function Dashboard() {
     }
   };
 
-  // 🆕 PHASE 1: Calculer les alertes intelligentes
+  // Calculer les alertes intelligentes
   const calculateSmartAlertes = () => {
     const alertes = [];
 
@@ -540,7 +538,7 @@ function Dashboard() {
     return result;
   };
 
-  // 🆕 PHASE 1: Formater les données pour comparaison multi-années
+  // 🆕 Formater les données pour comparaison multi-années
   const formatComparisonData = () => {
     const monthKeys = ['01','02','03','04','05','06','07','08','09','10','11','12'];
     return monthKeys.map((month, idx) => {
@@ -555,19 +553,68 @@ function Dashboard() {
     });
   };
 
-  // 🆕 PHASE 1: Toggle visibilité d'une année
+  // 🆕 Toggle visibilité d'une année
   const toggleYearVisibility = (year) => {
     setSelectedYears(prev => 
       prev.includes(year) 
         ? prev.filter(y => y !== year)
-        : [...prev, year]
+        : [...prev, year].sort((a, b) => b - a)
     );
   };
 
-  // 🆕 PHASE 1: Couleur par année
+  // 🆕 Couleur par année
   const getYearColor = (year) => {
     const yearIndex = availableYears.indexOf(year);
     return COLORS.yearColors[yearIndex % COLORS.yearColors.length];
+  };
+
+  // 🆕 NOUVEAU: Calculer production par parcelle avec colonnes par année
+  const getProductionParParcelleMultiAnnees = () => {
+    const prodParParcelle = {};
+    
+    // Grouper par parcelle et année
+    recoltesData.forEach(recolte => {
+      if (!recolte || !recolte.date_recolte) return;
+      
+      const parcelle = recolte.parcelle_nom || 'Non défini';
+      const year = new Date(recolte.date_recolte).getFullYear();
+      const poids = safeParseFloat(recolte.poids_grammes, 0);
+      
+      // Filtrer par années sélectionnées
+      if (!selectedYears.includes(year)) return;
+      
+      if (!prodParParcelle[parcelle]) {
+        prodParParcelle[parcelle] = {};
+      }
+      if (!prodParParcelle[parcelle][year]) {
+        prodParParcelle[parcelle][year] = 0;
+      }
+      
+      prodParParcelle[parcelle][year] += poids / 1000; // Convertir en kg
+    });
+    
+    // Formater pour le tableau
+    return Object.entries(prodParParcelle).map(([nom, annees]) => {
+      const row = { nom };
+      let total = 0;
+      
+      selectedYears.forEach(year => {
+        const valeur = annees[year] || 0;
+        row[year] = parseFloat(valeur.toFixed(2));
+        total += valeur;
+      });
+      
+      row.total = parseFloat(total.toFixed(2));
+      return row;
+    }).sort((a, b) => b.total - a.total);
+  };
+
+  // 🆕 Toggle "Afficher toutes les années"
+  const toggleShowAll = () => {
+    setSelectedYearRange(prev => ({
+      ...prev,
+      showAll: !prev.showAll
+    }));
   };
 
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -648,6 +695,7 @@ function Dashboard() {
 
   const stockStatus = getStockStatus(stockData?.stock_disponible_grammes || 0);
   const riskLevel = getRiskLevel(weather);
+  const productionParParcelleData = getProductionParParcelleMultiAnnees();
 
   // ==================== RENDU PRINCIPAL ====================
   return (
@@ -927,17 +975,34 @@ function Dashboard() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          🆕 PHASE 1: COMPARAISON PRODUCTION MULTI-ANNÉES
+          🆕 PHASE 1 AMÉLIORÉ: COMPARAISON PRODUCTION MULTI-ANNÉES
       ═══════════════════════════════════════════════════════════════ */}
       {Object.keys(productionParMoisMultiAnnee).length > 0 && (
         <section style={styles.chartSection}>
           <div style={styles.chartCardFull}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
-                <span>📈</span> Comparaison Production Multi-Années
+                <span>📈</span> Comparaison Production Multi-Années {selectedYearRange.showAll ? '(Toutes)' : `(${selectedYearRange.start}-${selectedYearRange.end})`}
               </h3>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {availableYears.map(year => (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={toggleShowAll}
+                  style={{
+                    backgroundColor: selectedYearRange.showAll ? COLORS.primary : '#e0e0e0',
+                    color: selectedYearRange.showAll ? 'white' : '#666',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {selectedYearRange.showAll ? '✓ Toutes les années' : '⊕ Afficher toutes les années'}
+                </button>
+                <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }}></div>
+                {availableYears.filter(y => selectedYears.includes(y)).map(year => (
                   <button
                     key={year}
                     onClick={() => toggleYearVisibility(year)}
@@ -987,48 +1052,47 @@ function Dashboard() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 4: PRODUCTION PAR PARCELLE
+          🆕 SECTION 4 AMÉLIORÉE: PRODUCTION PAR PARCELLE MULTI-ANNÉES
       ═══════════════════════════════════════════════════════════════ */}
       <section style={styles.chartSection}>
         <div style={styles.chartCardFull}>
           <div style={styles.chartHeader}>
             <h3 style={styles.chartTitle}>
-              <span>📊</span> Production par parcelle
+              <span>📊</span> Production par Parcelle {selectedYearRange.showAll ? '(Toutes années)' : `(${selectedYearRange.start}-${selectedYearRange.end})`}
             </h3>
             <div style={styles.chartMeta}>
               <span style={styles.totalProduction}>
-                Total: {productionParParcelle.reduce((sum, p) => sum + p.kg, 0).toFixed(2)} kg
+                Total: {productionParParcelleData.reduce((sum, p) => sum + p.total, 0).toFixed(2)} kg
               </span>
             </div>
           </div>
-          {productionParParcelle.length > 0 ? (
-            <div style={styles.productionTable}>
-              <div style={styles.tableHeader}>
-                <div style={{...styles.tableCell, flex: 2}}>Parcelle</div>
-                <div style={styles.tableCell}>Production (kg)</div>
-                <div style={styles.tableCell}>Récoltes</div>
-                <div style={styles.tableCell}>Moyenne/Récolte</div>
-              </div>
-              {productionParParcelle.map((parcelle, idx) => {
-                const moyenne = parcelle.count > 0 ? (parcelle.kg * 1000 / parcelle.count).toFixed(0) : 0;
-                const percentage = productionParParcelle.reduce((sum, p) => sum + p.kg, 0) > 0
-                  ? ((parcelle.kg / productionParParcelle.reduce((sum, p) => sum + p.kg, 0)) * 100).toFixed(1)
-                  : 0;
-                return (
-                  <div key={idx} style={styles.tableRow}>
-                    <div style={{...styles.tableCell, flex: 2, fontWeight: '500'}}>{parcelle.nom}</div>
-                    <div style={{...styles.tableCell, color: COLORS.primary, fontWeight: '600'}}>
-                      {parcelle.kg} kg
-                      <span style={styles.percentage}>({percentage}%)</span>
-                    </div>
-                    <div style={styles.tableCell}>{parcelle.count}</div>
-                    <div style={styles.tableCell}>{moyenne} g</div>
+          {productionParParcelleData.length > 0 ? (
+            <div style={styles.productionTableMultiYear}>
+              <div style={styles.tableHeaderMultiYear}>
+                <div style={{...styles.tableCell, flex: 2, fontWeight: '600'}}>Parcelle</div>
+                {selectedYears.map(year => (
+                  <div key={year} style={{...styles.tableCell, fontWeight: '600', color: getYearColor(year)}}>
+                    {year}
                   </div>
-                );
-              })}
+                ))}
+                <div style={{...styles.tableCell, fontWeight: '700', color: COLORS.primary}}>Total</div>
+              </div>
+              {productionParParcelleData.map((parcelle, idx) => (
+                <div key={idx} style={styles.tableRowMultiYear}>
+                  <div style={{...styles.tableCell, flex: 2, fontWeight: '500'}}>{parcelle.nom}</div>
+                  {selectedYears.map(year => (
+                    <div key={year} style={styles.tableCell}>
+                      {parcelle[year] ? `${parcelle[year]} kg` : '-'}
+                    </div>
+                  ))}
+                  <div style={{...styles.tableCell, fontWeight: '700', color: COLORS.primary}}>
+                    {parcelle.total} kg
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div style={styles.noData}>Aucune récolte enregistrée</div>
+            <div style={styles.noData}>Aucune récolte enregistrée pour la période sélectionnée</div>
           )}
         </div>
       </section>
@@ -1561,14 +1625,16 @@ const styles = {
     background: '#f0f7f0',
     borderRadius: '8px'
   },
-  productionTable: {
+  
+  // 🆕 Tableau multi-années
+  productionTableMultiYear: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem'
+    gap: '0.5rem',
+    overflowX: 'auto'
   },
-  tableHeader: {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr',
+  tableHeaderMultiYear: {
+    display: 'flex',
     gap: '1rem',
     padding: '1rem',
     background: '#f8f9fa',
@@ -1576,27 +1642,25 @@ const styles = {
     fontWeight: '600',
     fontSize: '0.9rem',
     color: COLORS.dark,
-    borderBottom: `2px solid ${COLORS.primary}`
+    borderBottom: `2px solid ${COLORS.primary}`,
+    minWidth: 'fit-content'
   },
-  tableRow: {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr',
+  tableRowMultiYear: {
+    display: 'flex',
     gap: '1rem',
     padding: '1rem',
     borderBottom: '1px solid #eee',
     alignItems: 'center',
     fontSize: '0.95rem',
-    transition: 'background 0.2s'
+    transition: 'background 0.2s',
+    minWidth: 'fit-content'
   },
   tableCell: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem'
-  },
-  percentage: {
-    fontSize: '0.8rem',
-    color: COLORS.muted,
-    marginLeft: '0.5rem'
+    gap: '0.5rem',
+    flex: 1,
+    minWidth: '100px'
   },
   tooltipStyle: {
     background: 'white',
