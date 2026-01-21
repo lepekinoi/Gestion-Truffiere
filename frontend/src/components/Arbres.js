@@ -10,7 +10,7 @@ import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-// Coordonnées par défaut (même que Carte.js)
+// Coordonnees par defaut (meme que Carte.js)
 const DEFAULT_CENTER = [46.1464315, -0.1652445];
 const DEFAULT_ZOOM = 16;
 
@@ -31,7 +31,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Icone personnalisée pour l'arbre
+// Icone personnalisee pour l'arbre
 const arbreIcon = L.divIcon({
   className: 'custom-arbre-icon',
   html: `<div style="
@@ -46,7 +46,7 @@ const arbreIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
-// Composant pour gérer les clics sur la carte
+// Composant pour gerer les clics sur la carte
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
     click: (e) => {
@@ -56,32 +56,32 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
-// Composant pour contrôler le zoom et le centre de la carte (uniquement à l'initialisation)
+// Composant pour controler le zoom et le centre de la carte (uniquement a l'initialisation)
 function MapController({ bounds, center, zoom, mapKey, arbrePosition }) {
   const map = useMap();
   const initializedRef = useRef(false);
   
   useEffect(() => {
-    // Réinitialiser quand mapKey change (changement de parcelle)
+    // Reinitialiser quand mapKey change (changement de parcelle)
     initializedRef.current = false;
   }, [mapKey]);
   
   useEffect(() => {
-    // Ne faire le zoom qu'une seule fois à l'initialisation
+    // Ne faire le zoom qu'une seule fois a l'initialisation
     if (initializedRef.current) return;
     
-    // Priorité 1: Si l'arbre a une position, zoomer dessus
+    // Priorite 1: Si l'arbre a une position, zoomer dessus
     if (arbrePosition && arbrePosition[0] && arbrePosition[1]) {
       map.setView(arbrePosition, 18);
       initializedRef.current = true;
     }
-    // Priorité 2: Si la parcelle a des coordonnées, zoomer sur la parcelle
+    // Priorite 2: Si la parcelle a des coordonnees, zoomer sur la parcelle
     else if (bounds && bounds.length > 0) {
       const leafletBounds = L.latLngBounds(bounds.map(coord => [coord[0], coord[1]]));
       map.fitBounds(leafletBounds, { padding: [50, 50], maxZoom: 18 });
       initializedRef.current = true;
     }
-    // Priorité 3: Utiliser le centre par défaut
+    // Priorite 3: Utiliser le centre par defaut
     else if (center) {
       map.setView(center, zoom || DEFAULT_ZOOM);
       initializedRef.current = true;
@@ -98,7 +98,7 @@ function Arbres() {
   const [interventions, setInterventions] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // État pour le tooltip des interventions
+  // Etat pour le tooltip des interventions
   const [hoveredArbreId, setHoveredArbreId] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [showModal, setShowModal] = useState(false);
@@ -110,11 +110,11 @@ function Arbres() {
   // Modal de confirmation
   const [confirmModal, setConfirmModal] = useState(null);
   
-  // État pour la pagination
+  // Etat pour la pagination
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // États pour les filtres
+  // Etats pour les filtres
   const [filters, setFilters] = useState({
     search: '',
     parcelle: '',
@@ -139,19 +139,19 @@ function Arbres() {
     notes: ''
   });
 
-  // État pour la corbeille
+  // Etat pour la corbeille
   const [showCorbeille, setShowCorbeille] = useState(false);
   const [arbresCorbeille, setArbresCorbeille] = useState([]);
   const [loadingCorbeille, setLoadingCorbeille] = useState(false);
 
-  // État pour la mini-carte de géolocalisation
+  // Etat pour la mini-carte de geolocalisation
   const [showMap, setShowMap] = useState(false);
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [selectedParcelleCoords, setSelectedParcelleCoords] = useState(null);
   const [mapKey, setMapKey] = useState(0); // Pour forcer le re-render de la carte
 
-  // ============ SÉLECTION MULTIPLE ============
+  // ============ SELECTION MULTIPLE ============
   const [selectedArbres, setSelectedArbres] = useState(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [bulkEditData, setBulkEditData] = useState({
@@ -163,7 +163,7 @@ function Arbres() {
     hauteur_m: ''
   });
 
-  // Hook pour les paramètres de colonnes
+  // Hook pour les parametres de colonnes
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('arbres');
 
   useEffect(() => {
@@ -200,10 +200,10 @@ function Arbres() {
     return { especes, etats, varietes };
   }, [arbres]);
 
-  // Filtrer les arbres selon les critères
+  // Filtrer les arbres selon les criteres
   const filteredArbres = useMemo(() => {
     return arbres.filter(arbre => {
-      // Filtre recherche textuelle (numéro, notes)
+      // Filtre recherche textuelle (numero, notes)
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchNumero = arbre.numero?.toLowerCase().includes(searchLower);
@@ -218,17 +218,17 @@ function Arbres() {
         return false;
       }
       
-      // Filtre par espèce
+      // Filtre par espece
       if (filters.espece && arbre.espece !== filters.espece) {
         return false;
       }
       
-      // Filtre par état
+      // Filtre par etat
       if (filters.etat && arbre.etat !== filters.etat) {
         return false;
       }
       
-      // Filtre par variété de truffe
+      // Filtre par variete de truffe
       if (filters.variete_truffe && arbre.variete_truffe !== filters.variete_truffe) {
         return false;
       }
@@ -245,13 +245,13 @@ function Arbres() {
     });
   }, [arbres, filters]);
 
-  // Gérer les changements de filtres
+  // Gerer les changements de filtres
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
-    setCurrentPage(1); // Revenir à la première page lors d'un changement de filtre
+    setCurrentPage(1); // Revenir a la premiere page lors d'un changement de filtre
   };
 
-  // Réinitialiser tous les filtres
+  // Reinitialiser tous les filtres
   const resetFilters = () => {
     setFilters({
       search: '',
@@ -264,7 +264,7 @@ function Arbres() {
     setCurrentPage(1);
   };
 
-  // Vérifier si des filtres sont actifs
+  // Verifier si des filtres sont actifs
   const hasActiveFilters = Object.values(filters).some(v => v !== '');
 
   // Charger les arbres de la corbeille
@@ -290,7 +290,7 @@ function Arbres() {
   const handleRestaurer = async (id) => {
     try {
       await axios.post(`${API_URL}/arbres/corbeille/${id}/restaurer`);
-      showMessage('Arbre restauré avec succès !', 'success');
+      showMessage('Arbre restaure avec succes !', 'success');
       loadCorbeille();
       loadData();
     } catch (error) {
@@ -299,30 +299,30 @@ function Arbres() {
     }
   };
 
-  // Demander confirmation pour suppression définitive
+  // Demander confirmation pour suppression definitive
   const askSupprimerDefinitivement = (arbre) => {
     setConfirmModal({
       type: 'delete-permanent',
       item: arbre,
-      title: 'Suppression définitive',
-      message: `Êtes-vous sûr de vouloir supprimer définitivement l'arbre "${arbre.numero}" ? Cette action est irréversible.`,
-      confirmText: 'Oui, supprimer définitivement',
+      title: 'Suppression definitive',
+      message: `Etes-vous sur de vouloir supprimer definitivement l\'arbre "${arbre.numero}" ? Cette action est irreversible.`,
+      confirmText: 'Oui, supprimer definitivement',
       confirmColor: '#f44336'
     });
   };
 
-  // Exécuter la suppression définitive
+  // Executer la suppression definitive
   const doSupprimerDefinitivement = async (arbre) => {
     setIsProcessing(true);
     setConfirmModal(null);
     
     try {
       await axios.delete(`${API_URL}/arbres/corbeille/${arbre.id}`);
-      showMessage('Arbre supprimé définitivement !', 'success');
+      showMessage('Arbre supprime definitivement !', 'success');
       loadCorbeille();
     } catch (error) {
-      console.error('Erreur lors de la suppression définitive:', error);
-      showMessage('Erreur lors de la suppression définitive', 'error');
+      console.error('Erreur lors de la suppression definitive:', error);
+      showMessage('Erreur lors de la suppression definitive', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -334,20 +334,20 @@ function Arbres() {
       type: 'vider-corbeille',
       item: null,
       title: 'Vider la corbeille',
-      message: `Êtes-vous sûr de vouloir vider la corbeille ? Tous les ${arbresCorbeille.length} arbre(s) supprimé(s) seront définitivement perdus.`,
+      message: `Etes-vous sur de vouloir vider la corbeille ? Tous les ${arbresCorbeille.length} arbre(s) supprime(s) seront definitivement perdus.`,
       confirmText: 'Oui, vider la corbeille',
       confirmColor: '#f44336'
     });
   };
 
-  // Exécuter le vidage de la corbeille
+  // Executer le vidage de la corbeille
   const doViderCorbeille = async () => {
     setIsProcessing(true);
     setConfirmModal(null);
     
     try {
       await axios.delete(`${API_URL}/arbres/corbeille`);
-      showMessage('Corbeille vidée !', 'success');
+      showMessage('Corbeille videe !', 'success');
       loadCorbeille();
     } catch (error) {
       console.error('Erreur lors du vidage de la corbeille:', error);
@@ -357,7 +357,7 @@ function Arbres() {
     }
   };
 
-  // Gérer le changement de parcelle
+  // Gerer le changement de parcelle
   const handleParcelleChange = (e) => {
     const parcelleId = e.target.value;
     setFormData(prev => ({
@@ -400,10 +400,10 @@ function Arbres() {
     try {
       if (editingArbre) {
         await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
-        showMessage('Arbre mis à jour avec succès !', 'success');
+        showMessage('Arbre mis a jour avec succes !', 'success');
       } else {
         await axios.post(`${API_URL}/arbres`, formData);
-        showMessage('Arbre créé avec succès !', 'success');
+        showMessage('Arbre cree avec succes !', 'success');
       }
       loadData();
       closeModal();
@@ -459,26 +459,26 @@ function Arbres() {
     setShowModal(true);
   };
 
-  // Demander confirmation pour mettre à la corbeille
+  // Demander confirmation pour mettre a la corbeille
   const askDelete = (arbre) => {
     setConfirmModal({
       type: 'delete',
       item: arbre,
-      title: 'Mettre à la corbeille',
-      message: `Voulez-vous mettre l'arbre "${arbre.numero}" à la corbeille ? Vous pourrez le restaurer plus tard.`,
-      confirmText: 'Oui, mettre à la corbeille',
+      title: 'Mettre a la corbeille',
+      message: `Voulez-vous mettre l\'arbre "${arbre.numero}" a la corbeille ? Vous pourrez le restaurer plus tard.`,
+      confirmText: 'Oui, mettre a la corbeille',
       confirmColor: '#ff9800'
     });
   };
 
-  // Exécuter la mise à la corbeille
+  // Executer la mise a la corbeille
   const doDelete = async (arbre) => {
     setIsProcessing(true);
     setConfirmModal(null);
     
     try {
       await axios.delete(`${API_URL}/arbres/${arbre.id}`);
-      showMessage('Arbre mis à la corbeille', 'success');
+      showMessage('Arbre mis a la corbeille', 'success');
       loadData();
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
@@ -488,9 +488,9 @@ function Arbres() {
     }
   };
 
-  // ============ SÉLECTION MULTIPLE - FONCTIONS ============
+  // ============ SELECTION MULTIPLE - FONCTIONS ============
   
-  // Gérer la sélection d'un arbre
+  // Gerer la selection d'un arbre
   const handleSelectArbre = (arbreId) => {
     setSelectedArbres(prev => {
       const newSet = new Set(prev);
@@ -503,7 +503,7 @@ function Arbres() {
     });
   };
 
-  // Sélectionner/Désélectionner tous les arbres de la page courante
+  // Selectionner/Deselectionner tous les arbres de la page courante
   const handleSelectAllPage = () => {
     const pageArbreIds = paginatedArbres.map(a => a.id);
     const allSelected = pageArbreIds.every(id => selectedArbres.has(id));
@@ -519,18 +519,18 @@ function Arbres() {
     });
   };
 
-  // Sélectionner tous les arbres filtrés
+  // Selectionner tous les arbres filtres
   const handleSelectAllFiltered = () => {
     const allIds = filteredArbres.map(a => a.id);
     setSelectedArbres(new Set(allIds));
   };
 
-  // Désélectionner tout
+  // Deselectionner tout
   const handleDeselectAll = () => {
     setSelectedArbres(new Set());
   };
 
-  // Ouvrir le modal de modification groupée
+  // Ouvrir le modal de modification groupee
   const openBulkEditModal = () => {
     setBulkEditData({
       espece: '',
@@ -543,13 +543,13 @@ function Arbres() {
     setShowBulkEditModal(true);
   };
 
-  // Gérer les changements dans le formulaire de modification groupée
+  // Gerer les changements dans le formulaire de modification groupee
   const handleBulkEditChange = (e) => {
     const { name, value } = e.target;
     setBulkEditData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Appliquer les modifications groupées
+  // Appliquer les modifications groupees
   const handleBulkEditSubmit = async () => {
     if (selectedArbres.size === 0) return;
     
@@ -565,7 +565,7 @@ function Arbres() {
       if (bulkEditData.hauteur_m) updates.hauteur_m = bulkEditData.hauteur_m;
 
       if (Object.keys(updates).length === 0) {
-        showMessage('Aucune modification à appliquer', 'error');
+        showMessage('Aucune modification a appliquer', 'error');
         setIsProcessing(false);
         return;
       }
@@ -590,35 +590,35 @@ function Arbres() {
       }
 
       if (errorCount === 0) {
-        showMessage(`${successCount} arbre(s) modifié(s) avec succès !`, 'success');
+        showMessage(`${successCount} arbre(s) modifie(s) avec succes !`, 'success');
       } else {
-        showMessage(`${successCount} modifié(s), ${errorCount} erreur(s)`, 'error');
+        showMessage(`${successCount} modifie(s), ${errorCount} erreur(s)`, 'error');
       }
 
       loadData();
       setShowBulkEditModal(false);
       setSelectedArbres(new Set());
     } catch (error) {
-      console.error('Erreur lors de la modification groupée:', error);
-      showMessage('Erreur lors de la modification groupée', 'error');
+      console.error('Erreur lors de la modification groupee:', error);
+      showMessage('Erreur lors de la modification groupee', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Demander confirmation pour suppression groupée
+  // Demander confirmation pour suppression groupee
   const askBulkDelete = () => {
     setConfirmModal({
       type: 'bulk-delete',
       item: null,
-      title: 'Suppression groupée',
-      message: `Voulez-vous mettre ${selectedArbres.size} arbre(s) à la corbeille ? Vous pourrez les restaurer plus tard.`,
-      confirmText: 'Oui, mettre à la corbeille',
+      title: 'Suppression groupee',
+      message: `Voulez-vous mettre ${selectedArbres.size} arbre(s) a la corbeille ? Vous pourrez les restaurer plus tard.`,
+      confirmText: 'Oui, mettre a la corbeille',
       confirmColor: '#ff9800'
     });
   };
 
-  // Exécuter la suppression groupée
+  // Executer la suppression groupee
   const doBulkDelete = async () => {
     setIsProcessing(true);
     setConfirmModal(null);
@@ -638,22 +638,22 @@ function Arbres() {
       }
 
       if (errorCount === 0) {
-        showMessage(`${successCount} arbre(s) mis à la corbeille !`, 'success');
+        showMessage(`${successCount} arbre(s) mis a la corbeille !`, 'success');
       } else {
-        showMessage(`${successCount} supprimé(s), ${errorCount} erreur(s)`, 'error');
+        showMessage(`${successCount} supprime(s), ${errorCount} erreur(s)`, 'error');
       }
 
       loadData();
       setSelectedArbres(new Set());
     } catch (error) {
-      console.error('Erreur lors de la suppression groupée:', error);
-      showMessage('Erreur lors de la suppression groupée', 'error');
+      console.error('Erreur lors de la suppression groupee:', error);
+      showMessage('Erreur lors de la suppression groupee', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Gérer la confirmation selon le type
+  // Gerer la confirmation selon le type
   const handleConfirm = () => {
     if (!confirmModal) return;
     
@@ -703,7 +703,7 @@ function Arbres() {
         await axios.post(`${API_URL}/arbres`, arbre);
       }
       loadData();
-      showMessage(`${validData.length} arbre(s) importé(s) avec succès !`, 'success');
+      showMessage(`${validData.length} arbre(s) importe(s) avec succes !`, 'success');
     } catch (error) {
       console.error('Erreur lors de l\'import:', error);
       throw new Error('Erreur lors de l\'import des arbres');
@@ -717,7 +717,7 @@ function Arbres() {
     setSelectedParcelleCoords(null);
   };
 
-  // Gérer le clic sur la carte pour placer l'arbre
+  // Gerer le clic sur la carte pour placer l'arbre
   const handleMapClick = (latlng) => {
     setFormData(prev => ({
       ...prev,
@@ -735,7 +735,7 @@ function Arbres() {
     }));
   };
 
-  // Export PDF avec colonnes configurées
+  // Export PDF avec colonnes configurees
   const handleExportPDF = () => {
     exportArbresPDF(filteredArbres, null, colonnesExport);
   };
@@ -754,7 +754,7 @@ function Arbres() {
   const config = COLONNES_CONFIG.arbres;
   const colonnesValides = colonnesAffichees.filter(col => config[col]);
 
-  // Fonction de rendu personnalisée pour les cellules spéciales
+  // Fonction de rendu personnalisee pour les cellules speciales
   const renderCell = (arbre, col) => {
     if (col === 'etat') {
       return (
@@ -775,7 +775,7 @@ function Arbres() {
     return config[col].render(arbre);
   };
 
-  // Obtenir le nom de la parcelle sélectionnée
+  // Obtenir le nom de la parcelle selectionnee
   const getSelectedParcelleName = () => {
     if (!formData.parcelle_id) return null;
     const parcelle = parcelles.find(p => p.id === parseInt(formData.parcelle_id));
@@ -795,11 +795,11 @@ function Arbres() {
     });
   };
 
-  // Obtenir les interventions en cours ou prévues pour un arbre
+  // Obtenir les interventions en cours ou prevues pour un arbre
   const getInterventionsForArbre = (arbreId) => {
     return interventions.filter(intervention => {
       if (intervention.arbre_id !== arbreId) return false;
-      if (intervention.statut !== 'Planifié' && intervention.statut !== 'En cours') return false;
+      if (intervention.statut !== 'Planifie' && intervention.statut !== 'En cours') return false;
       return true;
     }).sort((a, b) => new Date(a.date_prevue) - new Date(b.date_prevue));
   };
@@ -832,7 +832,7 @@ function Arbres() {
     setHoveredArbreId(null);
   };
 
-  // Vérifier si un arbre a des interventions en cours ou prévues
+  // Verifier si un arbre a des interventions en cours ou prevues
   const hasInterventions = (arbreId) => {
     return getInterventionsForArbre(arbreId).length > 0;
   };
@@ -886,7 +886,7 @@ function Arbres() {
     return pages;
   };
 
-  // Vérifier si tous les arbres de la page sont sélectionnés
+  // Verifier si tous les arbres de la page sont selectionnes
   const isAllPageSelected = paginatedArbres.length > 0 && paginatedArbres.every(a => selectedArbres.has(a.id));
   const isSomePageSelected = paginatedArbres.some(a => selectedArbres.has(a.id));
 
@@ -984,17 +984,17 @@ function Arbres() {
           <button 
             className="btn btn-secondary" 
             onClick={openCorbeille}
-            title="Voir les arbres supprimés"
+            title="Voir les arbres supprimes"
             style={{ background: '#6c757d' }}
           >
-            🗑️ Corbeille
+            Corbeille
           </button>
           <button 
             className="btn btn-secondary" 
             onClick={() => setShowImportModal(true)}
             title="Importer des arbres depuis un fichier CSV"
           >
-            📥 Importer CSV
+            Importer CSV
           </button>
           <button 
             className="btn btn-secondary" 
@@ -1002,10 +1002,10 @@ function Arbres() {
             disabled={filteredArbres.length === 0}
             title="Exporter la liste des arbres en PDF"
           >
-            📄 Exporter PDF
+            Exporter PDF
           </button>
           <button className="btn btn-primary" onClick={openNewModal}>
-            ➕ Nouvel arbre
+            Nouvel arbre
           </button>
         </div>
       </div>
@@ -1017,26 +1017,26 @@ function Arbres() {
           <div className="card-value">{arbres.length}</div>
         </div>
         <div className="card">
-          <div className="card-title">En bon état</div>
+          <div className="card-title">En bon etat</div>
           <div className="card-value" style={{ color: '#27ae60' }}>
             {arbres.filter(a => a.etat === 'Bon').length}
           </div>
         </div>
         <div className="card">
-          <div className="card-title">À surveiller</div>
+          <div className="card-title">A surveiller</div>
           <div className="card-value" style={{ color: '#f39c12' }}>
             {arbres.filter(a => a.etat === 'Moyen').length}
           </div>
         </div>
         <div className="card">
-          <div className="card-title">En difficulté</div>
+          <div className="card-title">En difficulte</div>
           <div className="card-value" style={{ color: '#e74c3c' }}>
             {arbres.filter(a => a.etat === 'Mauvais' || a.etat === 'Mort').length}
           </div>
         </div>
       </div>
 
-      {/* Barre de sélection groupée */}
+      {/* Barre de selection groupee */}
       {selectedArbres.size > 0 && (
         <div style={{
           background: '#e3f2fd',
@@ -1052,7 +1052,7 @@ function Arbres() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
-              ✅ {selectedArbres.size} arbre(s) sélectionné(s)
+              {selectedArbres.size} arbre(s) selectionnee(s)
             </span>
             <button
               onClick={handleDeselectAll}
@@ -1065,7 +1065,7 @@ function Arbres() {
                 cursor: 'pointer'
               }}
             >
-              Tout désélectionner
+              Tout deselectionner
             </button>
             {filteredArbres.length > selectedArbres.size && (
               <button
@@ -1079,7 +1079,7 @@ function Arbres() {
                   cursor: 'pointer'
                 }}
               >
-                Sélectionner les {filteredArbres.length} arbres filtrés
+                Selectionner les {filteredArbres.length} arbres filtres
               </button>
             )}
           </div>
@@ -1089,14 +1089,14 @@ function Arbres() {
               className="btn btn-primary"
               style={{ padding: '0.5rem 1rem' }}
             >
-              ✏️ Modifier la sélection
+              Modifier la selection
             </button>
             <button
               onClick={askBulkDelete}
               className="btn btn-danger"
               style={{ padding: '0.5rem 1rem' }}
             >
-              🗑️ Supprimer la sélection
+              Supprimer la selection
             </button>
           </div>
         </div>
@@ -1114,7 +1114,7 @@ function Arbres() {
           <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
             <input
               type="text"
-              placeholder="🔍 Rechercher par numéro, espèce, parcelle, notes..."
+              placeholder="Rechercher par numero, espece, parcelle, notes..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               style={{
@@ -1140,7 +1140,6 @@ function Arbres() {
                   color: '#999'
                 }}
               >
-                ✕
               </button>
             )}
           </div>
@@ -1160,7 +1159,7 @@ function Arbres() {
               fontWeight: hasActiveFilters ? 'bold' : 'normal'
             }}
           >
-            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
+            Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
             <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
           </button>
           
@@ -1177,12 +1176,12 @@ function Arbres() {
                 fontWeight: '500'
               }}
             >
-              ✕ Réinitialiser
+              Reinitialiser
             </button>
           )}
         </div>
 
-        {/* Panneau de filtres avancés */}
+        {/* Panneau de filtres avances */}
         {showFilters && (
           <div style={{ 
             marginTop: '1rem', 
@@ -1216,7 +1215,7 @@ function Arbres() {
 
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Espèce
+                Espece
               </label>
               <select
                 value={filters.espece}
@@ -1229,7 +1228,7 @@ function Arbres() {
                   background: filters.espece ? '#e8f5e9' : 'white'
                 }}
               >
-                <option value="">Toutes les espèces</option>
+                <option value="">Toutes les especes</option>
                 {filterOptions.especes.map(e => (
                   <option key={e} value={e}>{e}</option>
                 ))}
@@ -1238,7 +1237,7 @@ function Arbres() {
 
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                État de santé
+                Etat de sante
               </label>
               <select
                 value={filters.etat}
@@ -1251,17 +1250,17 @@ function Arbres() {
                   background: filters.etat ? '#e8f5e9' : 'white'
                 }}
               >
-                <option value="">Tous les états</option>
-                <option value="Bon">🟢 Bon</option>
-                <option value="Moyen">🟡 Moyen</option>
-                <option value="Mauvais">🟠 Mauvais</option>
-                <option value="Mort">⚫ Mort</option>
+                <option value="">Tous les etats</option>
+                <option value="Bon">Bon</option>
+                <option value="Moyen">Moyen</option>
+                <option value="Mauvais">Mauvais</option>
+                <option value="Mort">Mort</option>
               </select>
             </div>
 
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Variété de truffe
+                Variete de truffe
               </label>
               <select
                 value={filters.variete_truffe}
@@ -1274,7 +1273,7 @@ function Arbres() {
                   background: filters.variete_truffe ? '#e8f5e9' : 'white'
                 }}
               >
-                <option value="">Toutes les variétés</option>
+                <option value="">Toutes les varietes</option>
                 {filterOptions.varietes.map(v => (
                   <option key={v} value={v}>{v}</option>
                 ))}
@@ -1297,14 +1296,14 @@ function Arbres() {
                 }}
               >
                 <option value="">Tous</option>
-                <option value="oui">📍 Avec position</option>
-                <option value="non">❌ Sans position</option>
+                <option value="oui">Avec position</option>
+                <option value="non">Sans position</option>
               </select>
             </div>
           </div>
         )}
 
-        {/* Résumé des résultats */}
+        {/* Resume des resultats */}
         {hasActiveFilters && (
           <div style={{ 
             marginTop: '1rem', 
@@ -1314,7 +1313,7 @@ function Arbres() {
             fontSize: '0.9rem',
             color: '#666'
           }}>
-            <strong>{filteredArbres.length}</strong> arbre{filteredArbres.length > 1 ? 's' : ''} trouvé{filteredArbres.length > 1 ? 's' : ''} 
+            <strong>{filteredArbres.length}</strong> arbre{filteredArbres.length > 1 ? 's' : ''} trouve{filteredArbres.length > 1 ? 's' : ''} 
             {filteredArbres.length !== arbres.length && (
               <span> sur {arbres.length} au total</span>
             )}
@@ -1322,7 +1321,7 @@ function Arbres() {
         )}
       </div>
 
-      {/* Contrôles de pagination */}
+      {/* Controles de pagination */}
       {filteredArbres.length > 0 && (
         <div style={{ 
           display: 'flex', 
@@ -1355,7 +1354,7 @@ function Arbres() {
           
           {itemsPerPage !== 'all' && (
             <div style={{ color: '#666', fontSize: '0.9rem' }}>
-              Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, totalArbres)} sur {totalArbres} arbres
+              Affichage de {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalArbres)} sur {totalArbres} arbres
             </div>
           )}
         </div>
@@ -1364,15 +1363,15 @@ function Arbres() {
       {/* Tableau */}
       {filteredArbres.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">{hasActiveFilters ? '🔍' : '🌳'}</div>
+          <div className="empty-state-icon">{hasActiveFilters ? '' : ''}</div>
           <p>
             {hasActiveFilters 
-              ? 'Aucun arbre ne correspond aux critères de recherche' 
-              : 'Aucun arbre enregistré'}
+              ? 'Aucun arbre ne correspond aux criteres de recherche' 
+              : 'Aucun arbre enregistre'}
           </p>
           {hasActiveFilters ? (
             <button className="btn btn-secondary" onClick={resetFilters} style={{ marginTop: '1rem' }}>
-              Réinitialiser les filtres
+              Reinitialiser les filtres
             </button>
           ) : (
             <button className="btn btn-primary" onClick={openNewModal} style={{ marginTop: '1rem' }}>
@@ -1393,7 +1392,7 @@ function Arbres() {
                       if (el) el.indeterminate = isSomePageSelected && !isAllPageSelected;
                     }}
                     onChange={handleSelectAllPage}
-                    title={isAllPageSelected ? 'Désélectionner tous' : 'Sélectionner tous'}
+                    title={isAllPageSelected ? 'Deselectionner tous' : 'Selectionner tous'}
                     style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                   />
                 </th>
@@ -1432,7 +1431,7 @@ function Arbres() {
                           <strong>{config[col].render(arbre)}</strong>
                           {hasInterventions(arbre.id) && (
                             <span 
-                              title="Interventions en cours ou prévues"
+                              title="Interventions en cours ou prevues"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -1456,14 +1455,14 @@ function Arbres() {
                       onClick={() => handleEdit(arbre)}
                       style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
                     >
-                      ✏️
+                      Editer
                     </button>
                     <button 
                       className="btn btn-danger" 
                       onClick={() => askDelete(arbre)}
                       style={{ padding: '0.4rem 0.8rem' }}
                     >
-                      🗑️
+                      Supprimer
                     </button>
                   </td>
                 </tr>
@@ -1483,10 +1482,10 @@ function Arbres() {
               borderTop: '1px solid #eee'
             }}>
               <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1}
-                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>⏮</button>
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>debut</button>
               <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}
                 style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>
-                ◀️
+                precedent
               </button>
               
               {getPageNumbers().map((page, idx) => (
@@ -1498,10 +1497,10 @@ function Arbres() {
               
               <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}
                 style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === totalPages ? '#f5f5f5' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>
-                ▶️
+                suivant
               </button>
               <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}
-                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === totalPages ? '#f5f5f5' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>⏭</button>
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', background: currentPage === totalPages ? '#f5f5f5' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>fin</button>
             </div>
           )}
 
@@ -1509,7 +1508,7 @@ function Arbres() {
           {hoveredArbreId && (
             <div style={{ position: 'fixed', left: tooltipPosition.x, top: tooltipPosition.y, background: 'white', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '0.75rem 1rem', zIndex: 9999, maxWidth: '350px', minWidth: '250px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#2c3e50', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                🌧️ Interventions prévues
+                Interventions prevues
               </div>
               {getInterventionsForArbre(hoveredArbreId).map((intervention, idx) => (
                 <div key={intervention.id} style={{ padding: '0.5rem 0', borderBottom: idx < getInterventionsForArbre(hoveredArbreId).length - 1 ? '1px solid #f0f0f0' : 'none' }}>
@@ -1518,8 +1517,8 @@ function Arbres() {
                     <span style={{ padding: '0.15rem 0.5rem', borderRadius: '10px', fontSize: '0.75rem', fontWeight: '500', ...getStatutInterventionStyle(intervention.statut) }}>{intervention.statut}</span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                    📅 {formatDateIntervention(intervention.date_prevue)}
-                    {intervention.personnel && <span style={{ marginLeft: '0.75rem' }}>👤 {intervention.personnel}</span>}
+                    {formatDateIntervention(intervention.date_prevue)}
+                    {intervention.personnel && <span style={{ marginLeft: '0.75rem' }}>Personnel: {intervention.personnel}</span>}
                   </div>
                 </div>
               ))}
@@ -1528,13 +1527,13 @@ function Arbres() {
         </div>
       )}
 
-      {/* Modal de création/édition */}
+      {/* Modal de creation/edition */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
             <div className="modal-header">
               <h3>{editingArbre ? 'Modifier l\'arbre' : 'Nouvel arbre'}</h3>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <button className="modal-close" onClick={closeModal}>X</button>
             </div>
             
             <form onSubmit={handleSubmit}>
@@ -1542,7 +1541,7 @@ function Arbres() {
                 <div className="form-group">
                   <label>Parcelle *</label>
                   <select name="parcelle_id" value={formData.parcelle_id} onChange={handleInputChange} required>
-                    <option value="">Sélectionner une parcelle...</option>
+                    <option value="">Selectionner une parcelle...</option>
                     {parcelles.map(parcelle => (
                       <option key={parcelle.id} value={parcelle.id}>{parcelle.nom}</option>
                     ))}
@@ -1550,18 +1549,18 @@ function Arbres() {
                 </div>
 
                 <div className="form-group">
-                  <label>Numéro d'identification *</label>
+                  <label>Numero d'identification *</label>
                   <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required placeholder="Ex: A-001" />
                 </div>
 
                 <div className="form-group">
-                  <label>Espèce *</label>
+                  <label>Espece *</label>
                   <select name="espece" value={formData.espece} onChange={handleInputChange} required>
-                    <option value="">Sélectionner...</option>
-                    <option value="Chênes vert (V)">Chênes vert (V)</option>
-                    <option value="Chêne pubescent (P)">Chêne pubescent (P)</option>
-                    <option value="Chênes Cerris (Cé)">Chênes Cerris (Cé)</option>
-                    <option value="Chêne pédonculé">Chêne pédonculé</option>
+                    <option value="">Selectionner...</option>
+                    <option value="Chenes vert (V)">Chenes vert (V)</option>
+                    <option value="Chene pubescent (P)">Chene pubescent (P)</option>
+                    <option value="Chenes Cerris (Ce)">Chenes Cerris (Ce)</option>
+                    <option value="Chene pedoncule">Chene pedoncule</option>
                     <option value="Noisetier">Noisetier</option>
                     <option value="Charmes (C)">Charmes (C)</option>
                     <option value="Tilleul">Tilleul</option>
@@ -1570,11 +1569,11 @@ function Arbres() {
                 </div>
 
                 <div className="form-group">
-                  <label>Variété de truffe associée</label>
+                  <label>Variete de truffe associee</label>
                   <select name="variete_truffe" value={formData.variete_truffe} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
+                    <option value="">Selectionner...</option>
                     <option value="Tuber melanosporum">Tuber melanosporum (Truffe noire)</option>
-                    <option value="Tuber aestivum">Tuber aestivum (Truffe d'été)</option>
+                    <option value="Tuber aestivum">Tuber aestivum (Truffe d'ete)</option>
                     <option value="Tuber brumale">Tuber brumale (Truffe brumale)</option>
                     <option value="Tuber uncinatum">Tuber uncinatum (Truffe de Bourgogne)</option>
                   </select>
@@ -1586,7 +1585,7 @@ function Arbres() {
                 </div>
 
                 <div className="form-group">
-                  <label>État de santé *</label>
+                  <label>Etat de sante *</label>
                   <select name="etat" value={formData.etat} onChange={handleInputChange} required>
                     <option value="Bon">Bon</option>
                     <option value="Moyen">Moyen</option>
@@ -1596,31 +1595,31 @@ function Arbres() {
                 </div>
 
                 <div className="form-group">
-                  <label>Circonférence du tronc (cm)</label>
+                  <label>Circonference du tronc (cm)</label>
                   <input type="number" name="circonference_cm" value={formData.circonference_cm} onChange={handleInputChange} step="0.1" placeholder="Ex: 45.5" />
                 </div>
 
                 <div className="form-group">
-                  <label>Hauteur (mètres)</label>
+                  <label>Hauteur (metres)</label>
                   <input type="number" name="hauteur_m" value={formData.hauteur_m} onChange={handleInputChange} step="0.1" placeholder="Ex: 3.5" />
                 </div>
               </div>
 
-              {/* Section Géolocalisation */}
+              {/* Section Geolocalisation */}
               <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <label style={{ fontWeight: '600', color: '#2c5f2d', margin: 0 }}>📍 Géolocalisation</label>
+                  <label style={{ fontWeight: '600', color: '#2c5f2d', margin: 0 }}>Geolocalisation</label>
                   <button type="button" className="btn btn-secondary" onClick={() => setShowMap(!showMap)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                    {showMap ? '🗺️ Masquer carte' : '🗺️ Afficher carte'}
+                    {showMap ? 'Masquer carte' : 'Afficher carte'}
                   </button>
                 </div>
 
                 {formData.parcelle_id && (
                   <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.75rem', padding: '0.5rem', background: '#e8f5e9', borderRadius: '4px' }}>
                     {selectedParcelleCoords ? (
-                      <>✓ Parcelle "<strong>{getSelectedParcelleName()}</strong>" géolocalisée</>
+                      <>Parcelle "<strong>{getSelectedParcelleName()}</strong>" geolocalise</>
                     ) : (
-                      <>⚠️ Parcelle "<strong>{getSelectedParcelleName()}</strong>" non dessinée</>
+                      <>Parcelle "<strong>{getSelectedParcelleName()}</strong>" non dessinee</>
                     )}
                   </p>
                 )}
@@ -1635,14 +1634,14 @@ function Arbres() {
                     <input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="Ex: -0.1652445" style={{ fontSize: '0.9rem' }} />
                   </div>
                   {(formData.latitude || formData.longitude) && (
-                    <button type="button" onClick={clearPosition} style={{ padding: '0.5rem', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', height: '38px' }} title="Supprimer la position">✕</button>
+                    <button type="button" onClick={clearPosition} style={{ padding: '0.5rem', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', height: '38px' }} title="Supprimer la position">X</button>
                   )}
                 </div>
 
                 {showMap && (
                   <div style={{ marginTop: '0.75rem' }}>
                     <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
-                      👆 Cliquez sur la carte pour positionner l'arbre
+                      Cliquez sur la carte pour positionner l'arbre
                       {selectedParcelleCoords && <span style={{ color: '#d4a600' }}> (zone jaune = parcelle)</span>}
                     </p>
                     <div style={{ height: '350px', borderRadius: '8px', overflow: 'hidden', border: '2px solid #ddd' }}>
@@ -1666,20 +1665,20 @@ function Arbres() {
 
                 {formData.latitude && formData.longitude && (
                   <p style={{ fontSize: '0.8rem', color: '#27ae60', marginTop: '0.5rem', marginBottom: 0 }}>
-                    ✓ Position définie : {parseFloat(formData.latitude).toFixed(5)}, {parseFloat(formData.longitude).toFixed(5)}
+                    Position definie : {parseFloat(formData.latitude).toFixed(5)}, {parseFloat(formData.longitude).toFixed(5)}
                   </p>
                 )}
               </div>
 
               <div className="form-group" style={{ marginTop: '1rem' }}>
                 <label>Notes et observations</label>
-                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Observations, particularités, historique..." rows="4" />
+                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Observations, particularites, historique..." rows="4" />
               </div>
 
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre à jour' : 'Créer')}
+                  {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre a jour' : 'Creer')}
                 </button>
               </div>
             </form>
@@ -1687,30 +1686,30 @@ function Arbres() {
         </div>
       )}
 
-      {/* Modal de modification groupée */}
+      {/* Modal de modification groupee */}
       {showBulkEditModal && (
         <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h3>✏️ Modifier {selectedArbres.size} arbre(s)</h3>
-              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>✕</button>
+              <h3>Modifier {selectedArbres.size} arbre(s)</h3>
+              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>X</button>
             </div>
             
             <div style={{ padding: '1rem', background: '#fff3e0', borderRadius: '8px', marginBottom: '1rem' }}>
               <p style={{ margin: 0, color: '#e65100' }}>
-                <strong>⚠️ Attention :</strong> Seuls les champs remplis seront modifiés. Les champs vides seront ignorés.
+                <strong>Attention :</strong> Seuls les champs remplis seront modifies. Les champs vides seront ignores.
               </p>
             </div>
 
             <div className="form-grid">
               <div className="form-group">
-                <label>Espèce</label>
+                <label>Espece</label>
                 <select name="espece" value={bulkEditData.espece} onChange={handleBulkEditChange}>
                   <option value="">-- Ne pas modifier --</option>
-                  <option value="Chênes vert (V)">Chênes vert (V)</option>
-                  <option value="Chêne pubescent (P)">Chêne pubescent (P)</option>
-                  <option value="Chênes Cerris (Cé)">Chênes Cerris (Cé)</option>
-                  <option value="Chêne pédonculé">Chêne pédonculé</option>
+                  <option value="Chenes vert (V)">Chenes vert (V)</option>
+                  <option value="Chene pubescent (P)">Chene pubescent (P)</option>
+                  <option value="Chenes Cerris (Ce)">Chenes Cerris (Ce)</option>
+                  <option value="Chene pedoncule">Chene pedoncule</option>
                   <option value="Noisetier">Noisetier</option>
                   <option value="Charmes (C)">Charmes (C)</option>
                   <option value="Tilleul">Tilleul</option>
@@ -1719,11 +1718,11 @@ function Arbres() {
               </div>
 
               <div className="form-group">
-                <label>Variété de truffe</label>
+                <label>Variete de truffe</label>
                 <select name="variete_truffe" value={bulkEditData.variete_truffe} onChange={handleBulkEditChange}>
                   <option value="">-- Ne pas modifier --</option>
                   <option value="Tuber melanosporum">Tuber melanosporum (Truffe noire)</option>
-                  <option value="Tuber aestivum">Tuber aestivum (Truffe d'été)</option>
+                  <option value="Tuber aestivum">Tuber aestivum (Truffe d'ete)</option>
                   <option value="Tuber brumale">Tuber brumale (Truffe brumale)</option>
                   <option value="Tuber uncinatum">Tuber uncinatum (Truffe de Bourgogne)</option>
                 </select>
@@ -1740,7 +1739,7 @@ function Arbres() {
               </div>
 
               <div className="form-group">
-                <label>État de santé</label>
+                <label>Etat de sante</label>
                 <select name="etat" value={bulkEditData.etat} onChange={handleBulkEditChange}>
                   <option value="">-- Ne pas modifier --</option>
                   <option value="Bon">Bon</option>
@@ -1751,7 +1750,7 @@ function Arbres() {
               </div>
 
               <div className="form-group">
-                <label>Circonférence du tronc (cm)</label>
+                <label>Circonference du tronc (cm)</label>
                 <input 
                   type="number" 
                   name="circonference_cm" 
@@ -1763,7 +1762,7 @@ function Arbres() {
               </div>
 
               <div className="form-group">
-                <label>Hauteur (mètres)</label>
+                <label>Hauteur (metres)</label>
                 <input 
                   type="number" 
                   name="hauteur_m" 
@@ -1785,7 +1784,7 @@ function Arbres() {
                 onClick={handleBulkEditSubmit}
                 disabled={isProcessing}
               >
-                {isProcessing ? 'En cours...' : `Appliquer à ${selectedArbres.size} arbre(s)`}
+                {isProcessing ? 'En cours...' : `Appliquer a ${selectedArbres.size} arbre(s)`}
               </button>
             </div>
           </div>
@@ -1797,8 +1796,8 @@ function Arbres() {
         <div className="modal-overlay" onClick={() => setShowCorbeille(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
             <div className="modal-header">
-              <h3>🗑️ Corbeille - Arbres supprimés</h3>
-              <button className="modal-close" onClick={() => setShowCorbeille(false)}>✕</button>
+              <h3>Corbeille - Arbres supprimes</h3>
+              <button className="modal-close" onClick={() => setShowCorbeille(false)}>X</button>
             </div>
             
             {loadingCorbeille ? (
@@ -1814,10 +1813,10 @@ function Arbres() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Numéro</th>
-                      <th>Espèce</th>
+                      <th>Numero</th>
+                      <th>Espece</th>
                       <th>Parcelle</th>
-                      <th>Supprimé le</th>
+                      <th>Supprime le</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -1829,8 +1828,8 @@ function Arbres() {
                         <td>{arbre.parcelle_nom || '-'}</td>
                         <td>{formatDateSuppression(arbre.deleted_at)}</td>
                         <td>
-                          <button className="btn btn-primary" onClick={() => handleRestaurer(arbre.id)} style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}>↩️ Restaurer</button>
-                          <button className="btn btn-danger" onClick={() => askSupprimerDefinitivement(arbre)} style={{ padding: '0.4rem 0.8rem' }}>✕ Supprimer</button>
+                          <button className="btn btn-primary" onClick={() => handleRestaurer(arbre.id)} style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}>Restaurer</button>
+                          <button className="btn btn-danger" onClick={() => askSupprimerDefinitivement(arbre)} style={{ padding: '0.4rem 0.8rem' }}>Supprimer</button>
                         </td>
                       </tr>
                     ))}
