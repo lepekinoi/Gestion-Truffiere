@@ -2886,7 +2886,6 @@ app.get('/api/stats/recoltes-mensuelles', async (req, res) => {
              SUM(poids_grammes) as total_grammes,
              COUNT(*) as nombre_recoltes
       FROM recoltes
-      WHERE date_recolte >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
       GROUP BY TO_CHAR(date_recolte, 'YYYY-MM')
       ORDER BY mois
     `);

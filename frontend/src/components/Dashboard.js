@@ -179,14 +179,14 @@ function Dashboard() {
     ventesEnAttente: 0
   });
   
-  // 🆕 PHASE 1: KPIs de tendance
+  // KPIs de tendance
   const [kpis, setKpis] = useState({
     productionTendance: { valeur: 0, pct: 0, trend: 'stable' },
     moyenneParRecolte: { valeur: 0, unite: 'g' },
     productiviteParArbre: { valeur: 0, unite: 'g/arbre' }
   });
 
-  // 🆕 PHASE 1: Alertes intelligentes
+  // Alertes intelligentes
   const [intelligentAlertes, setIntelligentAlertes] = useState([]);
   
   // Listes pour les activités récentes
@@ -199,7 +199,7 @@ function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
 
-  // 🆕 PHASE 1 AMÉLIORÉ: Gestion dynamique des années
+  // Gestion dynamique des années
   const currentYear = new Date().getFullYear();
   const [selectedYearRange, setSelectedYearRange] = useState({
     start: currentYear - 2,
@@ -210,16 +210,18 @@ function Dashboard() {
   const [selectedYears, setSelectedYears] = useState([]);
   const [recoltesData, setRecoltesData] = useState([]);
 
+  // ✅ NOUVEAU: Données brutes mensuelles pour filtrage
+  const [recolteMensuellesBrutes, setRecolteMensuellesBrutes] = useState([]);
+
   // ==================== CHARGEMENT DES DONNÉES ====================
   useEffect(() => {
     loadDashboardData();
     loadWeather();
   }, []);
 
-  // 🆕 ✅ FIX: Initialiser selectedYearRange avec les 3 dernières années DE DONNÉES
+  // Initialiser selectedYearRange avec les 3 dernières années DE DONNÉES
   useEffect(() => {
     if (availableYears.length > 0) {
-      // Prendre les 3 dernières années disponibles dans les données
       const last3Years = availableYears.slice(0, 3);
       const minYear = Math.min(...last3Years);
       const maxYear = Math.max(...last3Years);
@@ -233,9 +235,9 @@ function Dashboard() {
       loadAllYearsData();
       setSelectedYears(last3Years);
     }
-  }, [availableYears.length]); // Déclencher seulement quand availableYears change
+  }, [availableYears.length]);
 
-  // 🆕 Mettre à jour selectedYears quand selectedYearRange change
+  // Mettre à jour selectedYears quand selectedYearRange change
   useEffect(() => {
     if (availableYears.length > 0) {
       const filteredYears = selectedYearRange.showAll 
@@ -344,7 +346,10 @@ function Dashboard() {
       ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [] }));
 
       setStockData(stockRes.data);
-      setRecoltesData(recoltesRes.data || []); // 🆕 Stocker pour calculs par parcelle
+      setRecoltesData(recoltesRes.data || []);
+      
+      // ✅ STOCKER les données brutes mensuelles
+      setRecolteMensuellesBrutes(recoltesMensuellesRes.data || []);
 
       const commandesEnAttente = safeArray(commandesRes.data).filter(c =>
         c && (c.statut === 'En attente' || c.statut === 'Confirmée')
@@ -374,7 +379,6 @@ function Dashboard() {
         .slice(0, 5);
       setCommandesRecentes(sortedCommandes);
 
-      // Production avec années disponibles
       const years = getAvailableYears(recoltesMensuellesRes.data);
       setAvailableYears(years);
 
@@ -386,7 +390,6 @@ function Dashboard() {
     }
   };
 
-  // 🆕 Charger les données pour toutes les années
   const loadAllYearsData = async () => {
     try {
       const allData = {};
@@ -400,7 +403,6 @@ function Dashboard() {
     }
   };
 
-  // Calculer les KPIs de tendance
   const calculateTrends = () => {
     try {
       const thisMonth = new Date().getMonth();
@@ -413,12 +415,10 @@ function Dashboard() {
         ? Math.round(((productionCeMois - productionMoisDernier) / productionMoisDernier) * 100)
         : 0;
 
-      // Moyenne par récolte
       const totalGrammes = stats.recoltes.totalGrammes || 0;
       const nbRecoltes = stats.recoltes.count || 1;
       const moyenneParRecolte = (totalGrammes / nbRecoltes).toFixed(0);
 
-      // Productivité par arbre
       const nbArbres = stats.arbres.count || 1;
       const productiviteParArbre = (totalGrammes / nbArbres).toFixed(2);
 
@@ -436,14 +436,12 @@ function Dashboard() {
     }
   };
 
-  // Calculer les alertes intelligentes
   const calculateSmartAlertes = () => {
     const alertes = [];
 
     try {
       const today = new Date();
 
-      // 1. Stock critique
       const stockStatus = getStockStatus(stockData?.stock_disponible_grammes || 0);
       if (stockStatus.label === 'Critique' || stockStatus.label === 'Épuisé') {
         alertes.push({
@@ -455,7 +453,6 @@ function Dashboard() {
         });
       }
 
-      // 2. Interventions urgentes (< 3 jours)
       const upcomingInterventions = interventionsAVenir.filter(i => {
         const daysUntil = (new Date(i.date_prevue).getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
         return daysUntil <= 3 && i.statut === 'Planifié';
@@ -471,7 +468,6 @@ function Dashboard() {
         });
       }
 
-      // 3. Conditions météo défavorables
       if (weather && getRiskLevel(weather).text !== 'Normal') {
         const risk = getRiskLevel(weather);
         alertes.push({
@@ -483,9 +479,8 @@ function Dashboard() {
         });
       }
 
-      // 4. Production en retard (saison automne/hiver)
       const thisMonth = today.getMonth();
-      if (thisMonth >= 8 && thisMonth <= 11) { // Sept-Déc
+      if (thisMonth >= 8 && thisMonth <= 11) {
         const avgProduction = productionParMois.reduce((a, b) => a + (b.production || 0), 0) / 12;
         const thisMonthProduction = productionParMois[thisMonth]?.production || 0;
         
@@ -506,11 +501,9 @@ function Dashboard() {
     }
   };
 
-  // ✅ FIX: Ne récupérer QUE les années avec des données réelles
   const getAvailableYears = (data) => {
     const years = new Set();
     
-    // Extraire les années des données de récoltes mensuelles
     safeArray(data).forEach(item => {
       if (item && item.mois) {
         const year = parseInt(item.mois.split('-')[0]);
@@ -518,7 +511,6 @@ function Dashboard() {
       }
     });
     
-    // Retourner triées du plus récent au plus ancien
     return Array.from(years).sort((a, b) => b - a);
   };
 
@@ -541,22 +533,41 @@ function Dashboard() {
     return result;
   };
 
-  // 🆕 Formater les données pour comparaison multi-années
+  // ✅ NOUVEAU: Formater les données FILTRÉES par intervalle
   const formatComparisonData = () => {
-    const monthKeys = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-    return monthKeys.map((month, idx) => {
-      const moisNom = new Date(2024, idx, 1).toLocaleDateString('fr-FR', { month: 'short' });
+    const filtered = recolteMensuellesBrutes.filter(item => {
+      if (!item || !item.mois) return false;
+      const [year, month] = item.mois.split('-').map(Number);
+      return year >= selectedYearRange.start && year <= selectedYearRange.end;
+    });
+
+    // Créer un mapping mois -> données par année
+    const dataByMonth = {};
+    filtered.forEach(item => {
+      const [year, month] = item.mois.split('-');
+      const key = `${year}-${month}`;
+      if (!dataByMonth[key]) {
+        dataByMonth[key] = {};
+      }
+      dataByMonth[key][year] = safeParseFloat((item.total_grammes / 1000).toFixed(2), 0);
+    });
+
+    // Trier par ordre chronologique
+    const sortedKeys = Object.keys(dataByMonth).sort();
+
+    return sortedKeys.map(key => {
+      const [year, month] = key.split('-');
+      const moisNom = new Date(year, parseInt(month) - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
       const row = { mois: moisNom };
       
-      selectedYears.forEach(year => {
-        const data = productionParMoisMultiAnnee[year] || [];
-        row[`${year}`] = data[idx]?.production || 0;
+      selectedYears.forEach(y => {
+        row[`${y}`] = dataByMonth[key]?.[y] || 0;
       });
+      
       return row;
     });
   };
 
-  // 🆕 Toggle visibilité d'une année
   const toggleYearVisibility = (year) => {
     setSelectedYears(prev => 
       prev.includes(year) 
@@ -565,17 +576,15 @@ function Dashboard() {
     );
   };
 
-  // 🆕 Couleur par année
   const getYearColor = (year) => {
     const yearIndex = availableYears.indexOf(year);
     return COLORS.yearColors[yearIndex % COLORS.yearColors.length];
   };
 
-  // 🆕 NOUVEAU: Calculer production par parcelle avec colonnes par année
+  // ✅ AMÉLIORÉ: Filtrer par intervalle de dates
   const getProductionParParcelleMultiAnnees = () => {
     const prodParParcelle = {};
     
-    // Grouper par parcelle et année
     recoltesData.forEach(recolte => {
       if (!recolte || !recolte.date_recolte) return;
       
@@ -583,7 +592,8 @@ function Dashboard() {
       const year = new Date(recolte.date_recolte).getFullYear();
       const poids = safeParseFloat(recolte.poids_grammes, 0);
       
-      // Filtrer par années sélectionnées
+      // ✅ Filtrer par intervalle de dates
+      if (year < selectedYearRange.start || year > selectedYearRange.end) return;
       if (!selectedYears.includes(year)) return;
       
       if (!prodParParcelle[parcelle]) {
@@ -593,10 +603,9 @@ function Dashboard() {
         prodParParcelle[parcelle][year] = 0;
       }
       
-      prodParParcelle[parcelle][year] += poids / 1000; // Convertir en kg
+      prodParParcelle[parcelle][year] += poids / 1000;
     });
     
-    // Formater pour le tableau
     return Object.entries(prodParParcelle).map(([nom, annees]) => {
       const row = { nom };
       let total = 0;
@@ -612,11 +621,29 @@ function Dashboard() {
     }).sort((a, b) => b.total - a.total);
   };
 
-  // 🆕 Toggle "Afficher toutes les années"
   const toggleShowAll = () => {
     setSelectedYearRange(prev => ({
       ...prev,
       showAll: !prev.showAll
+    }));
+  };
+
+  // ✅ NOUVEAU: Handlers pour changer les bornes
+  const handleStartYearChange = (e) => {
+    const newStart = parseInt(e.target.value);
+    setSelectedYearRange(prev => ({
+      ...prev,
+      start: newStart,
+      showAll: false
+    }));
+  };
+
+  const handleEndYearChange = (e) => {
+    const newEnd = parseInt(e.target.value);
+    setSelectedYearRange(prev => ({
+      ...prev,
+      end: newEnd,
+      showAll: false
     }));
   };
 
@@ -704,9 +731,7 @@ function Dashboard() {
   return (
     <div style={styles.pageContainer}>
       
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 0: PATRIMOINE
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* PATRIMOINE */}
       <section style={styles.patrimoneBanner}>
         <div style={styles.patrimoineContent}>
           <div style={styles.patrimoineStat}>
@@ -739,9 +764,7 @@ function Dashboard() {
         </div>
       </section>
       
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 1: BANNIÈRE MÉTÉO
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* MÉTÉO */}
       {weather && (
         <section style={styles.weatherBanner}>
           <div style={styles.weatherHeader}>
@@ -814,9 +837,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          🆕 PHASE 1: SECTION ALERTES INTELLIGENTES
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* ALERTES INTELLIGENTES */}
       {intelligentAlertes.length > 0 && (
         <section style={{ marginBottom: '2rem' }}>
           <h2 style={styles.sectionTitle}>
@@ -830,9 +851,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 2: ALERTES STANDARDS
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* ALERTES STANDARDS */}
       {(alertes.commandesEnAttente > 0 || alertes.ventesEnAttente > 0) && (
         <section style={styles.alertsSection}>
           {alertes.commandesEnAttente > 0 && (
@@ -856,9 +875,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          🆕 PHASE 1: SECTION KPIs DE TENDANCE
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* KPIs TENDANCE */}
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={styles.sectionTitle}>
           <span>🎯</span> Indicateurs Clés de Performance
@@ -894,12 +911,9 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 3: KPIs STANDARDS
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* KPIs STANDARDS */}
       <section style={styles.kpiSection}>
         <div style={styles.kpiGrid}>
-          {/* Production */}
           <div style={{...styles.kpiCard, ...styles.kpiCardAccent}}>
             <div style={{...styles.kpiIconWrapper, background: 'rgba(255,255,255,0.2)'}}>
               <span style={styles.kpiIcon}>🍄</span>
@@ -915,7 +929,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Stock */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: stockStatus.color + '20'}}>
               <span style={styles.kpiIcon}>📦</span>
@@ -933,7 +946,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Chiffre d'affaires */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#27ae6020'}}>
               <span style={styles.kpiIcon}>💰</span>
@@ -949,7 +961,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Interventions */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#f39c1220'}}>
               <span style={styles.kpiIcon}>🛠️</span>
@@ -962,7 +973,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Commandes */}
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#3498db20'}}>
               <span style={styles.kpiIcon}>🛒</span>
@@ -977,10 +987,8 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          🆕 PHASE 1 AMÉLIORÉ: COMPARAISON PRODUCTION MULTI-ANNÉES
-      ═══════════════════════════════════════════════════════════════ */}
-      {Object.keys(productionParMoisMultiAnnee).length > 0 && (
+      {/* ✅ GRAPHIQUE AMÉLIORÉ AVEC FILTRAGE PAR DATES */}
+      {recolteMensuellesBrutes.length > 0 && (
         <section style={styles.chartSection}>
           <div style={styles.chartCardFull}>
             <div style={styles.chartHeader}>
@@ -988,6 +996,49 @@ function Dashboard() {
                 <span>📈</span> Comparaison Production Multi-Années {selectedYearRange.showAll ? '(Toutes)' : `(${selectedYearRange.start}-${selectedYearRange.end})`}
               </h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* ✅ Sélecteurs d'années */}
+                {!selectedYearRange.showAll && (
+                  <>
+                    <label style={{ fontSize: '14px', fontWeight: '500', marginRight: '4px' }}>De:</label>
+                    <select 
+                      value={selectedYearRange.start} 
+                      onChange={handleStartYearChange}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {availableYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                    
+                    <label style={{ fontSize: '14px', fontWeight: '500', marginLeft: '8px', marginRight: '4px' }}>À:</label>
+                    <select 
+                      value={selectedYearRange.end} 
+                      onChange={handleEndYearChange}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {availableYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+                
+                <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 8px' }}></div>
+                
                 <button
                   onClick={toggleShowAll}
                   style={{
@@ -1004,7 +1055,9 @@ function Dashboard() {
                 >
                   {selectedYearRange.showAll ? '✓ Toutes les années' : '⊕ Afficher toutes les années'}
                 </button>
+                
                 <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }}></div>
+                
                 {availableYears.filter(y => selectedYears.includes(y)).map(year => (
                   <button
                     key={year}
@@ -1054,9 +1107,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          🆕 SECTION 4 AMÉLIORÉE: PRODUCTION PAR PARCELLE MULTI-ANNÉES
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* PRODUCTION PAR PARCELLE */}
       <section style={styles.chartSection}>
         <div style={styles.chartCardFull}>
           <div style={styles.chartHeader}>
@@ -1100,16 +1151,13 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 5: TIMELINE ACTIVITÉS RÉCENTES
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* ACTIVITÉS RÉCENTES */}
       <section style={styles.activitiesSection}>
         <h2 style={styles.sectionTitle}>
           <span>📋</span> Activités récentes
         </h2>
         
         <div style={styles.activitiesGrid}>
-          {/* Dernières récoltes */}
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
               <span style={styles.activityHeaderIcon}>🍄</span>
@@ -1141,7 +1189,7 @@ function Dashboard() {
               )}
             </div>
           </div>
-          {/* Interventions à venir */}
+          
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
               <span style={styles.activityHeaderIcon}>🛠️</span>
@@ -1177,7 +1225,7 @@ function Dashboard() {
               )}
             </div>
           </div>
-          {/* Commandes en cours */}
+          
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
               <span style={styles.activityHeaderIcon}>📦</span>
@@ -1239,7 +1287,6 @@ const styles = {
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
   },
 
-  // Loading & Error
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
@@ -1287,7 +1334,6 @@ const styles = {
     fontSize: '1rem'
   },
 
-  // Patrimoine Banner
   patrimoneBanner: {
     display: 'flex',
     alignItems: 'stretch',
@@ -1341,7 +1387,6 @@ const styles = {
     margin: '0 1rem'
   },
 
-  // Weather Banner
   weatherBanner: {
     display: 'flex',
     flexDirection: 'column',
@@ -1489,7 +1534,6 @@ const styles = {
     fontWeight: '500'
   },
 
-  // Alerts
   alertsSection: {
     display: 'flex',
     gap: '1rem',
@@ -1519,7 +1563,6 @@ const styles = {
     gap: '0.25rem'
   },
 
-  // KPI Section
   kpiSection: {
     marginBottom: '2rem'
   },
@@ -1588,7 +1631,6 @@ const styles = {
     fontWeight: '500'
   },
 
-  // Chart Section
   chartSection: {
     marginBottom: '2rem'
   },
@@ -1629,7 +1671,6 @@ const styles = {
     borderRadius: '8px'
   },
   
-  // 🆕 Tableau multi-années
   productionTableMultiYear: {
     display: 'flex',
     flexDirection: 'column',
@@ -1679,7 +1720,6 @@ const styles = {
     color: COLORS.muted
   },
 
-  // Activities Section
   activitiesSection: {
     marginBottom: '2rem'
   },
