@@ -247,6 +247,34 @@ function Dashboard() {
     }
   }, [selectedYearRange, availableYears]);
 
+  // ✅ NOUVEAU: Remplir productionParMois depuis recolteMensuellesBrutes
+  useEffect(() => {
+    if (recolteMensuellesBrutes.length > 0) {
+      // Créer un tableau de 12 mois (janvier à décembre)
+      const parMois = Array.from({length: 12}, (_, i) => ({ 
+        mois: i,
+        production: 0, 
+        count: 0 
+      }));
+      
+      // Agréger toutes les données par mois (peu importe l'année)
+      recolteMensuellesBrutes.forEach(item => {
+        if (!item || !item.mois) return;
+        
+        const [year, month] = item.mois.split('-');
+        const monthIndex = parseInt(month) - 1; // Convertir 01-12 en 0-11
+        
+        if (monthIndex >= 0 && monthIndex < 12) {
+          parMois[monthIndex].production += safeParseFloat(item.total_grammes, 0) / 1000; // Convertir en kg
+          parMois[monthIndex].count += parseInt(item.nombre_recoltes) || 0;
+        }
+      });
+      
+      console.log('✅ productionParMois rempli:', parMois);
+      setProductionParMois(parMois);
+    }
+  }, [recolteMensuellesBrutes]);
+
   // Calculer KPIs et alertes quand les données changent
   useEffect(() => {
     if (stats && stockData && weather && productionParMois.length > 0) {
