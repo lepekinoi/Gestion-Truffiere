@@ -1169,8 +1169,8 @@ const handleSubmit = async (e) => {
               
               {/* ✨ WIDGET MÉTÉO */}
               <WeatherWidget 
-                inseeCode="44110"
-                location="Notre-Dame-des-Landes,FR"
+                inseeCode="79170"
+                location="Lusseray,FR"
                 showForecastByDefault={false}
                 showIndicators={true}
               />
