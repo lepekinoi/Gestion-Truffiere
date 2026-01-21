@@ -7,6 +7,7 @@ import { exportParcellesPDF } from '../utils/pdfExport';
 import { validateParcellesCSV } from '../utils/csvImport';
 import CSVImportModal from './CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
+import WeatherWidget from './WeatherWidget';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -1165,6 +1166,15 @@ const handleSubmit = async (e) => {
             
             {/* Panneau latéral */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              {/* ✨ WIDGET MÉTÉO */}
+              <WeatherWidget 
+                inseeCode="44110"
+                location="Notre-Dame-des-Landes,FR"
+                showForecastByDefault={false}
+                showIndicators={true}
+              />
+              
               {/* Options d'affichage */}
               <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', border: '1px solid #ddd' }}>
                 <h4 style={{ margin: '0 0 0.75rem 0', color: '#2c5f2d', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
