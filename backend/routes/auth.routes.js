@@ -6,8 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { authMiddleware, requireRole, requireWriteAccess } = require('../middlewares/auth');
-const { authLimiter } = require('../middlewares/rateLimiter');
+const { authMiddleware, requireRole, requireWriteAccess } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimiter');
 const authService = require('../services/auth.service');
 const { logLoginAttempt } = require('../utils/helpers');
 const tokenRotation = require('../utils/tokenRotation');
