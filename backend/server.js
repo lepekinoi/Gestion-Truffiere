@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const { Pool } = require('pg');
 require('dotenv').config();
 const createAuthRoutes = require('./routes/auth.routes');
+const createParcellesRoutes = require('./routes/parcelles.routes');
 const tokenRotation = require('./utils/tokenRotation');
 
 const app = express();
@@ -286,6 +287,7 @@ app.get('/api/health', (req, res) => {
 // ROUTES D'AUTHENTIFICATION
 // ============================================================
 app.use('/api/auth', createAuthRoutes(pool));
+app.use('/api/parcelles', createParcellesRoutes(pool));
 
 
 // ============================================================
