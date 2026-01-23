@@ -6,7 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { authMiddleware, roleMiddleware, adminOnly } = require('../middleware/auth');const { authLimiter } = require('../middleware/security');
+const { authMiddleware, roleMiddleware, adminOnly } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/security');
 const authService = require('../services/auth.service');
 const { logLoginAttempt } = require('../utils/helpers');
 const tokenRotation = require('../utils/tokenRotation');
@@ -25,8 +26,7 @@ router.post('/login', authLimiter, async (req, res) => {
     }
 
     const userResult = await pool.query(
-      `SELECT id, email, password_hash, nom, prenom, role, is_active, failed_login_attempts, locked_until 
-       FROM users WHERE email = $1`,
+      `SELECT id, email, password_hash, nom, prenom, role, is_active, failed_login_attempts, locked_until FROM users WHERE email = $1`,
       [email]
     );
 
@@ -238,52 +238,50 @@ router.get('/me', authMiddleware, async (req, res) => {
 // ==================== POST /register - Créer un utilisateur (admin seulement) ====================
 router.post('/register', authMiddleware, adminOnly, async (req, res) => {
   const { email, password, nom, prenom, role = 'user' } = req.body;
-  
+
   try {
     // Validation des champs requis
     if (!email || !password || !nom) {
-      return res.status(400).json({ 
-        error: 'Email, mot de passe et nom requis', 
-        code: 'MISSING_FIELDS' 
+      return res.status(400).json({
+        error: 'Email, mot de passe et nom requis',
+        code: 'MISSING_FIELDS'
       });
     }
-    
+
     // Vérification si l'email existe déjà
     const existingUser = await pool.query(
-      'SELECT id FROM users WHERE email = $1', 
+      'SELECT id FROM users WHERE email = $1',
       [email]
     );
-    
+
     if (existingUser.rows.length > 0) {
-      return res.status(409).json({ 
-        error: 'Email déjà utilisé', 
-        code: 'EMAIL_EXISTS' 
+      return res.status(409).json({
+        error: 'Email déjà utilisé',
+        code: 'EMAIL_EXISTS'
       });
     }
-    
+
     // Hashage du mot de passe
     const passwordHash = await authService.hashPassword(password);
-    
+
     // Insertion du nouvel utilisateur
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, nom, prenom, role, is_active, email_verified) VALUES ($1, $2, $3, $4, $5, true, true) RETURNING id, email, nom, prenom, role, is_active, created_at',
       [email, passwordHash, nom, prenom || null, role]
     );
-    
-    res.status(201).json({ 
-      message: 'Utilisateur créé', 
-      user: result.rows[0] 
+
+    res.status(201).json({
+      message: 'Utilisateur créé',
+      user: result.rows[0]
     });
-    
   } catch (err) {
     console.error('Erreur register:', err);
-    res.status(500).json({ 
-      error: 'Erreur lors de la création', 
-      code: 'REGISTER_ERROR' 
+    res.status(500).json({
+      error: 'Erreur lors de la création',
+      code: 'REGISTER_ERROR'
     });
   }
 });
-
 
 // ==================== GET /users - Liste des utilisateurs (admin) ====================
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
@@ -328,7 +326,10 @@ router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
     let idx = 1;
 
     if (email !== undefined) {
-      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, id]);
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, id]
+      );
       if (emailCheck.rows.length > 0) {
         return res.status(409).json({ error: 'Email déjà utilisé', code: 'EMAIL_EXISTS' });
       }
@@ -359,7 +360,7 @@ router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
         await pool.query(
           "UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'account_disabled' WHERE user_id = $1",
           [id]
-        );
+                );
       }
     }
 
@@ -368,7 +369,6 @@ router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
     }
 
     values.push(id);
-
     const result = await pool.query(
       `UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id, email, nom, prenom, role, is_active`,
       values
@@ -378,10 +378,7 @@ router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé', code: 'USER_NOT_FOUND' });
     }
 
-    res.json({
-      message: 'Utilisateur mis à jour',
-      user: result.rows[0]
-    });
+    res.json({ message: 'Utilisateur mis à jour', user: result.rows[0] });
   } catch (err) {
     console.error('Erreur update user:', err);
     res.status(500).json({ error: 'Erreur', code: 'UPDATE_USER_ERROR' });
@@ -394,19 +391,22 @@ router.delete('/users/:id', authMiddleware, adminOnly, async (req, res) => {
 
   try {
     if (parseInt(id) === req.user.id) {
-      return res.status(400).json({ error: 'Impossible de supprimer votre propre compte', code: 'CANNOT_DELETE_SELF' });
+      return res.status(400).json({
+        error: 'Impossible de supprimer votre propre compte',
+        code: 'CANNOT_DELETE_SELF'
+      });
     }
 
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, email', [id]);
+    const result = await pool.query(
+      'DELETE FROM users WHERE id = $1 RETURNING id, email',
+      [id]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé', code: 'USER_NOT_FOUND' });
     }
 
-    res.json({
-      message: 'Utilisateur supprimé',
-      user: result.rows[0]
-    });
+    res.json({ message: 'Utilisateur supprimé', user: result.rows[0] });
   } catch (err) {
     console.error('Erreur delete user:', err);
     res.status(500).json({ error: 'Erreur', code: 'DELETE_USER_ERROR' });
@@ -422,16 +422,25 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Mots de passe requis', code: 'MISSING_FIELDS' });
     }
 
-    const userResult = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [req.user.id]
+    );
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé', code: 'USER_NOT_FOUND' });
     }
 
-    const passwordValid = await authService.comparePassword(currentPassword, userResult.rows[0].password_hash);
+    const passwordValid = await authService.comparePassword(
+      currentPassword,
+      userResult.rows[0].password_hash
+    );
 
     if (!passwordValid) {
-      return res.status(401).json({ error: 'Mot de passe actuel incorrect', code: 'INVALID_PASSWORD' });
+      return res.status(401).json({
+        error: 'Mot de passe actuel incorrect',
+        code: 'INVALID_PASSWORD'
+      });
     }
 
     const newPasswordHash = await authService.hashPassword(newPassword);
@@ -460,7 +469,10 @@ router.post('/users/:id/reset-password', authMiddleware, adminOnly, async (req, 
 
   try {
     if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Mot de passe invalide (min 8 caractères)', code: 'INVALID_PASSWORD' });
+      return res.status(400).json({
+        error: 'Mot de passe invalide (min 8 caractères)',
+        code: 'INVALID_PASSWORD'
+      });
     }
 
     const passwordHash = await authService.hashPassword(newPassword);
@@ -479,10 +491,7 @@ router.post('/users/:id/reset-password', authMiddleware, adminOnly, async (req, 
       [id]
     );
 
-    res.json({
-      message: 'Mot de passe réinitialisé',
-      user: result.rows[0]
-    });
+    res.json({ message: 'Mot de passe réinitialisé', user: result.rows[0] });
   } catch (err) {
     console.error('Erreur reset password:', err);
     res.status(500).json({ error: 'Erreur', code: 'RESET_PASSWORD_ERROR' });
@@ -501,10 +510,7 @@ router.post('/users/:id/unlock', authMiddleware, adminOnly, async (req, res) => 
       return res.status(404).json({ error: 'Utilisateur non trouvé', code: 'USER_NOT_FOUND' });
     }
 
-    res.json({
-      message: 'Compte déverrouillé',
-      user: result.rows[0]
-    });
+    res.json({ message: 'Compte déverrouillé', user: result.rows[0] });
   } catch (err) {
     console.error('Erreur unlock:', err);
     res.status(500).json({ error: 'Erreur', code: 'UNLOCK_ERROR' });
@@ -557,10 +563,7 @@ router.post('/cleanup-tokens', authMiddleware, adminOnly, async (req, res) => {
   try {
     const daysOld = parseInt(req.body.daysOld) || 30;
     const deletedCount = await tokenRotation.cleanupExpiredTokens(pool, daysOld);
-    res.json({
-      message: 'Nettoyage effectué',
-      deletedCount
-    });
+    res.json({ message: 'Nettoyage effectué', deletedCount });
   } catch (err) {
     console.error('Erreur cleanup:', err);
     res.status(500).json({ error: 'Erreur', code: 'CLEANUP_ERROR' });
