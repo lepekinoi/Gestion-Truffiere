@@ -18,7 +18,7 @@ import Arbres from './components/Arbres';
 // import ArbresPage from './features/arbres/ArbresPage';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
-import Recoltes from './components/Recoltes';
+import RecoltesPage from './pages/RecoltesPage';
 import Commercial from './components/Commercial';
 // import AchatsComponent from '@/components/AchatsComponent.vue';
 // routes.push({
@@ -124,7 +124,7 @@ const UserMenu = ({ onShowUserManagement, onShowChangePassword }) => {
               className="user-dropdown-item danger"
               onClick={handleLogout}
             >
-              <span>🚪</span>
+              <span>🚺</span>
               <span>Déconnexion</span>
             </button>
           </div>
@@ -179,7 +179,7 @@ const MainApp = () => {
 	case 'interventions':
         return <Interventions highlightId={searchHighlight?.category === 'interventions' ? searchHighlight.id : null} />;
 	case 'recoltes':
-        return <Recoltes highlightId={searchHighlight?.category === 'recoltes' ? searchHighlight.id : null} />;
+        return <RecoltesPage highlightId={searchHighlight?.category === 'recoltes' ? searchHighlight.id : null} />;
 	case 'commercial':
         return <Commercial highlightId={searchHighlight?.id} highlightCategory={searchHighlight?.category} />;
 	case 'statistiques':
@@ -204,7 +204,7 @@ const MainApp = () => {
             alt="Truffe" 
             style={{ width: '32px', height: '32px', marginRight: '10px' }}
           />
-          <h1>Gestion de Truffière</h1>
+          <h1>Gestion de Tuffière</h1>
         </div>
         
         <div className="navbar-menu">
