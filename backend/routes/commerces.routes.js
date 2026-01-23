@@ -10,7 +10,7 @@ const { authMiddleware  } = require('../middleware/auth');
 // ==================== ROUTES CLIENTS ====================
 
 // GET /api/clients - Liste des clients
-router.get('/clients', async (req, res) => {
+router.get('/clients', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM clients ORDER BY nom, raison_sociale');
     res.json(result.rows);
@@ -21,7 +21,7 @@ router.get('/clients', async (req, res) => {
 });
 
 // GET /api/clients/:id/stats - Statistiques d'un client
-router.get('/clients/:id/stats', async (req, res) => {
+router.get('/clients/:id/stats', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -52,7 +52,7 @@ router.get('/clients/:id/stats', async (req, res) => {
 });
 
 // GET /api/clients/stats/by-type - Stats par type de client
-router.get('/clients/stats/by-type', async (req, res) => {
+router.get('/clients/stats/by-type', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT c.type,
@@ -147,7 +147,7 @@ router.delete('/clients/:id', authMiddleware, async (req, res) => {
 // ==================== ROUTES VENTES ====================
 
 // GET /api/ventes - Liste des ventes
-router.get('/ventes', async (req, res) => {
+router.get('/ventes', authMiddleware, async (req, res) => {
   try {
     const { client_id, recolte_id } = req.query;
 
@@ -274,7 +274,7 @@ router.delete('/ventes/:id', authMiddleware, async (req, res) => {
 // ==================== ROUTES COMMANDES ====================
 
 // GET /api/commandes - Liste des commandes
-router.get('/commandes', async (req, res) => {
+router.get('/commandes', authMiddleware, async (req, res) => {
   try {
     const { client_id } = req.query;
 
@@ -302,7 +302,7 @@ router.get('/commandes', async (req, res) => {
 });
 
 // GET /api/commandes/:id - Détail d'une commande
-router.get('/commandes/:id', async (req, res) => {
+router.get('/commandes/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -327,17 +327,58 @@ router.get('/commandes/:id', async (req, res) => {
 
 
 // POST /api/commandes - Créer une commande
+router.post('/commandes', authMiddleware, async (req, res) => {
+  try {
+    const {
+      client_id,
+      numero_commande,
+      date_commande,
+      date_livraison_demandee,
+      poids_grammes,
+      calibre,
+      qualite,
+      maturite,
+      prix_unitaire_kg,
+      statut,
+      notes
+    } = req.body;
+
+    const poidsGrammesVal =
+      poids_grammes === '' || poids_grammes === null || poids_grammes === undefined
+        ? null
+        : poids_grammes;
+
+    const prixUnitaireKgVal =
+      prix_unitaire_kg === '' || prix_unitaire_kg === null || prix_unitaire_kg === undefined
+        ? null
+        : prix_unitaire_kg;
+
+    const montant_total =
+      poidsGrammesVal && prixUnitaireKgVal
+        ? (parseFloat(poidsGrammesVal) / 1000) * parseFloat(prixUnitaireKgVal)
+        : null;
+
     const result = await pool.query(
-      `INSERT INTO commandes 
+      `INSERT INTO commandes
        (client_id, numero_commande, date_commande, date_livraison_demandee,
         poids_grammes, calibre, qualite, maturite, prix_unitaire_kg,
         montant_total, statut, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [client_id || null, numero_commande, date_commande,
-       date_livraison_demandee || null, poidsGrammesVal,
-       calibre || null, qualite || null, maturite || null,
-       prixUnitaireKgVal, montant_total, statut || 'En attente', notes || null]
+      [
+        client_id || null,
+        numero_commande,
+        date_commande,
+        date_livraison_demandee || null,
+        poidsGrammesVal,
+        calibre || null,
+        qualite || null,
+        maturite || null,
+        prixUnitaireKgVal,
+        montant_total,
+        statut || 'En attente',
+        notes || null
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -346,6 +387,7 @@ router.get('/commandes/:id', async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la création' });
   }
 });
+
 
 // PUT /api/commandes/:id - Modifier une commande
 router.put('/commandes/:id', authMiddleware, async (req, res) => {
