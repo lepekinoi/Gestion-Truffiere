@@ -6,8 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { authMiddleware, requireRole, requireWriteAccess } = require('../middleware/auth');
-const { authLimiter } = require('../middleware/security');
+const { authMiddleware, roleMiddleware, adminOnly } = require('../middleware/auth');const { authLimiter } = require('../middleware/security');
 const authService = require('../services/auth.service');
 const { logLoginAttempt } = require('../utils/helpers');
 const tokenRotation = require('../utils/tokenRotation');
@@ -237,11 +236,11 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 // ==================== POST /register - Créer un utilisateur (admin seulement) ====================
-router.post('/register', authMiddleware, requireRole('admin'), async (req, res) => {
+router.post('/register', authMiddleware, adminOnly, async (req, res) => {
   const { email, password, nom, prenom, role = 'user' } = req.body;
 
   try {
-    if (!email || !password || !nom) {
+    if (!email || !password || !nom) adminOnly
       return res.status(400).json({ error: 'Email, mot de passe et nom requis', code: 'MISSING_FIELDS' });
     }
 
@@ -268,7 +267,7 @@ router.post('/register', authMiddleware, requireRole('admin'), async (req, res) 
 });
 
 // ==================== GET /users - Liste des utilisateurs (admin) ====================
-router.get('/users', authMiddleware, requireRole('admin'), async (req, res) => {
+router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, email, nom, prenom, role, is_active, last_login, created_at FROM users ORDER BY created_at DESC'
@@ -281,7 +280,7 @@ router.get('/users', authMiddleware, requireRole('admin'), async (req, res) => {
 });
 
 // ==================== GET /users/:id - Détails utilisateur (admin) ====================
-router.get('/users/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+router.get('/users/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, email, nom, prenom, role, is_active, email_verified, last_login, failed_login_attempts, locked_until, created_at, updated_at FROM users WHERE id = $1',
@@ -300,7 +299,7 @@ router.get('/users/:id', authMiddleware, requireRole('admin'), async (req, res) 
 });
 
 // ==================== PUT /users/:id - Modifier utilisateur (admin) ====================
-router.put('/users/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { email, nom, prenom, role, is_active } = req.body;
 
@@ -371,7 +370,7 @@ router.put('/users/:id', authMiddleware, requireRole('admin'), async (req, res) 
 });
 
 // ==================== DELETE /users/:id - Supprimer utilisateur (admin) ====================
-router.delete('/users/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+router.delete('/users/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -436,7 +435,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 });
 
 // ==================== POST /users/:id/reset-password - Reset mot de passe (admin) ====================
-router.post('/users/:id/reset-password', authMiddleware, requireRole('admin'), async (req, res) => {
+router.post('/users/:id/reset-password', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
 
@@ -472,7 +471,7 @@ router.post('/users/:id/reset-password', authMiddleware, requireRole('admin'), a
 });
 
 // ==================== POST /users/:id/unlock - Déverrouiller compte (admin) ====================
-router.post('/users/:id/unlock', authMiddleware, requireRole('admin'), async (req, res) => {
+router.post('/users/:id/unlock', authMiddleware, adminOnly, async (req, res) => {
   try {
     const result = await pool.query(
       'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1 RETURNING id, email',
@@ -524,7 +523,7 @@ router.delete('/sessions/:id', authMiddleware, async (req, res) => {
 });
 
 // ==================== GET /token-stats - Statistiques des tokens (admin) ====================
-router.get('/token-stats', authMiddleware, requireRole('admin'), async (req, res) => {
+router.get('/token-stats', authMiddleware, adminOnly, async (req, res) => {
   try {
     const stats = await tokenRotation.getTokenStats(pool, req.query.userId || req.user.id);
     res.json(stats);
@@ -535,7 +534,7 @@ router.get('/token-stats', authMiddleware, requireRole('admin'), async (req, res
 });
 
 // ==================== POST /cleanup-tokens - Nettoyer les tokens expirés (admin) ====================
-router.post('/cleanup-tokens', authMiddleware, requireRole('admin'), async (req, res) => {
+router.post('/cleanup-tokens', authMiddleware, adminOnly, async (req, res) => {
   try {
     const daysOld = parseInt(req.body.daysOld) || 30;
     const deletedCount = await tokenRotation.cleanupExpiredTokens(pool, daysOld);
