@@ -557,7 +557,7 @@ function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const statsRes = await axios.get(`${API_URL}/utilitaires/stats/dashboard`);
+      const statsRes = await axios.get(`${API_URL}/stats/dashboard`);
       setStats(statsRes.data);
 
       const [
@@ -572,8 +572,8 @@ function Dashboard() {
         axios.get(`${API_URL}/interventions`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/commandes`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/ventes`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/utilitaires/stats/recoltes-mensuelles`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/utilitaires/stock`).catch(() => ({ data: { stock_disponible_grammes: 0 } }))
+        axios.get(`${API_URL}/stats/recoltes-mensuelles`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/stock`).catch(() => ({ data: { stock_disponible_grammes: 0 } }))
       ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [] }));
 
       setStockData(stockRes.data);
@@ -622,7 +622,7 @@ function Dashboard() {
     try {
       const allData = {};
       for (const year of availableYears) {
-        const res = await axios.get(`${API_URL}/utilitaires/stats/recoltes-mensuelles?year=${year}`).catch(() => ({ data: [] }));
+        const res = await axios.get(`${API_URL}/stats/recoltes-mensuelles?year=${year}`).catch(() => ({ data: [] }));
         allData[year] = prepareProductionMensuelle(res.data, year);
       }
       setProductionParMoisMultiAnnee(allData);

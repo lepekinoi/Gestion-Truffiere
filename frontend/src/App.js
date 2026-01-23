@@ -13,8 +13,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Composants
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-// import Dashboard from './components/Dashboard_DEBUG';
-
 import Parcelles from './components/Parcelles';
 import Arbres from './components/Arbres';
 // import ArbresPage from './features/arbres/ArbresPage';
