@@ -21,7 +21,7 @@ const interventionsRoutes = require('./interventions.routes');
 // 📦 Récolte et commercialisation
 const recoltesRoutes = require('./recoltes.routes');
 const commercesRoutes = require('./commerces.routes');
-const achatsRoutes = require('./achats.routes');
+// const achatsRoutes = require('./achats.routes');
 
 // 📚 Référentiels et données de base
 const referentielsRoutes = require('./referentiels.routes');
@@ -45,7 +45,7 @@ router.use('/interventions', interventionsRoutes);
 // 📦 Récolte et ventes - /api/recoltes/*, /api/commerces/*, /api/achats/*
 router.use('/recoltes', recoltesRoutes);
 router.use('/commerces', commercesRoutes);
-router.use('/achats', achatsRoutes);
+// router.use('/achats', achatsRoutes);
 
 // 📚 Référentiels - /api/referentiels/*
 router.use('/referentiels', referentielsRoutes);
@@ -78,7 +78,7 @@ router.get('/health', (req, res) => {
       interventions: '/api/interventions',
       recoltes: '/api/recoltes',
       commerces: '/api/commerces',
-      achats: '/api/achats',
+      // achats: '/api/achats',
       referentiels: '/api/referentiels',
       historique: '/api/historique',
       utilitaires: '/api/utilitaires'
@@ -106,7 +106,7 @@ router.get('/', (req, res) => {
       { path: '/api/interventions', description: 'Gestion des interventions (irrigation, traitement, etc.)' },
       { path: '/api/recoltes', description: 'Gestion des récoltes de truffes' },
       { path: '/api/commerces', description: 'Gestion commerciale (clients, ventes, commandes)' },
-      { path: '/api/achats', description: 'Gestion des achats' },
+      // { path: '/api/achats', description: 'Gestion des achats' },
       { path: '/api/referentiels', description: 'Données de référence (caveurs, chiens, types, etc.)' },
       { path: '/api/historique', description: 'Historique des modifications' },
       { path: '/api/utilitaires', description: 'Outils et utilitaires (stats, export, recherche)' }
