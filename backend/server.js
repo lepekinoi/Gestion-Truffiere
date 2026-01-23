@@ -1,132 +1,67 @@
-// ====================================================================
-// server.js - API Truffiere avec Authentification JWT
-// Version 3.0.0 - Architecture modulaire
-// ====================================================================
-
 require('dotenv').config();
 
-// ====================================================================
-// IMPORTS - Modules principaux
-// ====================================================================
 const express = require('express');
 const app = express();
 
-// ====================================================================
-// IMPORTS - Configuration
-// ====================================================================
+// Configuration & Utils
 const { validateEnv } = require('./config/env');
 const { pool, testDatabaseConnection } = require('./config/database');
 const logger = require('./utils/logger');
 
-// ====================================================================
-// IMPORTS - Middleware de sécurité
-// ====================================================================
+// Middlewares
 const { helmet, cors, apiLimiter } = require('./middleware/security');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
-// ====================================================================
-// IMPORTS - Routes
-// ====================================================================
+// Import des routes modulaires
 const apiRoutes = require('./routes/index');
 
-// ====================================================================
-// VALIDATION ENVIRONNEMENT
-// ====================================================================
+// Initialisation
 validateEnv();
-
 const PORT = process.env.PORT || 3001;
 
-// ====================================================================
-// MIDDLEWARE GLOBAUX
-// ====================================================================
-
-// Sécurité
+// Middlewares Globaux
 app.use(helmet());
 app.use(cors);
-
-// Parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Trust proxy (pour rate limiting derrière un reverse proxy)
 app.set('trust proxy', 1);
 
-// Rate limiting global
-app.use('/api', apiLimiter);
-
-// Logs des requêtes
+// Logging
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-// ====================================================================
-// ROUTES
-// ====================================================================
-
-// Route de base
-app.get('/', (req, res) => {
-  res.json({
-    message: 'API Gestion Truffiere',
-    version: '3.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      parcelles: '/api/parcelles',
-      achats: '/api/achats'
-    }
-  });
-});
-
-// Montage des routes API
+// Montage des routes (Toute la logique de routage est ici)
 app.use('/api', apiRoutes);
 
-// ====================================================================
-// GESTION DES ERREURS
-// ====================================================================
-
-// Route non trouvée (404)
+// Gestion des erreurs
 app.use(notFoundHandler);
-
-// Gestionnaire d'erreurs global
 app.use(errorHandler);
 
-// ====================================================================
-// DÉMARRAGE DU SERVEUR
-// ====================================================================
-
+// Démarrage
 async function startServer() {
   try {
-    // Test de connexion à la base de données
     await testDatabaseConnection();
-    
-    // Démarrage du serveur
     app.listen(PORT, () => {
       logger.success(`Serveur démarré sur le port ${PORT}`);
-      logger.info(`Environnement: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    logger.error('Erreur lors du démarrage du serveur:', error);
+    logger.error('Erreur au démarrage:', error);
     process.exit(1);
   }
 }
 
-// Gestion propre de l'arrêt
-process.on('SIGTERM', async () => {
-  logger.warning('Signal SIGTERM reçu, arrêt gracieux...');
+// Arrêt gracieux
+const gracefulShutdown = async (signal) => {
+  logger.warning(`Signal ${signal} reçu, arrêt en cours...`);
   await pool.end();
   process.exit(0);
-});
+};
 
-process.on('SIGINT', async () => {
-  logger.warning('Signal SIGINT reçu, arrêt gracieux...');
-  await pool.end();
-  process.exit(0);
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Démarrage
 startServer();
 
 module.exports = app;
