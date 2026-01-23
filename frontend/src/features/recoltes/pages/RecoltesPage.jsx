@@ -4,33 +4,9 @@ import { exportRecoltesPDF } from '../../../utils/pdfExport';
 import { validateRecoltesCSV } from '../../../utils/csvImport';
 import CSVImportModal from '../../../components/CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../../../hooks/useColumnSettings';
+import { EXPOSITIONS, PAGINATION_OPTIONS, QUALITES_VENDABLES, QUALITES_NON_VENDABLES } from '../../../constants';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
-// Options d'exposition autour de l'arbre
-const EXPOSITIONS = [
-  { value: 'Nord', label: '⬆️ Nord', short: 'N' },
-  { value: 'Nord-Est', label: '↗️ Nord-Est', short: 'NE' },
-  { value: 'Est', label: '➡️ Est', short: 'E' },
-  { value: 'Sud-Est', label: '↘️ Sud-Est', short: 'SE' },
-  { value: 'Sud', label: '⬇️ Sud', short: 'S' },
-  { value: 'Sud-Ouest', label: '↙️ Sud-Ouest', short: 'SO' },
-  { value: 'Ouest', label: '⬅️ Ouest', short: 'O' },
-  { value: 'Nord-Ouest', label: '↖️ Nord-Ouest', short: 'NO' }
-];
-
-// Options de pagination
-const PAGINATION_OPTIONS = [
-  { value: 10, label: '10' },
-  { value: 20, label: '20' },
-  { value: 30, label: '30' },
-  { value: 50, label: '50' },
-  { value: 'all', label: 'Tous' }
-];
-
-// Configuration des qualités
-const QUALITES_VENDABLES = ['Extra', 'Première catégorie', 'Deuxième catégorie'];
-const QUALITES_NON_VENDABLES = ['Pourrie'];
 
 function RecoltesPage() {
   const [recoltes, setRecoltes] = useState([]);
@@ -786,9 +762,7 @@ function RecoltesPage() {
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          DASHBOARD QUALITÉ - 2 ZONES DISTINCTES
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* DASHBOARD QUALITÉ - 2 ZONES DISTINCTES */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: '2fr 1fr', 
@@ -1436,7 +1410,7 @@ function RecoltesPage() {
                   opacity: currentPage === 1 ? 0.5 : 1
                 }}
               >
-                🔽
+                ◀️
               </button>
               
               {getPageNumbers().map((page, idx) => (
@@ -1594,7 +1568,7 @@ function RecoltesPage() {
                       style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
                       title="Modifier"
                     >
-                      ✔️
+                      ✏️
                     </button>
                     <button 
                       className="btn btn-danger" 
