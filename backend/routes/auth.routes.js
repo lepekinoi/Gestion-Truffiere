@@ -238,33 +238,52 @@ router.get('/me', authMiddleware, async (req, res) => {
 // ==================== POST /register - Créer un utilisateur (admin seulement) ====================
 router.post('/register', authMiddleware, adminOnly, async (req, res) => {
   const { email, password, nom, prenom, role = 'user' } = req.body;
-
+  
   try {
-    if (!email || !password || !nom) adminOnly
-      return res.status(400).json({ error: 'Email, mot de passe et nom requis', code: 'MISSING_FIELDS' });
+    // Validation des champs requis
+    if (!email || !password || !nom) {
+      return res.status(400).json({ 
+        error: 'Email, mot de passe et nom requis', 
+        code: 'MISSING_FIELDS' 
+      });
     }
-
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    
+    // Vérification si l'email existe déjà
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1', 
+      [email]
+    );
+    
     if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: 'Email déjà utilisé', code: 'EMAIL_EXISTS' });
+      return res.status(409).json({ 
+        error: 'Email déjà utilisé', 
+        code: 'EMAIL_EXISTS' 
+      });
     }
-
+    
+    // Hashage du mot de passe
     const passwordHash = await authService.hashPassword(password);
-
+    
+    // Insertion du nouvel utilisateur
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, nom, prenom, role, is_active, email_verified) VALUES ($1, $2, $3, $4, $5, true, true) RETURNING id, email, nom, prenom, role, is_active, created_at',
       [email, passwordHash, nom, prenom || null, role]
     );
-
-    res.status(201).json({
-      message: 'Utilisateur créé',
-      user: result.rows[0]
+    
+    res.status(201).json({ 
+      message: 'Utilisateur créé', 
+      user: result.rows[0] 
     });
+    
   } catch (err) {
     console.error('Erreur register:', err);
-    res.status(500).json({ error: 'Erreur lors de la création', code: 'REGISTER_ERROR' });
+    res.status(500).json({ 
+      error: 'Erreur lors de la création', 
+      code: 'REGISTER_ERROR' 
+    });
   }
 });
+
 
 // ==================== GET /users - Liste des utilisateurs (admin) ====================
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
