@@ -786,11 +786,1232 @@ function RecoltesPage() {
         </div>
       </div>
 
-      {/* Reste du JSX identique au fichier original... */}
-      {/* Pour la brièveté, je vais juste indiquer que tout le reste du JSR reste identique */}
-      {/* La suite du composant continue avec les mêmes éléments : Dashboard qualité, filtres, tableau, modals, etc. */}
-      
-      {/* Import CSV Modal */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          DASHBOARD QUALITÉ - 2 ZONES DISTINCTES
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '2fr 1fr', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
+        {/* Zone 1: Qualités VENDABLES (Extra, 1ère, 2ème) */}
+        <div style={{
+          background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+          borderRadius: '16px',
+          padding: '1.25rem',
+          border: '2px solid #4caf50',
+          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.15)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.75rem', 
+            marginBottom: '1rem',
+            borderBottom: '2px solid rgba(76, 175, 80, 0.3)',
+            paddingBottom: '0.75rem'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>✅</span>
+            <h3 style={{ margin: 0, color: '#2e7d32', fontSize: '1.1rem' }}>Qualité Vendable</h3>
+            <span style={{ 
+              marginLeft: 'auto', 
+              background: '#2e7d32', 
+              color: 'white', 
+              padding: '0.25rem 0.75rem', 
+              borderRadius: '20px',
+              fontSize: '0.9rem',
+              fontWeight: 'bold'
+            }}>
+              {(statsQualite.vendable.poids / 1000).toFixed(2)} kg
+            </span>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+            {/* Extra */}
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                border: filters.qualite === 'Extra' ? '3px solid #f9a825' : '2px solid #fff9c4',
+                transition: 'all 0.2s',
+                boxShadow: filters.qualite === 'Extra' ? '0 4px 12px rgba(249, 168, 37, 0.3)' : 'none'
+              }}
+              onClick={() => handleFilterChange('qualite', filters.qualite === 'Extra' ? '' : 'Extra')}
+            >
+              <div style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>⭐</div>
+              <div style={{ fontWeight: 'bold', color: '#f9a825', fontSize: '1.25rem' }}>
+                {statsQualite.vendable.extra.count}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>Extra</div>
+              <div style={{ 
+                fontSize: '0.85rem', 
+                fontWeight: '600', 
+                color: '#8b4513',
+                marginTop: '0.25rem'
+              }}>
+                {(statsQualite.vendable.extra.poids / 1000).toFixed(2)} kg
+              </div>
+            </div>
+            
+            {/* Première catégorie */}
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                border: filters.qualite === 'Première catégorie' ? '3px solid #2e7d32' : '2px solid #c8e6c9',
+                transition: 'all 0.2s',
+                boxShadow: filters.qualite === 'Première catégorie' ? '0 4px 12px rgba(46, 125, 50, 0.3)' : 'none'
+              }}
+              onClick={() => handleFilterChange('qualite', filters.qualite === 'Première catégorie' ? '' : 'Première catégorie')}
+            >
+              <div style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>🥇</div>
+              <div style={{ fontWeight: 'bold', color: '#2e7d32', fontSize: '1.25rem' }}>
+                {statsQualite.vendable.premiere.count}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>1ère catégorie</div>
+              <div style={{ 
+                fontSize: '0.85rem', 
+                fontWeight: '600', 
+                color: '#8b4513',
+                marginTop: '0.25rem'
+              }}>
+                {(statsQualite.vendable.premiere.poids / 1000).toFixed(2)} kg
+              </div>
+            </div>
+            
+            {/* Deuxième catégorie */}
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                border: filters.qualite === 'Deuxième catégorie' ? '3px solid #1565c0' : '2px solid #bbdefb',
+                transition: 'all 0.2s',
+                boxShadow: filters.qualite === 'Deuxième catégorie' ? '0 4px 12px rgba(21, 101, 192, 0.3)' : 'none'
+              }}
+              onClick={() => handleFilterChange('qualite', filters.qualite === 'Deuxième catégorie' ? '' : 'Deuxième catégorie')}
+            >
+              <div style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>🥈</div>
+              <div style={{ fontWeight: 'bold', color: '#1565c0', fontSize: '1.25rem' }}>
+                {statsQualite.vendable.deuxieme.count}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>2ème catégorie</div>
+              <div style={{ 
+                fontSize: '0.85rem', 
+                fontWeight: '600', 
+                color: '#8b4513',
+                marginTop: '0.25rem'
+              }}>
+                {(statsQualite.vendable.deuxieme.poids / 1000).toFixed(2)} kg
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Zone 2: POURRI (Non vendable) */}
+        <div style={{
+          background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+          borderRadius: '16px',
+          padding: '1.25rem',
+          border: '2px solid #ef5350',
+          boxShadow: '0 4px 12px rgba(239, 83, 80, 0.15)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.75rem', 
+            marginBottom: '1rem',
+            borderBottom: '2px solid rgba(239, 83, 80, 0.3)',
+            paddingBottom: '0.75rem'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>❌</span>
+            <h3 style={{ margin: 0, color: '#c62828', fontSize: '1.1rem' }}>Non Vendable</h3>
+          </div>
+          
+          {/* Pourrie */}
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '1rem',
+              textAlign: 'center',
+              cursor: 'pointer',
+              border: filters.qualite === 'Pourrie' ? '3px solid #c62828' : '2px solid #ffcdd2',
+              transition: 'all 0.2s',
+              boxShadow: filters.qualite === 'Pourrie' ? '0 4px 12px rgba(198, 40, 40, 0.3)' : 'none'
+            }}
+            onClick={() => handleFilterChange('qualite', filters.qualite === 'Pourrie' ? '' : 'Pourrie')}
+          >
+            <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>🗑️</div>
+            <div style={{ fontWeight: 'bold', color: '#c62828', fontSize: '1.5rem' }}>
+              {statsQualite.pourri.count}
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#666' }}>Pourrie</div>
+            <div style={{ 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              color: '#8b4513',
+              marginTop: '0.25rem'
+            }}>
+              {(statsQualite.pourri.poids / 1000).toFixed(2)} kg
+            </div>
+          </div>
+
+          {/* Non classé */}
+          {statsQualite.nonClasse.count > 0 && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.5rem',
+              background: 'rgba(255,255,255,0.7)',
+              borderRadius: '8px',
+              textAlign: 'center',
+              fontSize: '0.85rem',
+              color: '#666'
+            }}>
+              <span style={{ marginRight: '0.5rem' }}>○</span>
+              {statsQualite.nonClasse.count} non classé(s) ({(statsQualite.nonClasse.poids / 1000).toFixed(2)} kg)
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Barre de sélection groupée */}
+      {selectedRecoltes.size > 0 && (
+        <div style={{
+          background: '#e3f2fd',
+          padding: '1rem',
+          borderRadius: '12px',
+          marginBottom: '1rem',
+          border: '2px solid #1976d2',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+              ✅ {selectedRecoltes.size} récolte(s) sélectionnée(s)
+              {stats.poidsSelection > 0 && (
+                <span style={{ marginLeft: '1rem', color: '#8b4513' }}>
+                  ({(stats.poidsSelection / 1000).toFixed(2)} kg)
+                </span>
+              )}
+            </span>
+            <button
+              onClick={handleDeselectAll}
+              style={{
+                padding: '0.4rem 0.8rem',
+                background: 'transparent',
+                border: '1px solid #1976d2',
+                borderRadius: '6px',
+                color: '#1976d2',
+                cursor: 'pointer'
+              }}
+            >
+              Tout désélectionner
+            </button>
+            {filteredRecoltes.length > selectedRecoltes.size && (
+              <button
+                onClick={handleSelectAllFiltered}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  background: 'transparent',
+                  border: '1px solid #1976d2',
+                  borderRadius: '6px',
+                  color: '#1976d2',
+                  cursor: 'pointer'
+                }}
+              >
+                Sélectionner les {filteredRecoltes.length} récoltes filtrées
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={askBulkDelete}
+              className="btn btn-danger"
+              style={{ padding: '0.5rem 1rem' }}
+            >
+              🗑️ Supprimer la sélection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Barre de recherche et filtres */}
+      <div style={{ 
+        background: 'white', 
+        padding: '1rem', 
+        borderRadius: '12px', 
+        marginBottom: '1rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 Rechercher par arbre, parcelle, caveur, chien, notes..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '1rem'
+              }}
+            />
+            {filters.search && (
+              <button
+                onClick={() => handleFilterChange('search', '')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  color: '#999'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          
+          <select 
+            value={filterAnnee} 
+            onChange={(e) => { setFilterAnnee(e.target.value); setCurrentPage(1); }}
+            style={{ 
+              padding: '0.75rem', 
+              borderRadius: '8px', 
+              border: filterAnnee !== 'all' ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
+              background: filterAnnee !== 'all' ? '#e8f5e9' : 'white'
+            }}
+          >
+            <option value="all">📆 Toutes les années</option>
+            {annees.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            style={{
+              padding: '0.75rem 1.25rem',
+              border: hasActiveFilters ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
+              borderRadius: '8px',
+              background: hasActiveFilters ? '#e8f5e9' : 'white',
+              color: hasActiveFilters ? '#2c5f2d' : '#666',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: hasActiveFilters ? 'bold' : 'normal'
+            }}
+          >
+            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length + (filterAnnee !== 'all' ? 1 : 0)})`}
+            <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
+          </button>
+          
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              style={{
+                padding: '0.75rem 1rem',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#ffebee',
+                color: '#c62828',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              ✕ Réinitialiser
+            </button>
+          )}
+        </div>
+
+        {/* Panneau de filtres avancés */}
+        {showFilters && (
+          <div style={{ 
+            marginTop: '1rem', 
+            paddingTop: '1rem', 
+            borderTop: '1px solid #eee',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '1rem'
+          }}>
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Parcelle
+              </label>
+              <select
+                value={filters.parcelle}
+                onChange={(e) => handleFilterChange('parcelle', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.parcelle ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes</option>
+                {parcelles.map(p => (
+                  <option key={p.id} value={p.id}>{p.nom}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Qualité
+              </label>
+              <select
+                value={filters.qualite}
+                onChange={(e) => handleFilterChange('qualite', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.qualite ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes</option>
+                <option value="Extra">⭐ Extra</option>
+                <option value="Première catégorie">🥇 Première</option>
+                <option value="Deuxième catégorie">🥈 Deuxième</option>
+                <option value="Pourrie">🗑️ Pourrie</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Calibre
+              </label>
+              <select
+                value={filters.calibre}
+                onChange={(e) => handleFilterChange('calibre', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.calibre ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Tous</option>
+                {filterOptions.calibres.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Maturité
+              </label>
+              <select
+                value={filters.maturite}
+                onChange={(e) => handleFilterChange('maturite', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.maturite ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes</option>
+                {filterOptions.maturites.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Caveur
+              </label>
+              <select
+                value={filters.caveur}
+                onChange={(e) => handleFilterChange('caveur', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.caveur ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Tous</option>
+                {filterOptions.caveurs.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Chien
+              </label>
+              <select
+                value={filters.chien}
+                onChange={(e) => handleFilterChange('chien', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.chien ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Tous</option>
+                {filterOptions.chiens.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Exposition
+              </label>
+              <select
+                value={filters.exposition}
+                onChange={(e) => handleFilterChange('exposition', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.exposition ? '#e8f5e9' : 'white'
+                }}
+              >
+                <option value="">Toutes</option>
+                {EXPOSITIONS.map(e => (
+                  <option key={e.value} value={e.value}>{e.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Date début
+              </label>
+              <input
+                type="date"
+                value={filters.dateDebut}
+                onChange={(e) => handleFilterChange('dateDebut', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.dateDebut ? '#e8f5e9' : 'white'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
+                Date fin
+              </label>
+              <input
+                type="date"
+                value={filters.dateFin}
+                onChange={(e) => handleFilterChange('dateFin', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: filters.dateFin ? '#e8f5e9' : 'white'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Résumé des résultats */}
+        {hasActiveFilters && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            background: '#f5f5f5', 
+            borderRadius: '6px',
+            fontSize: '0.9rem',
+            color: '#666'
+          }}>
+            <strong>{filteredRecoltes.length}</strong> récolte{filteredRecoltes.length > 1 ? 's' : ''} trouvée{filteredRecoltes.length > 1 ? 's' : ''} 
+            {filteredRecoltes.length !== recoltes.length && (
+              <span> sur {recoltes.length} au total</span>
+            )}
+            {filteredRecoltes.length > 0 && (
+              <span> ➡ Total: <strong style={{ color: '#8b4513' }}>{(stats.poidsTotal / 1000).toFixed(2)} kg</strong></span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Statistiques rapides */}
+      <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+        <div className="card">
+          <div className="card-title">Total récoltes</div>
+          <div className="card-value">{filteredRecoltes.length}</div>
+        </div>
+        <div className="card">
+          <div className="card-title">Poids total</div>
+          <div className="card-value" style={{ color: '#8b4513' }}>
+            {(stats.poidsTotal / 1000).toFixed(2)} <span style={{ fontSize: '1rem' }}>kg</span>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-title">Poids moyen</div>
+          <div className="card-value">
+            {filteredRecoltes.length > 0 
+              ? (stats.poidsTotal / filteredRecoltes.length).toFixed(1) 
+              : 0} <span style={{ fontSize: '1rem' }}>g</span>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-title">Années</div>
+          <div className="card-value">{annees.length}</div>
+        </div>
+      </div>
+
+      {/* Contrôles de pagination */}
+      {filteredRecoltes.length > 0 && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontWeight: '500', color: '#666' }}>Afficher :</span>
+            {PAGINATION_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                onClick={() => handleItemsPerPageChange(option.value)}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: itemsPerPage === option.value ? '2px solid #2c5f2d' : '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: itemsPerPage === option.value ? '#e8f5e9' : 'white',
+                  color: itemsPerPage === option.value ? '#2c5f2d' : '#666',
+                  fontWeight: itemsPerPage === option.value ? 'bold' : 'normal',
+                  cursor: 'pointer'
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          
+          {itemsPerPage !== 'all' && totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: currentPage === 1 ? '#f5f5f5' : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1
+                }}
+              >
+                🔽
+              </button>
+              
+              {getPageNumbers().map((page, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => page !== '...' && setCurrentPage(page)}
+                  disabled={page === '...'}
+                  style={{
+                    padding: '0.4rem 0.8rem',
+                    border: currentPage === page ? '2px solid #2c5f2d' : '1px solid #ddd',
+                    borderRadius: '6px',
+                    background: currentPage === page ? '#2c5f2d' : 'white',
+                    color: currentPage === page ? 'white' : '#666',
+                    fontWeight: currentPage === page ? 'bold' : 'normal',
+                    cursor: page === '...' ? 'default' : 'pointer'
+                  }}
+                >
+                  {page}
+                </button>
+              ))}
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: currentPage === totalPages ? '#f5f5f5' : 'white',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages ? 0.5 : 1
+                }}
+              >
+                ▶️
+              </button>
+              
+              <span style={{ color: '#666', marginLeft: '0.5rem' }}>
+                Page {currentPage} sur {totalPages}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {filteredRecoltes.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
+          <p style={{ fontSize: '1.2rem' }}>Aucune récolte {hasActiveFilters ? 'correspondant aux filtres' : 'enregistrée'}</p>
+          <p>{hasActiveFilters ? 'Essayez de modifier vos critères de recherche' : 'Cliquez sur "Nouvelle récolte" pour commencer'}</p>
+        </div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: '40px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={isAllPageSelected}
+                  ref={el => el && (el.indeterminate = isSomePageSelected && !isAllPageSelected)}
+                  onChange={handleSelectAllPage}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </th>
+              <th>Date</th>
+              <th>Parcelle</th>
+              <th>Arbre</th>
+              <th style={{ textAlign: 'right' }}>Poids</th>
+              <th style={{ textAlign: 'center' }}>Qualité</th>
+              <th style={{ textAlign: 'center' }}>Calibre</th>
+              <th style={{ textAlign: 'center' }}>Exposition</th>
+              <th>Caveur / Chien</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedRecoltes.map(recolte => {
+              const qualiteStyle = getQualiteStyle(recolte.qualite);
+              return (
+                <tr 
+                  key={recolte.id}
+                  style={{ 
+                    background: selectedRecoltes.has(recolte.id) ? '#e3f2fd' : 'transparent',
+                    transition: 'background 0.2s'
+                  }}
+                >
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedRecoltes.has(recolte.id)}
+                      onChange={() => handleSelectRecolte(recolte.id)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                  </td>
+                  <td>
+                    <strong>{new Date(recolte.date_recolte).toLocaleDateString('fr-FR')}</strong>
+                  </td>
+                  <td>{recolte.parcelle_nom || '-'}</td>
+                  <td>
+                    <span style={{ 
+                      padding: '0.2rem 0.5rem', 
+                      background: '#f0f0f0', 
+                      borderRadius: '4px',
+                      fontFamily: 'monospace'
+                    }}>
+                      {recolte.arbre_numero || '-'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <strong style={{ color: '#8b4513', fontSize: '1.1rem' }}>
+                      {recolte.poids_grammes}g
+                    </strong>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {recolte.qualite ? (
+                      <span style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '12px',
+                        background: qualiteStyle.bg,
+                        color: qualiteStyle.color,
+                        fontSize: '0.85rem',
+                        fontWeight: '500'
+                      }}>
+                        {qualiteStyle.icon} {recolte.qualite === 'Première catégorie' ? '1ère' : 
+                                              recolte.qualite === 'Deuxième catégorie' ? '2ème' : 
+                                              recolte.qualite}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td style={{ textAlign: 'center', fontSize: '0.85rem' }}>
+                    {recolte.calibre ? recolte.calibre.split(' ')[0] : '-'}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {recolte.exposition ? (
+                      <span style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '8px',
+                        background: '#e8f5e9',
+                        color: '#2e7d32',
+                        fontSize: '0.9rem'
+                      }}>
+                        {getExpositionLabel(recolte.exposition)}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      {recolte.caveur && <div>👤 {recolte.caveur}</div>}
+                      {recolte.chien && <div>🐕 {recolte.chien}</div>}
+                      {!recolte.caveur && !recolte.chien && '-'}
+                    </div>
+                  </td>
+                  <td>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={() => handleEdit(recolte)}
+                      style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
+                      title="Modifier"
+                    >
+                      ✔️
+                    </button>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={() => askDelete(recolte)}
+                      style={{ padding: '0.4rem 0.8rem' }}
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {/* Modal de création/édition */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h3>{editingRecolte ? 'Modifier la récolte' : 'Nouvelle récolte'}</h3>
+              <button className="modal-close" onClick={closeModal}>✕</button>
+            </div>
+            
+            {/* Bouton pour afficher/masquer la recherche */}
+            <div style={{ padding: '0 1.5rem', marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowSearchPanel(!showSearchPanel)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: showSearchPanel ? '#2c5f2d' : '#f5f5f5',
+                  color: showSearchPanel ? 'white' : '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                🔍 {showSearchPanel ? 'Masquer la recherche' : 'Rechercher dans les récoltes existantes'}
+              </button>
+            </div>
+
+            {/* Panneau de recherche des récoltes existantes */}
+            {showSearchPanel && (
+              <div style={{
+                margin: '0 1.5rem 1.5rem',
+                padding: '1rem',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', fontSize: '1rem' }}>
+                  🔍 Rechercher une récolte existante
+                </h4>
+                
+                {/* Filtres de recherche */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Parcelle</label>
+                    <select 
+                      name="parcelle_id" 
+                      value={searchFilters.parcelle_id} 
+                      onChange={handleSearchFilterChange}
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    >
+                      <option value="">Toutes</option>
+                      {parcelles.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Arbre</label>
+                    <select 
+                      name="arbre_id" 
+                      value={searchFilters.arbre_id} 
+                      onChange={handleSearchFilterChange}
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    >
+                      <option value="">Tous</option>
+                      {arbresFilteredSearch.map(a => <option key={a.id} value={a.id}>{a.numero}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Qualité</label>
+                    <select 
+                      name="qualite" 
+                      value={searchFilters.qualite} 
+                      onChange={handleSearchFilterChange}
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    >
+                      <option value="">Toutes</option>
+                      <option value="Extra">Extra</option>
+                      <option value="Première catégorie">Première catégorie</option>
+                      <option value="Deuxième catégorie">Deuxième catégorie</option>
+                      <option value="Pourrie">Pourrie</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Date début</label>
+                    <input 
+                      type="date" 
+                      name="date_debut" 
+                      value={searchFilters.date_debut} 
+                      onChange={handleSearchFilterChange}
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Date fin</label>
+                    <input 
+                      type="date" 
+                      name="date_fin" 
+                      value={searchFilters.date_fin} 
+                      onChange={handleSearchFilterChange}
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Recherche texte</label>
+                    <input 
+                      type="text" 
+                      name="texte" 
+                      value={searchFilters.texte} 
+                      onChange={handleSearchFilterChange}
+                      placeholder="Caveur, chien, notes..."
+                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Résultats de recherche */}
+                <div style={{ 
+                  maxHeight: '200px', 
+                  overflowY: 'auto', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '4px',
+                  background: 'white'
+                }}>
+                  {getFilteredSearchResults().length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
+                      Aucune récolte trouvée
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f0f0f0' }}>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Date</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Parcelle</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Arbre</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #ddd' }}>Poids</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'center', borderBottom: '1px solid #ddd' }}>Qualité</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'center', borderBottom: '1px solid #ddd' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getFilteredSearchResults().map(r => (
+                          <tr key={r.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '0.5rem' }}>{new Date(r.date_recolte).toLocaleDateString('fr-FR')}</td>
+                            <td style={{ padding: '0.5rem' }}>{r.parcelle_nom || '-'}</td>
+                            <td style={{ padding: '0.5rem' }}>{r.arbre_numero || '-'}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 'bold' }}>{r.poids_grammes}g</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'center' }}>{r.qualite || '-'}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => copyFromRecolte(r)}
+                                style={{
+                                  padding: '0.25rem 0.5rem',
+                                  background: '#4caf50',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem'
+                                }}
+                                title="Copier les données de cette récolte"
+                              >
+                                📋 Copier
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <small style={{ display: 'block', marginTop: '0.5rem', color: '#888' }}>
+                  💡 Cliquez sur "Copier" pour pré-remplir le formulaire avec les données d'une récolte existante (20 résultats max)
+                </small>
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit}>
+              <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                📍 Localisation
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Parcelle *</label>
+                  <select name="parcelle_id" value={formData.parcelle_id} onChange={handleInputChange} required>
+                    <option value="">Sélectionner...</option>
+                    {parcelles.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Arbre * <span style={{ color: '#e74c3c', fontSize: '0.85rem' }}>(obligatoire)</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="🔍 Rechercher un arbre (numéro, espèce, variété)..." 
+                    value={arbreSearchText}
+                    onChange={(e) => setArbreSearchText(e.target.value)}
+                    style={{ 
+                      marginBottom: '0.5rem', 
+                      padding: '0.5rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '4px',
+                      width: '100%'
+                    }}
+                  />
+                  <select name="arbre_id" value={formData.arbre_id} onChange={handleInputChange} required>
+                    <option value="">Sélectionner un arbre...</option>
+                    {arbresFiltered.map(a => <option key={a.id} value={a.id}>{a.numero} - {a.espece}{a.variete_truffe ? ` (${a.variete_truffe})` : ''}</option>)}
+                  </select>
+                  {!formData.parcelle_id && (
+                    <small style={{ color: '#888' }}>Sélectionnez d'abord une parcelle</small>
+                  )}
+                  {formData.parcelle_id && arbresFiltered.length === 0 && (
+                    <small style={{ color: '#e74c3c' }}>Aucun arbre trouvé{arbreSearchText ? ' pour cette recherche' : ' dans cette parcelle'}</small>
+                  )}
+                  {formData.parcelle_id && arbresFiltered.length > 0 && (
+                    <small style={{ color: '#888' }}>{arbresFiltered.length} arbre(s) disponible(s)</small>
+                  )}
+                </div>
+              </div>
+
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                📆 Date et poids
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Date de récolte *</label>
+                  <input type="date" name="date_recolte" value={formData.date_recolte} onChange={handleInputChange} required />
+                </div>
+
+                <div className="form-group">
+                  <label>Poids (grammes) *</label>
+                  <input type="number" name="poids_grammes" value={formData.poids_grammes} onChange={handleInputChange} step="0.1" required placeholder="Ex: 45.5" />
+                </div>
+
+                <div className="form-group">
+                  <label>Profondeur (cm)</label>
+                  <input type="number" name="profondeur_cm" value={formData.profondeur_cm} onChange={handleInputChange} placeholder="Ex: 15" />
+                </div>
+              </div>
+
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                🧭 Position par rapport à l'arbre
+              </h4>
+              <div className="form-group">
+                <label>Exposition (côté de l'arbre où la truffe a été trouvée)</label>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(4, 1fr)', 
+                  gap: '0.5rem',
+                  marginTop: '0.5rem'
+                }}>
+                  {EXPOSITIONS.map(expo => (
+                    <button
+                      key={expo.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, exposition: expo.value }))}
+                      style={{
+                        padding: '0.75rem',
+                        border: formData.exposition === expo.value ? '2px solid #2c5f2d' : '1px solid #ddd',
+                        borderRadius: '8px',
+                        background: formData.exposition === expo.value ? '#e8f5e9' : 'white',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {expo.label}
+                    </button>
+                  ))}
+                </div>
+                {formData.exposition && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, exposition: '' }))}
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '0.25rem 0.5rem',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#666',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    ✕ Effacer la sélection
+                  </button>
+                )}
+              </div>
+
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                🍄 Caractéristiques
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Qualité</label>
+                  <select name="qualite" value={formData.qualite} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    <option value="Extra">Extra</option>
+                    <option value="Première catégorie">Première catégorie</option>
+                    <option value="Deuxième catégorie">Deuxième catégorie</option>
+                    <option value="Pourrie">Pourrie</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Calibre</label>
+                  <select name="calibre" value={formData.calibre} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    <option value="Petit (moins de 20g)">Petit (moins de 20g)</option>
+                    <option value="Moyen (20-50g)">Moyen (20-50g)</option>
+                    <option value="Gros (50-100g)">Gros (50-100g)</option>
+                    <option value="Très gros (plus de 100g)">Très gros (plus de 100g)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Maturité</label>
+                  <select name="maturite" value={formData.maturite} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    <option value="Immature">Immature</option>
+                    <option value="À point">À point</option>
+                    <option value="Mature">Mature</option>
+                    <option value="Très mature">Très mature</option>
+                  </select>
+                </div>
+              </div>
+
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                🐕 Équipe de cavage
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Caveur</label>
+                  <select name="caveur" value={formData.caveur} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    {caveurs.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
+                  </select>
+                  {caveurs.length === 0 && (
+                    <small style={{ color: '#888' }}>Ajoutez des caveurs dans Paramètres</small>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label>Chien</label>
+                  <select name="chien" value={formData.chien} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    {chiens.map(c => <option key={c.id} value={c.nom}>{c.nom} {c.race ? `(${c.race})` : ''}</option>)}
+                  </select>
+                  {chiens.length === 0 && (
+                    <small style={{ color: '#888' }}>Ajoutez des chiens dans Paramètres</small>
+                  )}
+                </div>
+              </div>
+
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                🌤️ Conditions
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Conditions météo</label>
+                  <select name="conditions_meteo" value={formData.conditions_meteo} onChange={handleInputChange}>
+                    <option value="">Sélectionner...</option>
+                    <option value="Ensoleillé">☀️ Ensoleillé</option>
+                    <option value="Nuageux">⛅ Nuageux</option>
+                    <option value="Couvert">☁️ Couvert</option>
+                    <option value="Pluvieux">🌧️ Pluvieux</option>
+                    <option value="Brumeux">🌫️ Brumeux</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Température du sol (°C)</label>
+                  <input type="number" name="temperature_sol" value={formData.temperature_sol} onChange={handleInputChange} step="0.1" placeholder="Ex: 12.5" />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <label>Notes</label>
+                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Observations..." rows="3" />
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                  {isProcessing ? 'En cours...' : (editingRecolte ? 'Mettre à jour' : 'Enregistrer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'import CSV */}
       <CSVImportModal
         show={showImportModal}
         onClose={() => setShowImportModal(false)}
