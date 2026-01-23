@@ -244,7 +244,7 @@ router.post('/register', authMiddleware, adminOnly, async (req, res) => {
       return res.status(400).json({ error: 'Email, mot de passe et nom requis', code: 'MISSING_FIELDS' });
     }
 
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingUser = await pool.query {SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
       return res.status(409).json({ error: 'Email déjà utilisé', code: 'EMAIL_EXISTS' });
     }
