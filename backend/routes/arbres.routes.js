@@ -5,9 +5,9 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware  } = require('../middleware/auth');
 
-console.log('requireWriteAccess:', requireWriteAccess);
+console.log('authMiddleware:', authMiddleware);
 
 // Fonction utilitaire pour convertir valeurs vides en null
 const emptyToNull = (value) => {
@@ -58,7 +58,7 @@ router.get('/corbeille', async (req, res) => {
 });
 
 // POST /api/arbres - Créer un arbre
-router.post('/', requireWriteAccess, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const {
       parcelle_id, numero, espece, variete_truffe, date_plantation,
@@ -94,7 +94,7 @@ router.post('/', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/arbres/:id - Modifier un arbre
-router.put('/:id', requireWriteAccess, async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -138,7 +138,7 @@ router.put('/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/arbres/:id - Mettre un arbre à la corbeille (soft delete)
-router.delete('/:id', requireWriteAccess, async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
@@ -157,7 +157,7 @@ router.delete('/:id', requireWriteAccess, async (req, res) => {
 });
 
 // POST /api/arbres/corbeille/:id/restaurer - Restaurer un arbre de la corbeille
-router.post('/corbeille/:id/restaurer', requireWriteAccess, async (req, res) => {
+router.post('/corbeille/:id/restaurer', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
@@ -176,7 +176,7 @@ router.post('/corbeille/:id/restaurer', requireWriteAccess, async (req, res) => 
 });
 
 // DELETE /api/arbres/corbeille/:id - Supprimer définitivement un arbre
-router.delete('/corbeille/:id', requireWriteAccess, async (req, res) => {
+router.delete('/corbeille/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
@@ -195,7 +195,7 @@ router.delete('/corbeille/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/arbres/corbeille - Vider toute la corbeille
-router.delete('/corbeille', requireWriteAccess, async (req, res) => {
+router.delete('/corbeille', authMiddleware, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

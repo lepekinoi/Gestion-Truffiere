@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // ==================== ROUTES CAVEURS ====================
 
@@ -21,7 +21,7 @@ router.get('/caveurs', async (req, res) => {
 });
 
 // POST /api/caveurs - Créer un caveur
-router.post('/caveurs', requireWriteAccess, async (req, res) => {
+router.post('/caveurs', authMiddleware, async (req, res) => {
   try {
     const { nom } = req.body;
     const result = await pool.query('INSERT INTO caveurs (nom) VALUES ($1) RETURNING *', [nom]);
@@ -33,7 +33,7 @@ router.post('/caveurs', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/caveurs/:id - Modifier un caveur
-router.put('/caveurs/:id', requireWriteAccess, async (req, res) => {
+router.put('/caveurs/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { nom } = req.body;
@@ -50,7 +50,7 @@ router.put('/caveurs/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/caveurs/:id - Supprimer un caveur
-router.delete('/caveurs/:id', requireWriteAccess, async (req, res) => {
+router.delete('/caveurs/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM caveurs WHERE id = $1 RETURNING *', [id]);
@@ -79,7 +79,7 @@ router.get('/chiens', async (req, res) => {
 });
 
 // POST /api/chiens - Créer un chien
-router.post('/chiens', requireWriteAccess, async (req, res) => {
+router.post('/chiens', authMiddleware, async (req, res) => {
   try {
     const { nom, race } = req.body;
     const result = await pool.query(
@@ -94,7 +94,7 @@ router.post('/chiens', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/chiens/:id - Modifier un chien
-router.put('/chiens/:id', requireWriteAccess, async (req, res) => {
+router.put('/chiens/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { nom, race } = req.body;
@@ -114,7 +114,7 @@ router.put('/chiens/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/chiens/:id - Supprimer un chien
-router.delete('/chiens/:id', requireWriteAccess, async (req, res) => {
+router.delete('/chiens/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM chiens WHERE id = $1 RETURNING *', [id]);

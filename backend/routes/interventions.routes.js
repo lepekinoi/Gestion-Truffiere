@@ -5,13 +5,11 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // Fonction utilitaire
 const emptyToNull = (value) => {
-  if (value === '' || value === undefined || value === null) {
-    return null;
-  }
+  if (value === '' || value === undefined || value === null) return null;
   return value;
 };
 
@@ -61,7 +59,7 @@ router.get('/check-doublon', async (req, res) => {
 });
 
 // POST /api/interventions - Créer une intervention (avec détails optionnels)
-router.post('/', requireWriteAccess, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -151,7 +149,7 @@ router.post('/', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/interventions/:id - Modifier une intervention
-router.put('/:id', requireWriteAccess, async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -184,7 +182,7 @@ router.put('/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/interventions/:id - Supprimer une intervention
-router.delete('/:id', requireWriteAccess, async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM interventions WHERE id = $1 RETURNING *', [id]);
@@ -221,7 +219,7 @@ router.get('/:id/details', async (req, res) => {
 });
 
 // POST /api/interventions/:id/details - Créer/Mettre à jour les détails
-router.post('/:id/details', requireWriteAccess, async (req, res) => {
+router.post('/:id/details', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const details = req.body;
@@ -277,7 +275,7 @@ router.post('/:id/details', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/interventions/:id/details - Supprimer les détails
-router.delete('/:id/details', requireWriteAccess, async (req, res) => {
+router.delete('/:id/details', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM intervention_details WHERE intervention_id = $1', [id]);
@@ -318,7 +316,7 @@ router.get('/produits-phyto', async (req, res) => {
 });
 
 // POST /api/produits-phyto - Ajouter un produit phytosanitaire
-router.post('/produits-phyto', requireWriteAccess, async (req, res) => {
+router.post('/produits-phyto', authMiddleware, async (req, res) => {
   try {
     const {
       nom_commercial, matiere_active, numero_amm, categorie, fabricant,
@@ -346,7 +344,7 @@ router.post('/produits-phyto', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/produits-phyto/:id - Modifier un produit phytosanitaire
-router.put('/produits-phyto/:id', requireWriteAccess, async (req, res) => {
+router.put('/produits-phyto/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -378,7 +376,7 @@ router.put('/produits-phyto/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/produits-phyto/:id - Désactiver un produit (soft delete)
-router.delete('/produits-phyto/:id', requireWriteAccess, async (req, res) => {
+router.delete('/produits-phyto/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('UPDATE produits_phyto SET actif = false WHERE id = $1', [id]);
@@ -419,7 +417,7 @@ router.get('/amendements-ref', async (req, res) => {
 });
 
 // POST /api/amendements-ref - Ajouter un amendement
-router.post('/amendements-ref', requireWriteAccess, async (req, res) => {
+router.post('/amendements-ref', authMiddleware, async (req, res) => {
   try {
     const {
       nom, type_amendement, composition, dose_recommandee_ha,

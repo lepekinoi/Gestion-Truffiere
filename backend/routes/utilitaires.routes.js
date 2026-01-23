@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // ==================== ROUTES STATISTIQUES DASHBOARD ====================
 
@@ -453,7 +453,7 @@ router.get('/parametres/:cle', async (req, res) => {
 });
 
 // PUT /api/parametres/:cle - Mettre à jour ou créer un paramètre
-router.put('/parametres/:cle', requireWriteAccess, async (req, res) => {
+router.put('/parametres/:cle', authMiddleware, async (req, res) => {
   try {
     const { cle } = req.params;
     const { valeur } = req.body;
@@ -478,7 +478,7 @@ router.put('/parametres/:cle', requireWriteAccess, async (req, res) => {
 });
 
 // POST /api/parametres/reset - Réinitialiser les paramètres par défaut
-router.post('/parametres/reset', requireWriteAccess, async (req, res) => {
+router.post('/parametres/reset', authMiddleware, async (req, res) => {
   try {
     const defaults = {
       'colonnes_affichees_parcelles': '["nom", "surface_ha", "type_sol", "ph_sol", "date_creation"]',
@@ -526,7 +526,7 @@ router.get('/preferences-utilisateur', async (req, res) => {
 });
 
 // PUT /api/preferences-utilisateur - Mettre à jour les préférences
-router.put('/preferences-utilisateur', requireWriteAccess, async (req, res) => {
+router.put('/preferences-utilisateur', authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.id || req.query.user_id || 'default';
     const { colonnes_affichees, colonnes_export } = req.body;
@@ -663,7 +663,7 @@ router.get('/factures/:venteId', async (req, res) => {
 });
 
 // POST /api/factures/generer-numero - Générer un numéro de facture
-router.post('/factures/generer-numero', requireWriteAccess, async (req, res) => {
+router.post('/factures/generer-numero', authMiddleware, async (req, res) => {
   try {
     const year = new Date().getFullYear();
     const countResult = await pool.query(

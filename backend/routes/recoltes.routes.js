@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // GET /api/recoltes - Liste des récoltes
 router.get('/', async (req, res) => {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/recoltes - Créer une récolte
-router.post('/', requireWriteAccess, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const {
       parcelle_id, arbre_id, date_recolte, poids_grammes, qualite,
@@ -68,7 +68,7 @@ router.post('/', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/recoltes/:id - Modifier une récolte
-router.put('/:id', requireWriteAccess, async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -115,7 +115,7 @@ router.put('/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/recoltes/:id - Supprimer une récolte
-router.delete('/:id', requireWriteAccess, async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(

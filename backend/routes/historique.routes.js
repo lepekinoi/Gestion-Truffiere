@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // GET /api/historique - Récupérer l'historique avec filtres
 router.get('/', async (req, res) => {
@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
 });
 
 // DELETE /api/historique/purge - Purger l'historique selon critères
-router.delete('/purge', requireWriteAccess, async (req, res) => {
+router.delete('/purge', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Accès admin requis' });

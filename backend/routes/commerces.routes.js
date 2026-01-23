@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { requireWriteAccess } = require('../middleware/auth');
+const { authMiddleware  } = require('../middleware/auth');
 
 // ==================== ROUTES CLIENTS ====================
 
@@ -72,7 +72,7 @@ router.get('/clients/stats/by-type', async (req, res) => {
 });
 
 // POST /api/clients - Créer un client
-router.post('/clients', requireWriteAccess, async (req, res) => {
+router.post('/clients', authMiddleware, async (req, res) => {
   try {
     const {
       type, nom, prenom, raison_sociale, email, telephone,
@@ -99,7 +99,7 @@ router.post('/clients', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/clients/:id - Modifier un client
-router.put('/clients/:id', requireWriteAccess, async (req, res) => {
+router.put('/clients/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -129,7 +129,7 @@ router.put('/clients/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/clients/:id - Supprimer un client
-router.delete('/clients/:id', requireWriteAccess, async (req, res) => {
+router.delete('/clients/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM clients WHERE id = $1 RETURNING *', [id]);
@@ -191,7 +191,7 @@ router.get('/ventes', async (req, res) => {
 });
 
 // POST /api/ventes - Créer une vente
-router.post('/ventes', requireWriteAccess, async (req, res) => {
+router.post('/ventes', authMiddleware, async (req, res) => {
   try {
     const {
       client_id, recolte_id, commande_id, date_vente, quantite_grammes,
@@ -221,7 +221,7 @@ router.post('/ventes', requireWriteAccess, async (req, res) => {
 });
 
 // PUT /api/ventes/:id - Modifier une vente
-router.put('/ventes/:id', requireWriteAccess, async (req, res) => {
+router.put('/ventes/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -256,7 +256,7 @@ router.put('/ventes/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/ventes/:id - Supprimer une vente
-router.delete('/ventes/:id', requireWriteAccess, async (req, res) => {
+router.delete('/ventes/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM ventes WHERE id = $1 RETURNING *', [id]);
@@ -348,7 +348,7 @@ router.get('/commandes/:id', async (req, res) => {
 });
 
 // PUT /api/commandes/:id - Modifier une commande
-router.put('/commandes/:id', requireWriteAccess, async (req, res) => {
+router.put('/commandes/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -386,7 +386,7 @@ router.put('/commandes/:id', requireWriteAccess, async (req, res) => {
 });
 
 // DELETE /api/commandes/:id - Supprimer une commande
-router.delete('/commandes/:id', requireWriteAccess, async (req, res) => {
+router.delete('/commandes/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM commandes WHERE id = $1 RETURNING *', [id]);
@@ -402,7 +402,7 @@ router.delete('/commandes/:id', requireWriteAccess, async (req, res) => {
 });
 
 // POST /api/commandes/:id/creer-vente - Créer une vente depuis une commande
-router.post('/commandes/:id/creer-vente', requireWriteAccess, async (req, res) => {
+router.post('/commandes/:id/creer-vente', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

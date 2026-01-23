@@ -18,19 +18,17 @@ const createParcellesRoutes = (pool) => {
   /**
    * Convertir les valeurs vides en null pour PostgreSQL
    */
-  const emptyToNull = (value) => {
-    if (value === '' || value === undefined || value === null) {
-      return null;
-    }
-    return value;
-  };
+const emptyToNull = (value) => {
+  if (value === '' || value === undefined || value === null) return null;
+  return value;
+};
 
   // ==================== MIDDLEWARE ====================
   
   /**
    * Middleware pour vérifier les permissions d'écriture
    */
-  const requireWriteAccess = (req, res, next) => {
+  const authMiddleware = (req, res, next) => {
     if (req.user && req.user.role === 'readonly') {
       return res.status(403).json({ error: 'Accès en lecture seule', code: 'READONLY' });
     }
@@ -93,7 +91,7 @@ const createParcellesRoutes = (pool) => {
   // ==================== ROUTES POST ====================
   
   // POST /api/parcelles - Crée une nouvelle parcelle
-  router.post('/', requireWriteAccess, async (req, res) => {
+  router.post('/', authMiddleware, async (req, res) => {
     try {
       const { nom, surface_ha, type_sol, ph_sol, notes, coordinates } = req.body;
       console.log('📥 POST /api/parcelles - Données reçues:', {
@@ -208,7 +206,7 @@ const createParcellesRoutes = (pool) => {
   // ==================== ROUTES PUT ====================
   
   // PUT /api/parcelles/:id - Met à jour une parcelle
-  router.put('/:id', requireWriteAccess, async (req, res) => {
+  router.put('/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
       const { nom, surface_ha, type_sol, ph_sol, notes, coordinates, deleteGeometry } = req.body;
@@ -246,7 +244,7 @@ const createParcellesRoutes = (pool) => {
   // ==================== ROUTES DELETE ====================
   
   // DELETE /api/parcelles/:id - Supprime une parcelle
-  router.delete('/:id', requireWriteAccess, async (req, res) => {
+  router.delete('/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
       const result = await pool.query('DELETE FROM parcelles WHERE id = $1 RETURNING *', [id]);
