@@ -7,11 +7,11 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { requireWriteAccess } = require('../middleware/auth');
 
+console.log('requireWriteAccess:', requireWriteAccess);
+
 // Fonction utilitaire pour convertir valeurs vides en null
 const emptyToNull = (value) => {
-  if (value === '' || value === undefined || value === null) {
-    return null;
-  }
+  if (value === '' || value === undefined || value === null) return null;
   return value;
 };
 
