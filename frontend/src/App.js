@@ -18,7 +18,7 @@ import Arbres from './components/Arbres';
 // import ArbresPage from './features/arbres/ArbresPage';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
-import RecoltesPage from './pages/RecoltesPage';
+import RecoltesPage from './features/recoltes/pages/RecoltesPage';
 import Commercial from './components/Commercial';
 // import AchatsComponent from '@/components/AchatsComponent.vue';
 // routes.push({
@@ -124,7 +124,7 @@ const UserMenu = ({ onShowUserManagement, onShowChangePassword }) => {
               className="user-dropdown-item danger"
               onClick={handleLogout}
             >
-              <span>🚺</span>
+              <span>🚪</span>
               <span>Déconnexion</span>
             </button>
           </div>
@@ -204,7 +204,7 @@ const MainApp = () => {
             alt="Truffe" 
             style={{ width: '32px', height: '32px', marginRight: '10px' }}
           />
-          <h1>Gestion de Tuffière</h1>
+          <h1>Gestion de Truffière</h1>
         </div>
         
         <div className="navbar-menu">
