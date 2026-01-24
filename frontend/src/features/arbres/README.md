@@ -1,155 +1,206 @@
-# Feature Arbres
+# Feature: Gestion des Arbres 🌳
 
-Cette feature gère la gestion complète des arbres de la truffière.
+Gestion complète des arbres de la truffière avec interface CRUD intuitive.
 
-## Structure des dossiers
+## Structure du Dossier
 
 ```
 arbres/
-├── pages/                    # Pages principales
-│   ├── ArbresPage.jsx        # Page d'accueil feature
-│   └── index.js              # Exports
-├── components/             # Composants réutilisables
-│   ├── ArbresList.jsx       # (future) Liste des arbres
-│   ├── ArbresForm.jsx       # (future) Formulaire CRUD
-│   ├── ArbresDetail.jsx     # (future) Fiche détaillée
-│   └── index.js              # Exports
-├── hooks/                  # Hooks personnalisés
-│   ├── useArbres.js         # Gestion de la liste des arbres
-│   ├── useArbreForm.js      # (future) Gestion du formulaire
-│   └── index.js              # Exports
-├── services/               # Appels API
-│   ├── arbresService.js     # CRUD arbres
-│   └── index.js              # Exports
-├── utils/                  # Fonctions utilitaires
-│   ├── arbresValidation.js  # Validation des données
-│   ├── arbresFormatters.js  # Formatage pour l'affichage
-│   └── index.js              # Exports
-├── constants/              # Constantes métier
-│   ├── arbresConstants.js   # Enums et constantes
-│   └── index.js              # Exports
-├── index.js                # Export principal de la feature
-└── README.md               # Cette documentation
+├── pages/
+│   ├── ArbresPage.jsx          # Page principale - Interface CRUD
+│   └── ArbresPage.css          # Styles de la page
+├── components/                  # Composants réutilisables (futurs)
+├── hooks/
+│   └── useArbres.js            # Hook personnalisé (optionnel pour futurs usages)
+├── services/
+│   └── arbresService.js        # Appels API CRUD
+├── constants/
+│   └── arbresConstants.js       # Constantes métier et enums
+├── utils/
+│   ├── arbresValidation.js     # Validation des données
+│   └── arbresFormatters.js     # Formatage pour l'affichage
+├── index.js                     # Export central de la feature
+└── README.md                    # Cette documentation
+```
+
+## Fichiers Principaux
+
+### `pages/ArbresPage.jsx`
+**Page principale avec interface complète CRUD**
+
+- ✅ Récupération et affichage de tous les arbres
+- ✅ Recherche et filtrage par parcelle/espèce/numéro
+- ✅ Création de nouveaux arbres (modal)
+- ✅ Modification d'arbres existants
+- ✅ Suppression avec confirmation
+- ✅ Affichage détaillé de l'arbre sélectionné
+- ✅ Gestion de l'authentification (`canWrite()`)
+- ✅ Messages de succès/erreur
+
+**Props:**
+- `highlightId` (optional) - ID de l'arbre à surligner au chargement
+
+### `services/arbresService.js`
+**Service d'appels API avec axios**
+
+Fonctions exportées:
+- `getArbres()` - Récupérer tous les arbres
+- `getArbre(id)` - Récupérer un arbre spécifique
+- `createArbre(data)` - Créer un arbre
+- `updateArbre(id, data)` - Modifier un arbre
+- `deleteArbre(id)` - Supprimer un arbre
+
+**Authentification:**
+Utilise axios qui hérite automatiquement des headers d'authentification via l'intercepteur du contexte `AuthContext`.
+
+### `hooks/useArbres.js`
+**Hook personnalisé pour la récupération de données**
+
+```javascript
+const { arbres, loading, error, refetch } = useArbres();
+```
+
+**Retour:**
+- `arbres` - Tableau des arbres
+- `loading` - État de chargement
+- `error` - Message d'erreur éventuel
+- `refetch` - Fonction pour rechargér les données
+
+### `constants/arbresConstants.js`
+**Constantes métier**
+
+- `ARBRE_ERRORS` - Messages d'erreur standards
+- `ARBRE_ETATS` - États sanitaires possibles
+- `PARCELLE_TYPES` - Types de parcelles
+
+### `utils/arbresValidation.js`
+**Validation des données d'arbre**
+
+```javascript
+const errors = validateArbre(data);
+```
+
+Vérifie:
+- Numéro obligatoire
+- Format de la date
+- Types de données
+
+### `utils/arbresFormatters.js`
+**Formatage pour l'affichage**
+
+```javascript
+formatDatePlantation(date)     // Format JJ/MM/AAAA
+formatAgeArbre(age)            // Format "2 ans"
+formatEtatSanitaire(etat)      // Label avec emoji
 ```
 
 ## Utilisation
 
-### Importer la page
-
+### Import Simple
 ```javascript
-import { ArbresPage } from '@/features/arbres';
+import ArbresPage from '@/features/arbres/pages/ArbresPage';
 
-// Ou plus spécifiquement
-import { ArbresPage } from '@/features/arbres/pages';
+// Dans le composant
+<ArbresPage highlightId={treeId} />
 ```
 
-### Utiliser les hooks
-
+### Avec Hook
 ```javascript
-import { useArbres } from '@/features/arbres';
+import { useArbres } from '@/features/arbres/hooks/useArbres';
 
 const MyComponent = () => {
   const { arbres, loading, error, refetch } = useArbres();
-  
-  return (
-    <div>
-      {loading && <p>Chargement...</p>}
-      {error && <p>Erreur: {error}</p>}
-      {arbres.map(arbre => <div key={arbre.id}>{arbre.nom}</div>)}
-    </div>
-  );
+  // ...
 };
 ```
 
-### Appeler les services API
-
+### Service Direct
 ```javascript
-import { getArbres, createArbre, updateArbre, deleteArbre } from '@/features/arbres';
+import { getArbres, createArbre } from '@/features/arbres/services/arbresService';
 
-// Récupérer tous les arbres
 const arbres = await getArbres();
-
-// Créer un nouvel arbre
-const newArbre = await createArbre({ 
-  nom: 'Arbre 1', 
-  type: 'TRUFFIER' 
-});
-
-// Modifier un arbre
-await updateArbre(1, { nom: 'Arbre 1 modifié' });
-
-// Supprimer un arbre
-await deleteArbre(1);
+const newArbre = await createArbre({ numero: 'A-001', espece: 'Noisetier' });
 ```
 
-### Utiliser les validations
+## Interface Utilisateur
 
-```javascript
-import { validateArbre, validateGPS } from '@/features/arbres';
+### Recherche et Filtres
+- 🔍 Recherche textuelle (numéro, espèce, variété)
+- 📦 Filtre par parcelle
+- 🔄 Réinitialiser les filtres
 
-const arbreData = { nom: 'Arbre', type: 'TRUFFIER' };
-const { isValid, errors } = validateArbre(arbreData);
+### Gestion des Arbres
+- 📋 Affichage en grille de cartes
+- ✏️ Bouton modifier (modal)
+- 🗑️ Bouton supprimer (avec confirmation)
+- 📊 Détails complets de l'arbre sélectionné
 
-if (!isValid) {
-  console.error(errors);
-}
+### Formulaire Modal
+**Champs:**
+- Parcelle * (obligatoire)
+- Numéro * (obligatoire)
+- Espèce
+- Variété de truffe
+- Âge (ans)
+- Porte-greffe
+- Date de plantation
+- État sanitaire (select: Excellent/Bon/Moyen/Mauvais)
+- Rendement estimé (kg/an)
+- Notes (textarea)
+
+## Points Clés
+
+### Authentification
+- ✅ Utilise le contexte `useAuth()` pour vérifier les permissions
+- ✅ Boutons CRUD désactivés si `canWrite()` est false
+- ✅ Axios hérite automatiquement du token JWT
+
+### Gestion d'Erreurs
+- ✅ Erreurs 401 résolues (axios avec headers)
+- ✅ Messages utilisateur clairs
+- ✅ Notifications toast (success/error)
+
+### Performance
+- ✅ Appels API parallélissés (`Promise.all`)
+- ✅ Pas de refetch inutile
+- ✅ État local pour les filtres
+
+## Pattern Conformé à RecoltesPage
+
+Cette feature suit exactement le même pattern que `RecoltesPage`:
+
+✅ Import axios + API_URL  
+✅ Gestion d'authentification avec `useAuth()`  
+✅ States pour modal, filtres, sélection  
+✅ Validation et messages utilisateur  
+✅ Service layer avec axios  
+✅ Hooks optionnels pour futurs composants  
+✅ CSS dédié  
+
+## Futur (Optionnel)
+
+### Ajouter des Composants
+```
+components/
+├── ArbreCard.jsx        # Carte d'affichage réutilisée
+├── ArbreForm.jsx        # Formulaire séparé
+└── ArbreDetail.jsx      # Pénél de détail
 ```
 
-### Utiliser les formatters
-
-```javascript
-import { 
-  formatArbreName, 
-  formatArbreType, 
-  formatArbreStatus,
-  formatArbreAge 
-} from '@/features/arbres';
-
-const arbre = { nom: 'Arbre 1', type: 'TRUFFIER', age: 5 };
-
-console.log(formatArbreType(arbre.type));  // "Truffier"
-console.log(formatArbreAge(arbre.age));    // "5 ans"
+### Ajouter des Utilitaires
+```
+utils/
+├── arbresCalculations.js     # Rendement, productivité, etc.
+├── arbresExport.js           # Export CSV/PDF
+└── arbresImport.js           # Import CSV
 ```
 
-### Accéder aux constantes
+## Crédits
 
-```javascript
-import { 
-  ARBRE_STATUS, 
-  ARBRE_TYPES, 
-  ARBRE_AGE_RANGES,
-  ARBRE_ERRORS,
-  ARBRE_SUCCESS 
-} from '@/features/arbres';
+Structure basée sur le pattern `RecoltesPage` pour cohérence de l'application.
 
-const newArbre = {
-  type: ARBRE_TYPES.TRUFFLE,
-  status: ARBRE_STATUS.ACTIVE
-};
-```
+---
 
-## Architecture
-
-Cette feature suit l'architecture modulaire standard du projet :
-
-1. **Pages** - Conteneurs page connectés au routing
-2. **Components** - Composants réutilisables spécifiques au domaine
-3. **Hooks** - Logique métier encapsulée
-4. **Services** - Appels API abstraits
-5. **Utils** - Fonctions utilitaires pures (validation, formatage)
-6. **Constants** - Valeurs fixes et énumérations
-
-## Prochaines étapes
-
-- [ ] Créer le composant `ArbresList`
-- [ ] Créer le composant `ArbresForm`
-- [ ] Créer le composant `ArbresDetail`
-- [ ] Créer le hook `useArbreForm` pour la gestion du formulaire
-- [ ] Créer le hook `useArbreFilters` pour les filtres
-- [ ] Ajouter les tests unitaires
-- [ ] Ajouter les tests d'intégration
-
-## Voir aussi
-
-- [ARCHITECTURE.md](../../../ARCHITECTURE.md) - Architecture globale du projet
-- [API.md](../../../API.md) - Documentation API
+**Dernière mise à jour:** Janvier 2026  
+**Version:** 1.0.0  
+**Status:** ✅ Production Ready
