@@ -284,9 +284,10 @@ Gestion-Truffiere/
 │
 ├── 📚 DOCUMENTATION
 │   ├── README.md                    # Cette doc
+│   ├── 📡 [API.md](API.md)          # **API REST documentation**
+│   ├── 🏠 [ARCHITECTURE.md](ARCHITECTURE.md)          # **Architecture détaillée**
+│   ├── 📋 [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md)  # **Feuille de route v6+**
 │   ├── CHANGELOG.md                 # Version history
-│   ├── API.md                       # API reference
-│   ├── ARCHITECTURE.md              # Architecture details
 │   ├── SETUP.md                     # Installation guide
 │   ├── TROUBLESHOOTING.md           # Problèmes courants
 │   └── CONTRIBUTING.md              # Guide contribution
@@ -633,13 +634,42 @@ mysql -u root -p gestion_truffiere < backup_20260120_143000.sql
 
 ### 📚 Ressources documentations
 
-- **[API.md](API.md)** - Documentation REST API complète
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture détaillée
-- **[DATABASE.md](DATABASE.md)** - Schema & migrations
-- **[AUTH.md](AUTH.md)** - Système authentification JWT
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Guide déploiement production
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Problèmes courants
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guide
+**Documentation principaux** :
+
+- **[📡 API.md](API.md)** - **Documentation REST API complète**
+  - Tous les endpoints REST
+  - Exemples de requêtes/réponses
+  - Status codes & error handling
+  - Rate limiting & pagination
+  - Authentication détaillée
+
+- **[🏠 ARCHITECTURE.md](ARCHITECTURE.md)** - **Architecture détaillée du système**
+  - Diagrammes architecture
+  - Stack technologique complet
+  - Structure dossiers backend/frontend
+  - Schéma base de données
+  - Flux de données
+  - Sécurité & performance
+  - DevOps & déploiement
+  - Monitoring & logging
+
+- **[📋 ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md)** - **Feuille de route v6+**
+  - Grille de priorités
+  - Timeline recommandée
+  - Détail 7 fonctionnalités majeures
+  - Architecture implémentations
+  - Exemples de code complets
+  - Budget estimations
+  - Stack recommendations
+
+**Documentation secondaires** :
+
+- **CHANGELOG.md** - Version history
+- **DATABASE.md** - Schema & migrations
+- **AUTH.md** - Système authentification JWT
+- **DEPLOYMENT.md** - Guide déploiement production
+- **TROUBLESHOOTING.md** - Problèmes courants
+- **CONTRIBUTING.md** - Guide contribution
 
 ### 🔌 API principales endpoints
 
@@ -672,6 +702,8 @@ POST   /api/users                   - Créer user (admin)
 
 GET    /api/health                  - Health check
 ```
+
+**→ Voir [API.md](API.md) pour documentation complète avec exemples curl**
 
 ---
 
@@ -819,12 +851,7 @@ GET  /api/achats/fournisseur/:id - Achats par fournisseur
 **Technologies** : PWA API, Service Workers, React Native (optionnel)  
 **Priorité** : 🟠 Haute (gros gain UX)
 
-**Étapes** :
-1. Configurer manifest.json
-2. Implémenter Service Worker
-3. Ajouter offline storage (IndexedDB)
-4. Tester sur mobile Android/iOS
-5. Déployer sur stores si React Native
+**→ Voir [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) pour détails complets**
 
 ---
 
@@ -844,12 +871,7 @@ GET  /api/achats/fournisseur/:id - Achats par fournisseur
 **Technologies** : WebSockets, Bull (queues), Nodemailer  
 **Priorité** : 🔴 Très haute (ROI agricole)
 
-**Étapes** :
-1. Créer système de notifications (DB)
-2. Implémenter règles d'alertes
-3. Créer service notifications
-4. Ajouter WebSocket pour push temps réel
-5. Créer UI gestion alertes
+**→ Voir [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) pour détails complets**
 
 ---
 
@@ -870,12 +892,7 @@ GET  /api/achats/fournisseur/:id - Achats par fournisseur
 **Technologies** : ReportLab/PDFKit, Chart.js, Excel4Node  
 **Priorité** : 🟡 Moyenne (valeur commerciale)
 
-**Étapes** :
-1. Créer templates rapports
-2. Implémenter PDF generation
-3. Ajouter graphiques avancés
-4. Créer export Excel
-5. Ajouter signature électronique
+**→ Voir [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) pour détails complets**
 
 ---
 
@@ -894,6 +911,8 @@ GET  /api/achats/fournisseur/:id - Achats par fournisseur
 - Semaines 6-9 : PWA + offline
 - Semaines 10-13 : Système alertes
 - Semaines 14-16 : Rapports professionnels
+
+**→ Voir [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) pour tous les détails : architecture, exemples de code, estimations budgétaires, etc.**
 
 ---
 
@@ -987,33 +1006,7 @@ REACT_APP_VERSION=6.0.0
 
 ### 📈 Performance tuning
 
-```javascript
-// Backend optimizations
-
-// 1. Connection pooling (mysql/pool.js)
-const pool = mysql.createPool({
-  connectionLimit: 10,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelayMs: 0,
-  acquireTimeout: 10000
-});
-
-// 2. Query caching
-const cache = new Map();
-const getCacheKey = (query, params) => `${query}:${JSON.stringify(params)}`;
-
-// 3. Compression
-const compression = require('compression');
-app.use(compression({ level: 6 }));
-
-// 4. Rate limiting
-const rateLimit = require('express-rate-limit');
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-}));
-```
+Voir [ARCHITECTURE.md](ARCHITECTURE.md#performance) pour optimisations détaillées.
 
 ---
 
@@ -1243,7 +1236,7 @@ Merci à :
 
 📍 Project Stats
 ├─ Created: January 9, 2026
-├─ Last update: January 20, 2026
+├─ Last update: January 24, 2026
 ├─ Stars: 1 ⭐
 ├─ Forks: 0
 └─ Open issues: 0
@@ -1259,8 +1252,9 @@ Merci à :
 | **Issues** | [GitHub Issues](https://github.com/lepekinoi/Gestion-Truffiere/issues) |
 | **Discussions** | [GitHub Discussions](https://github.com/lepekinoi/Gestion-Truffiere/discussions) |
 | **Release** | [v6.0 Release](https://github.com/lepekinoi/Gestion-Truffiere/releases) |
-| **API Docs** | [API.md](API.md) (à créer) |
-| **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) (à créer) |
+| **📡 API Docs** | [API.md](API.md) |
+| **🏠 Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **📋 Roadmap** | [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) |
 
 ---
 
@@ -1287,10 +1281,11 @@ Merci à :
 
 **Prochaines étapes** recommandées : PWA + alertes intelligentes.
 
+**Consultez [ROADMAP_V6_FEATURES.md](ROADMAP_V6_FEATURES.md) pour le plan détaillé des 7 prochaines fonctionnalités!**
+
 ---
 
 **🎉 Bienvenue dans Gestion-Truffière!**
 
-*Dernière mise à jour : 20 janvier 2026 à 7h20 CET*  
+*Dernière mise à jour : 24 janvier 2026 à 16h30 CET*  
 *By: lepekinoi | Location: Notre-Dame-des-Landes, Pays de la Loire 🇫🇷*
-
