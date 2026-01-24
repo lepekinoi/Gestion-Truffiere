@@ -14,11 +14,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Parcelles from './components/Parcelles';
-import Arbres from './components/Arbres';
-// import ArbresPage from './features/arbres/ArbresPage';
+// Import de la nouvelle structure de la feature arbres
+import { ArbresPage } from './features/arbres';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
-import RecoltesPage from './features/recoltes/pages/RecoltesPage';
+import { RecoltesPage } from './features/recoltes';
 import Commercial from './components/Commercial';
 // import AchatsComponent from '@/components/AchatsComponent.vue';
 // routes.push({
@@ -171,9 +171,7 @@ const MainApp = () => {
     case 'parcelles':
 		return <Parcelles highlightId={searchHighlight?.category === 'parcelles' ? searchHighlight.id : null} />;
 	case 'arbres':
-		return <Arbres highlightId={searchHighlight?.category === 'arbres' ? searchHighlight.id : null} />;
-	// case 'arbres':
-		// return <ArbresPage />;
+		return <ArbresPage highlightId={searchHighlight?.category === 'arbres' ? searchHighlight.id : null} />;
 	case 'carte':
 		return <Carte />;
 	case 'interventions':
