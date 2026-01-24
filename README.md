@@ -68,6 +68,7 @@
 | **👥 Collaboration** | JWT auth, multi-utilisateurs, rôles/permissions |
 | **📤 Imports/Exports** | CSV import, PDF export, rapports |
 | **🔍 Recherche** | Filtrés multi-modules, tri colonnes |
+| **🛍️ Ventes** | Gestion clients, facturations, suivi paiements |
 
 ### 🔄 En développement (Urgent)
 
@@ -76,6 +77,16 @@
 | **Achats/Fournisseurs** | ⚠️ Incomplet | 🔴 URGENT | Routes API manquantes |
 | **Dashboards** | 🔨 Bug fixes | 🔴 URGENT | Affichage graphiques |
 | **Interventions** | 🐛 Critique | 🔴 URGENT | Enregistrement données |
+
+### 🎨 Améliorations Commercial.js (Jan 2026)
+
+| Amélioration | Détails | Bénéfice |
+|---|---|---|
+| **Pagination avec emoji** 👥 | Onglet Clients: tuiles cliquables avec émojis (👤 Particuliers, 🍽️ Restaurants, 📦 Grossistes, 🤝 Associations) | UX intuitive, filtrage rapide |
+| **Filtres avancés Ventes** | Filtre par type client + statut, pagination réduite à 20 items/page | Performance, meilleure lisibilité |
+| **Onglet Statuts** 📊 | Nouveau : Analyse par statut ventes/commandes | Visibility complète |
+| **Analytics saison** 🌳 | Axe du temps réaliste : saison truffe juin→juin | Contexte agricole pertinent |
+| **Suppression App complète** ✂️ | Bouton "Ouvrir Application Complète" supprimé de l'onglet Achats | Interface épurée |
 
 ### 🚀 Prévisions futures
 
@@ -156,6 +167,8 @@ GET    /api/parcelles/:id           - Détail parcelle
 GET    /api/arbres                  - Lister arbres
 GET    /api/recoltes                - Lister récoltes
 GET    /api/interventions           - Lister interventions
+GET    /api/ventes                  - Lister ventes
+GET    /api/clients                 - Lister clients
 GET    /api/statistiques            - Stats agrégées
 GET    /api/users                   - Lister users (admin)
 GET    /api/health                  - Health check
@@ -371,6 +384,7 @@ OS / Node.js / Docker version
 - [ ] Corriger bugs critiques
 - [ ] Finaliser achats/fournisseurs
 - [ ] Dashboard fixes
+- [x] Commercial.js: Pagination emoji, filtres, analytics saison
 
 ### v6.1 (Février 2026)
 
