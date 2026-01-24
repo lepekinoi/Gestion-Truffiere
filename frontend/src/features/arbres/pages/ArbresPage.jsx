@@ -429,7 +429,7 @@ function ArbresPage({ highlightId }) {
               fontWeight: hasActiveFilters ? 'bold' : 'normal'
             }}
           >
-            🌎 Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
+            🎯 Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
             <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
           </button>
           
@@ -732,7 +732,7 @@ function ArbresPage({ highlightId }) {
               <th>Parcelle</th>
               <th>Espèce</th>
               <th>Variété</th>
-              <th style={{ textAlign: 'right' }}\Âge</th>
+              <th style={{ textAlign: 'right' }}>Âge</th>
               <th>État</th>
               <th style={{ textAlign: 'right' }}>Rendement</th>
               <th>Actions</th>
