@@ -15,10 +15,10 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Parcelles from './components/Parcelles';
 // Import de la nouvelle structure de la feature arbres
-import { ArbresPage } from './features/arbres';
+import ArbresPage from './features/arbres/pages/ArbresPage';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
-import { RecoltesPage } from './features/recoltes';
+import RecoltesPage from './features/recoltes/pages/RecoltesPage';
 import Commercial from './components/Commercial';
 // import AchatsComponent from '@/components/AchatsComponent.vue';
 // routes.push({
