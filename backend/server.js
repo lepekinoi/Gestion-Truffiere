@@ -1368,17 +1368,18 @@ app.get('/api/arbres/corbeille', async (req, res) => {
 
 app.post('/api/arbres', requireWriteAccess, async (req, res) => {
   try {
-    const { parcelle_id, numero, espece, variete_truffe, date_plantation, etat, circonference_cm, hauteur_m, latitude, longitude, notes } = req.body;
+    const { parcelle_id, numero, espece, variete_truffe, date_plantation, porte_greffe, rendement_estimé, circonference_cm, hauteur_m, latitude, longitude, notes } = req.body;
     const result = await pool.query(
-      `INSERT INTO arbres (parcelle_id, numero, espece, variete_truffe, date_plantation, etat, circonference_cm, hauteur_m, latitude, longitude, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      `INSERT INTO arbres (parcelle_id, numero, espece, variete_truffe, date_plantation, porte_greffe, rendement_estimé, circonference_cm, hauteur_m, latitude, longitude, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
       [
         emptyToNull(parcelle_id),
         numero,
         espece,
         emptyToNull(variete_truffe),
         emptyToNull(date_plantation),
-        etat || 'Bon',
+        emptyToNull(porte_greffe),
+        emptyToNull(rendement_estimé),
         emptyToNull(circonference_cm),
         emptyToNull(hauteur_m),
         emptyToNull(latitude),
@@ -1392,6 +1393,7 @@ app.post('/api/arbres', requireWriteAccess, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la création de l\'arbre', details: err.message });
   }
 });
+
 
 app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
   try {
