@@ -1398,19 +1398,20 @@ app.post('/api/arbres', requireWriteAccess, async (req, res) => {
 app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
-    const { parcelle_id, numero, espece, variete_truffe, date_plantation, etat, circonference_cm, hauteur_m, date_derniere_taille, latitude, longitude, notes } = req.body;
+    const { parcelle_id, numero, espece, variete_truffe, date_plantation, porte_greffe, rendement_estimé, circonference_cm, hauteur_m, date_derniere_taille, latitude, longitude, notes } = req.body;
     const result = await pool.query(
       `UPDATE arbres SET parcelle_id = $1, numero = $2, espece = $3, variete_truffe = $4, 
-       date_plantation = $5, etat = $6, circonference_cm = $7, hauteur_m = $8, 
-       date_derniere_taille = $9, latitude = $10, longitude = $11, notes = $12
-       WHERE id = $13 AND deleted_at IS NULL RETURNING *`,
+       date_plantation = $5, porte_greffe = $6, rendement_estimé = $7, circonference_cm = $8, hauteur_m = $9, 
+       date_derniere_taille = $10, latitude = $11, longitude = $12, notes = $13
+       WHERE id = $14 AND deleted_at IS NULL RETURNING *`,
       [
         emptyToNull(parcelle_id),
         numero,
         espece,
         emptyToNull(variete_truffe),
         emptyToNull(date_plantation),
-        etat || 'Bon',
+        emptyToNull(porte_greffe),
+        emptyToNull(rendement_estimé),
         emptyToNull(circonference_cm),
         emptyToNull(hauteur_m),
         emptyToNull(date_derniere_taille),
@@ -1426,9 +1427,10 @@ app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Erreur modification arbre:', err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour', details: err.message });
+    res.status(500).json({ error: 'Erreur lors de la mise à jour', details: err.message });
   }
 });
+
 
 // Routes corbeille (spécifiques) AVANT la route générique /:id
 app.post('/api/arbres/corbeille/:id/restaurer', requireWriteAccess, async (req, res) => {
