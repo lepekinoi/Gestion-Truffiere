@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
+import ArbresTrashModal from '../components/ArbresTrashModal';
 import './ArbresPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -28,6 +29,11 @@ function ArbresPage({ highlightId }) {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedArbres, setSelectedArbres] = useState(new Set());
   const { canWrite } = useAuth();
+  
+  // États pour la corbeille
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashedArbres, setTrashedArbres] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(false);
   
   // États de filtrage (comme Recoltes)
   const [filters, setFilters] = useState({
@@ -84,6 +90,70 @@ function ArbresPage({ highlightId }) {
       showMessage('Erreur lors du chargement des données', 'error');
       setLoading(false);
     }
+  };
+
+  const loadTrash = async () => {
+    setTrashLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/arbres/corbeille`);
+      setTrashedArbres(res.data);
+    } catch (error) {
+      console.error('Erreur chargement corbeille:', error);
+      showMessage('Erreur lors du chargement de la corbeille', 'error');
+    } finally {
+      setTrashLoading(false);
+    }
+  };
+
+  const handleOpenTrash = () => {
+    setShowTrash(true);
+    loadTrash();
+  };
+
+  const handleRestoreArbre = async (arbreId) => {
+    if (window.confirm('Êtes-vous sûr de vouloir restaurer cet arbre ?')) {
+      try {
+        await axios.post(`${API_URL}/arbres/corbeille/${arbreId}/restaurer`);
+        showMessage('Arbre restauré avec succès !', 'success');
+        loadTrash();
+        loadData();
+      } catch (error) {
+        console.error('Erreur restauration:', error);
+        showMessage('Erreur lors de la restauration', 'error');
+      }
+    }
+  };
+
+  const handleDeletePermanent = async (arbre) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT l'arbre ${arbre.numero} ? Cette action est irréversible.`)) {
+      try {
+        await axios.delete(`${API_URL}/arbres/corbeille/${arbre.id}`);
+        showMessage('Arbre supprimé définitivement', 'success');
+        loadTrash();
+      } catch (error) {
+        console.error('Erreur suppression définitive:', error);
+        showMessage('Erreur lors de la suppression', 'error');
+      }
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (window.confirm('Êtes-vous sûr de vouloir vider complètement la corbeille ? Cette action est irréversible.')) {
+      try {
+        await axios.delete(`${API_URL}/arbres/corbeille`);
+        showMessage('Corbeille vidée', 'success');
+        loadTrash();
+      } catch (error) {
+        console.error('Erreur vidage corbeille:', error);
+        showMessage('Erreur lors du vidage', 'error');
+      }
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleInputChange = (e) => {
@@ -364,11 +434,18 @@ function ArbresPage({ highlightId }) {
 
       <div className="page-header">
         <h2>🌳 Gestion des Arbres</h2>
-        {canWrite() && (
-          <button className="btn btn-primary" onClick={openNewModal}>
-            ➕ Nouvel arbre
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {canWrite() && (
+            <button className="btn btn-primary" onClick={openNewModal}>
+              ➕ Nouvel arbre
+            </button>
+          )}
+          {canWrite() && (
+            <button className="btn btn-secondary" onClick={handleOpenTrash} title="Voir la corbeille">
+              🗑️ Corbeille
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Barre de recherche et filtres */}
@@ -892,6 +969,18 @@ function ArbresPage({ highlightId }) {
           </div>
         </div>
       )}
+
+      {/* Modal de corbeille */}
+      <ArbresTrashModal
+        show={showTrash}
+        onClose={() => setShowTrash(false)}
+        arbres={trashedArbres}
+        loading={trashLoading}
+        onRestore={handleRestoreArbre}
+        onDeletePermanent={handleDeletePermanent}
+        onEmptyTrash={handleEmptyTrash}
+        formatDate={formatDate}
+      />
     </div>
   );
 }
