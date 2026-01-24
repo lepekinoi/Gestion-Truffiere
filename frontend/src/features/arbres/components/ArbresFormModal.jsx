@@ -86,13 +86,13 @@ export default function ArbresFormModal({
             </div>
 
             <div className="form-group">
-              <label>État *</label>
-              <select name="etat" value={formData.etat} onChange={handleInputChange} required>
-                <option value="Bon">Bon</option>
-                <option value="Moyen">Moyen</option>
-                <option value="Mauvais">Mauvais</option>
-                <option value="Mort">Mort</option>
-              </select>
+              <label>Porte-greffe</label>
+              <input type="text" name="porte_greffe" value={formData.porte_greffe} onChange={handleInputChange} placeholder="Ex: Noisetier, Chêne..." />
+            </div>
+
+            <div className="form-group">
+              <label>Rendement estimé (kg)</label>
+              <input type="number" name="rendement_estimé" value={formData.rendement_estimé} onChange={handleInputChange} step="0.1" />
             </div>
 
             <div className="form-group">

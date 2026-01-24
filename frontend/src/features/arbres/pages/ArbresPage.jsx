@@ -111,46 +111,49 @@ function ArbresPage({ highlightId }) {
   };
 
   const handleRestoreArbre = async (arbreId) => {
-    try {
-      await axios.post(`${API_URL}/arbres/corbeille/${arbreId}/restaurer`);
-      showMessage('Arbre restauré avec succès !', 'success');
-      await loadTrash();
-      await loadData();
-    } catch (error) {
-      console.error('Erreur restauration:', error);
-      showMessage('Erreur lors de la restauration', 'error');
-      throw error;
+    if (window.confirm('Êtes-vous sûr de vouloir restaurer cet arbre ?')) {
+      try {
+        await axios.post(`${API_URL}/arbres/corbeille/${arbreId}/restaurer`);
+        showMessage('Arbre restauré avec succès !', 'success');
+        loadTrash();
+        loadData();
+      } catch (error) {
+        console.error('Erreur restauration:', error);
+        showMessage('Erreur lors de la restauration', 'error');
+      }
     }
   };
 
   const handleDeletePermanent = async (arbre) => {
-    try {
-      await axios.delete(`${API_URL}/arbres/corbeille/${arbre.id}`);
-      showMessage('Arbre supprimé définitivement', 'success');
-      await loadTrash();
-    } catch (error) {
-      console.error('Erreur suppression définitive:', error);
-      showMessage('Erreur lors de la suppression', 'error');
-      throw error;
+    if (window.confirm(`Êtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT l'arbre ${arbre.numero} ? Cette action est irréversible.`)) {
+      try {
+        await axios.delete(`${API_URL}/arbres/corbeille/${arbre.id}`);
+        showMessage('Arbre supprimé définitivement', 'success');
+        loadTrash();
+      } catch (error) {
+        console.error('Erreur suppression définitive:', error);
+        showMessage('Erreur lors de la suppression', 'error');
+      }
     }
   };
 
   const handleEmptyTrash = async () => {
-    try {
-      await axios.delete(`${API_URL}/arbres/corbeille`);
-      showMessage('Corbeille vidée', 'success');
-      await loadTrash();
-    } catch (error) {
-      console.error('Erreur vidage corbeille:', error);
-      showMessage('Erreur lors du vidage', 'error');
-      throw error;
+    if (window.confirm('Êtes-vous sûr de vouloir vider complètement la corbeille ? Cette action est irréversible.')) {
+      try {
+        await axios.delete(`${API_URL}/arbres/corbeille`);
+        showMessage('Corbeille vidée', 'success');
+        loadTrash();
+      } catch (error) {
+        console.error('Erreur vidage corbeille:', error);
+        showMessage('Erreur lors du vidage', 'error');
+      }
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleInputChange = (e) => {
