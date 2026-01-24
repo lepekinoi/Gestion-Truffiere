@@ -41,6 +41,14 @@ const STATUT_COLORS_VENTES = {
 const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const TVA_RATE = 0.055;
 
+// Types de clients avec emojis
+const CLIENT_TYPES = {
+  'Particulier': '👤',
+  'Restaurant': '🍽️',
+  'Grossiste': '📦',
+  'Association': '🤝'
+};
+
 // ============================================================
 // COMPOSANT PRINCIPAL
 // ============================================================
@@ -73,6 +81,7 @@ function Commercial() {
   const [showClientImportModal, setShowClientImportModal] = useState(false);
   const [editingVente, setEditingVente] = useState(null);
   const [filterStatutVente, setFilterStatutVente] = useState('all');
+  const [filterTypeVente, setFilterTypeVente] = useState('all');
   const [filterRecolte, setFilterRecolte] = useState({ type: 'all', value: '' });
 
 	// Modal Fournisseur
@@ -110,7 +119,8 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   const [currentPageClients, setCurrentPageClients] = useState(1);
   const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
   const [currentPageVentes, setCurrentPageVentes] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPageClients, setItemsPerPageClients] = useState(50);
+  const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
   
   // TRI
   const [sortConfigClients, setSortConfigClients] = useState({ key: null, direction: 'asc' });
@@ -255,17 +265,28 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       : client.raison_sociale || client.nom;
   };
   
-  // ==================== ANALYTICS (FIXED!) ====================
+  // ==================== ANALYTICS AVEC SAISON TRUFFE ====================
   
   const calculateAnalytics = () => {
-    // CA par mois - 12 derniers mois uniquement
+    // Calcul de la saison de truffe (juin à juin)
     const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    // Déterminer l'année de la saison actuelle
+    let seasonStartYear;
+    if (currentMonth >= 5) { // À partir de juin (mois 5)
+      seasonStartYear = currentYear;
+    } else {
+      seasonStartYear = currentYear - 1;
+    }
+    
     const caParMois = {};
     
-    // Créer 12 mois en arrière
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const key = d.toISOString().slice(0, 7); // YYYY-MM
+    // Créer 12 mois de saison (juin année N à juin année N+1)
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(seasonStartYear, 5 + i, 1); // Commence à juin (mois 5)
+      const key = monthDate.toISOString().slice(0, 7); // YYYY-MM
       caParMois[key] = 0;
     }
     
@@ -794,18 +815,24 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     });
   };
   
-  const paginate = (data, currentPage) => {
+  const paginateClients = (data, currentPage, itemsPerPage) => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return data.slice(startIndex, endIndex);
   };
   
-  const getTotalPages = (dataLength) => {
+  const paginateVentes = (data, currentPage, itemsPerPage) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+  
+  const getTotalPages = (dataLength, itemsPerPage) => {
     return Math.ceil(dataLength / itemsPerPage);
   };
   
-  const PaginationControls = ({ currentPage, setCurrentPage, totalItems, entity }) => {
-    const totalPages = getTotalPages(totalItems);
+  const PaginationControls = ({ currentPage, setCurrentPage, totalItems, itemsPerPage, setItemsPerPage, entity }) => {
+    const totalPages = getTotalPages(totalItems, itemsPerPage);
     if (totalPages <= 1) return null;
     
     return (
@@ -923,17 +950,20 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     filterStatutCommande === 'all' || c.statut === filterStatutCommande
   );
   
-  const filteredVentes = ventes.filter(v =>
-    filterStatutVente === 'all' || v.statut === filterStatutVente
-  );
+  const filteredVentes = ventes.filter(v => {
+    const matchStatut = filterStatutVente === 'all' || v.statut === filterStatutVente;
+    const client = clients.find(c => c.id === v.client_id);
+    const matchType = filterTypeVente === 'all' || (client && client.type === filterTypeVente);
+    return matchStatut && matchType;
+  });
   
   const sortedClients = sortData(filteredClients, sortConfigClients);
   const sortedCommandes = sortData(filteredCommandes, sortConfigCommandes);
   const sortedVentes = sortData(filteredVentes, sortConfigVentes);
   
-  const paginatedClients = paginate(sortedClients, currentPageClients);
-  const paginatedCommandes = paginate(sortedCommandes, currentPageCommandes);
-  const paginatedVentes = paginate(sortedVentes, currentPageVentes);
+  const paginatedClients = paginateClients(sortedClients, currentPageClients, itemsPerPageClients);
+  const paginatedCommandes = paginateClients(sortedCommandes, currentPageCommandes, 50);
+  const paginatedVentes = paginateVentes(sortedVentes, currentPageVentes, itemsPerPageVentes);
   
   // ==================== STATISTIQUES ====================
   
@@ -1112,6 +1142,22 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
         >
           🛍️ Ventes ({statsVentes.total})
         </button>
+
+        <button
+          onClick={() => setActiveTab('statut')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            borderBottom: activeTab === 'statut' ? '3px solid #2196f3' : 'none',
+            background: activeTab === 'statut' ? '#e3f2fd' : 'transparent',
+            color: activeTab === 'statut' ? '#1976d2' : '#666',
+            fontWeight: activeTab === 'statut' ? 600 : 400,
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+        >
+          📊 Statuts
+        </button>
         
         <button
           onClick={() => setActiveTab('achats')}
@@ -1142,7 +1188,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             transition: 'all 0.3s'
           }}
         >
-          📊 Analytics
+          📈 Analytics
         </button>
       </div>
       
@@ -1176,7 +1222,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               borderLeft: '4px solid #4caf50'
             }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>PARTICULIERS</div>
+              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>👤 PARTICULIERS</div>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>{statsClients.particuliers}</div>
             </div>
             
@@ -1187,7 +1233,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               borderLeft: '4px solid #ff9800'
             }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>RESTAURANTS</div>
+              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>🍽️ RESTAURANTS</div>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9800' }}>{statsClients.restaurants}</div>
             </div>
             
@@ -1198,7 +1244,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               borderLeft: '4px solid #9c27b0'
             }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>GROSSISTES</div>
+              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>📦 GROSSISTES</div>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9c27b0' }}>{statsClients.grossistes}</div>
             </div>
           </div>
@@ -1239,10 +1285,10 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               }}
             >
               <option value="all">Tous les types</option>
-              <option value="Particulier">Particuliers</option>
-              <option value="Restaurant">Restaurants</option>
-              <option value="Grossiste">Grossistes</option>
-              <option value="Association">Associations</option>
+              <option value="Particulier">👤 Particuliers</option>
+              <option value="Restaurant">🍽️ Restaurants</option>
+              <option value="Grossiste">📦 Grossistes</option>
+              <option value="Association">🤝 Associations</option>
             </select>
             
             <input
@@ -1263,133 +1309,107 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             />
           </div>
           
-          {/* TABLEAU CLIENTS */}
+          {/* TABLEAU CLIENTS AVEC TUILES */}
           <div style={{
             background: 'white',
             borderRadius: '8px',
             padding: '20px',
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            overflowX: 'auto'
+            marginBottom: '20px'
           }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '14px'
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '15px'
             }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
-                  <th
-                    onClick={() => handleSort('type', 'clients')}
+              {paginatedClients.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: '#999' }}>
+                  Aucun client trouvé
+                </div>
+              ) : (
+                paginatedClients.map((client, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => viewClientTransactions(client)}
                     style={{
-                      padding: '12px',
-                      textAlign: 'left',
-                      fontWeight: 600,
+                      background: '#f8f9fa',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      padding: '15px',
                       cursor: 'pointer',
-                      userSelect: 'none'
+                      transition: 'all 0.3s',
+                      ':hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    Type
-                  </th>
-                  <th
-                    onClick={() => handleSort('nom', 'clients')}
-                    style={{
-                      padding: '12px',
-                      textAlign: 'left',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      userSelect: 'none'
-                    }}
-                  >
-                    Nom
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Email</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Téléphone</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Ville</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedClients.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                      Aucun client
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedClients.map((client, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>
+                      {CLIENT_TYPES[client.type] || '👤'}
+                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px', color: '#333' }}>
+                      {client.type === 'Particulier'
+                        ? `${client.nom} ${client.prenom || ''}`
+                        : client.raison_sociale || client.nom}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      <span style={{ display: 'inline-block', padding: '2px 6px', background: '#e3f2fd', borderRadius: '3px', marginBottom: '4px' }}>
+                        {client.type}
+                      </span>
+                    </div>
+                    {client.email && <div style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📧 {client.email}</div>}
+                    {client.telephone && <div style={{ fontSize: '11px', color: '#666' }}>📞 {client.telephone}</div>}
+                    {client.ville && <div style={{ fontSize: '11px', color: '#666' }}>📍 {client.ville}</div>}
+                    
+                    <div style={{ marginTop: '12px', display: 'flex', gap: '6px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClient(client);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          background: '#ff9800',
+                          color: 'white',
+                          border: 'none',
                           borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          backgroundColor: client.type === 'Particulier' ? '#e3f2fd' : '#f3e5f5',
-                          color: client.type === 'Particulier' ? '#1565c0' : '#7b1fa2'
-                        }}>
-                          {client.type}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', fontWeight: '500' }}>
-                        {client.type === 'Particulier'
-                          ? `${client.nom} ${client.prenom || ''}`
-                          : client.raison_sociale || client.nom}
-                      </td>
-                      <td style={{ padding: '12px', color: '#666' }}>{client.email || '-'}</td>
-                      <td style={{ padding: '12px', color: '#666' }}>{client.telephone || '-'}</td>
-                      <td style={{ padding: '12px', color: '#666' }}>{client.ville || '-'}</td>
-                      <td style={{ padding: '12px' }}>
-                        <button
-                          onClick={() => viewClientTransactions(client)}
-                          style={{
-                            marginRight: '10px',
-                            padding: '6px 12px',
-                            background: '#2196f3',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Voir
-                        </button>
-                        <button
-                          onClick={() => handleEditClient(client)}
-                          style={{
-                            marginRight: '10px',
-                            padding: '6px 12px',
-                            background: '#ff9800',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => askDeleteClient(client)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Supprimer
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✏️ Modifier
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          askDeleteClient(client);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          background: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        🗑️ Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           
           {/* PAGINATION */}
@@ -1397,6 +1417,8 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             currentPage={currentPageClients}
             setCurrentPage={setCurrentPageClients}
             totalItems={sortedClients.length}
+            itemsPerPage={itemsPerPageClients}
+            setItemsPerPage={setItemsPerPageClients}
             entity="clients"
           />
         </div>
@@ -1658,6 +1680,8 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             currentPage={currentPageCommandes}
             setCurrentPage={setCurrentPageCommandes}
             totalItems={sortedCommandes.length}
+            itemsPerPage={50}
+            setItemsPerPage={() => {}}
             entity="commandes"
           />
         </div>
@@ -1761,6 +1785,25 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               <option value="En attente">En attente</option>
               <option value="Payée">Payée</option>
               <option value="Annulée">Annulée</option>
+            </select>
+
+            <select
+              value={filterTypeVente}
+              onChange={(e) => {
+                setFilterTypeVente(e.target.value);
+                setCurrentPageVentes(1);
+              }}
+              style={{
+                padding: '10px 15px',
+                border: '1px solid #ddd',
+                borderRadius: '6px'
+              }}
+            >
+              <option value="all">Tous les clients</option>
+              <option value="Particulier">👤 Particuliers</option>
+              <option value="Restaurant">🍽️ Restaurants</option>
+              <option value="Grossiste">📦 Grossistes</option>
+              <option value="Association">🤝 Associations</option>
             </select>
           </div>
           
@@ -1921,8 +1964,80 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             currentPage={currentPageVentes}
             setCurrentPage={setCurrentPageVentes}
             totalItems={sortedVentes.length}
+            itemsPerPage={itemsPerPageVentes}
+            setItemsPerPage={setItemsPerPageVentes}
             entity="ventes"
           />
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* ONGLET STATUT (nouveau) */}
+      {/* ============================================================ */}
+      {activeTab === 'statut' && (
+        <div>
+          <h2 style={{ marginTop: 0 }}>📊 Analyse par Statut</h2>
+          
+          {/* Ventes par statut */}
+          <div style={{
+            marginBottom: '40px',
+            background: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>🥧 Ventes par Statut</h3>
+            {analyticsData.ventesParStatut && analyticsData.ventesParStatut.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={analyticsData.ventesParStatut}
+                    dataKey="count"
+                    nameKey="statut"
+                    cx="50%"
+                    cy="50%"
+                    fill="#8884d8"
+                    label
+                  >
+                    {analyticsData.ventesParStatut.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS_PIE_CHART[index % COLORS_PIE_CHART.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                Aucune donnée disponible
+              </div>
+            )}
+          </div>
+          
+          {/* Commandes par statut */}
+          <div style={{
+            background: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 Commandes par Statut</h3>
+            {analyticsData.commandesParStatut && analyticsData.commandesParStatut.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData.commandesParStatut}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="statut" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#ff9800" name="Nombre de commandes" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                Aucune donnée
+              </div>
+            )}
+          </div>
         </div>
       )}
       
@@ -1952,22 +2067,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                 Gestion complète des fournisseurs, commandes et marges
               </p>
             </div>
-            <button
-              onClick={() => window.open('http://localhost:8080/achats', '_blank')}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
-            >
-              📱 Ouvrir Application Complète
-            </button>
           </div>
           
           {/* Statistiques des achats */}
@@ -2159,11 +2258,12 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       )}
       
       {/* ============================================================ */}
-      {/* ONGLET ANALYTICS (AVEC COURBE CHRONOLOGIQUE FIXÉE!) */}
+      {/* ONGLET ANALYTICS */}
       {/* ============================================================ */}
       {activeTab === 'analytics' && (
         <div style={{ padding: '20px' }}>
           <h2 style={{ marginTop: 0, fontSize: '28px', color: '#333' }}>📊 Tableau de Bord Analytique</h2>
+          <p style={{ color: '#666', marginBottom: '30px' }}>Axe du temps : Saison de truffe (juin à juin)</p>
           
           {/* Graphique CA par mois */}
           <div style={{
@@ -2173,7 +2273,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             borderRadius: '8px',
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📈 Évolution du Chiffre d'Affaires (12 derniers mois)</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📈 Évolution du Chiffre d'Affaires (Saison Truffe)</h3>
             {analyticsData.caParMois && analyticsData.caParMois.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={analyticsData.caParMois}>
@@ -2195,68 +2295,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                 Aucune vente payée pour générer le graphique
-              </div>
-            )}
-          </div>
-          
-          {/* Graphique Ventes par statut */}
-          <div style={{
-            marginBottom: '40px',
-            background: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>🥧 Ventes par Statut</h3>
-            {analyticsData.ventesParStatut && analyticsData.ventesParStatut.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={analyticsData.ventesParStatut}
-                    dataKey="count"
-                    nameKey="statut"
-                    cx="50%"
-                    cy="50%"
-                    fill="#8884d8"
-                    label
-                  >
-                    {analyticsData.ventesParStatut.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS_PIE_CHART[index % COLORS_PIE_CHART.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                Aucune donnée disponible
-              </div>
-            )}
-          </div>
-          
-          {/* Graphique Commandes par statut */}
-          <div style={{
-            marginBottom: '40px',
-            background: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 Commandes par Statut</h3>
-            {analyticsData.commandesParStatut && analyticsData.commandesParStatut.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analyticsData.commandesParStatut}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="statut" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#ff9800" name="Nombre de commandes" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                Aucune donnée
               </div>
             )}
           </div>
@@ -2300,7 +2338,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       )}
       
       {/* ============================================================ */}
-      {/* MODALS */}
+      {/* MODALS - STRUCTURE SIMPLIFIÉE */}
       {/* ============================================================ */}
       
       {/* MODAL CLIENT */}
@@ -2605,7 +2643,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
         </div>
       )}
       
-      {/* MODAL COMMANDE */}
+      {/* MODAL COMMANDE - STRUCTURE SIMPLIFIÉE */}
       {showCommandeModal && (
         <div style={{
           position: 'fixed',
@@ -2739,7 +2777,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Prix unitaire (€/kg)</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Prix/kg (€)</label>
                   <input
                     type="number"
                     name="prix_unitaire_kg"
@@ -2760,73 +2798,13 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               </div>
               
               {/* Montant calculé */}
-              {commandeFormData.poids_grammes && commandeFormData.prix_unitaire_kg && (
-                <div style={{
-                  marginBottom: '20px',
-                  padding: '15px',
-                  background: '#f8f9fa',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}>
-                  <strong style={{ fontSize: '18px', color: '#2196f3' }}>
-                    Montant total: {montantCalculeCommande()} €
-                  </strong>
-                </div>
-              )}
-              
-              {/* Caractéristiques */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Calibre</label>
-                  <input
-                    type="text"
-                    name="calibre"
-                    value={commandeFormData.calibre}
-                    onChange={handleCommandeInputChange}
-                    placeholder="Ex: 1re catégorie"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Qualité</label>
-                  <input
-                    type="text"
-                    name="qualite"
-                    value={commandeFormData.qualite}
-                    onChange={handleCommandeInputChange}
-                    placeholder="Ex: Extra"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Maturité</label>
-                  <input
-                    type="text"
-                    name="maturite"
-                    value={commandeFormData.maturite}
-                    onChange={handleCommandeInputChange}
-                    placeholder="Ex: À point"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
+              <div style={{
+                marginBottom: '20px',
+                padding: '10px',
+                background: '#f0f0f0',
+                borderRadius: '6px'
+              }}>
+                <strong>Montant total estimé : {montantCalculeCommande()} €</strong>
               </div>
               
               {/* Statut */}
@@ -2836,7 +2814,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                   name="statut"
                   value={commandeFormData.statut}
                   onChange={handleCommandeInputChange}
-                  required
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -2851,25 +2828,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                   <option value="Livrée">Livrée</option>
                   <option value="Annulée">Annulée</option>
                 </select>
-              </div>
-              
-              {/* Notes */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Notes</label>
-                <textarea
-                  name="notes"
-                  value={commandeFormData.notes}
-                  onChange={handleCommandeInputChange}
-                  rows="3"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    resize: 'vertical'
-                  }}
-                />
               </div>
               
               {/* Boutons */}
@@ -2950,54 +2908,11 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               {/* Client */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Client</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <select
-                    name="client_id"
-                    value={venteFormData.client_id}
-                    onChange={handleVenteInputChange}
-                    required
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="">Sélectionner un client</option>
-                    {clients.map(client => (
-                      <option key={client.id} value={client.id}>
-                        {client.type === 'Particulier'
-                          ? `${client.nom} ${client.prenom}`
-                          : client.raison_sociale || client.nom}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickClientModal(true)}
-                    style={{
-                      padding: '10px 20px',
-                      border: '1px solid #2196f3',
-                      borderRadius: '6px',
-                      background: 'white',
-                      color: '#2196f3',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
-                  >
-                    Créer
-                  </button>
-                </div>
-              </div>
-              
-              {/* Récolte optionnelle */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Récolte (optionnel)</label>
                 <select
-                  name="recolte_id"
-                  value={venteFormData.recolte_id}
+                  name="client_id"
+                  value={venteFormData.client_id}
                   onChange={handleVenteInputChange}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -3006,51 +2921,34 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                     fontSize: '14px'
                   }}
                 >
-                  <option value="">Aucune récolte associée</option>
-                  {recoltes.map(r => (
-                    <option key={r.id} value={r.id}>
-                      Récolte du {new Date(r.date_recolte).toLocaleDateString('fr-FR')} - {r.poids_grammes}g
+                  <option value="">Sélectionner un client</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.type === 'Particulier'
+                        ? `${client.nom} ${client.prenom}`
+                        : client.raison_sociale || client.nom}
                     </option>
                   ))}
                 </select>
               </div>
               
-              {/* Date et N° Facture */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Date de vente</label>
-                  <input
-                    type="date"
-                    name="date_vente"
-                    value={venteFormData.date_vente}
-                    onChange={handleVenteInputChange}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>N° Facture</label>
-                  <input
-                    type="text"
-                    name="numero_facture"
-                    value={venteFormData.numero_facture}
-                    onChange={handleVenteInputChange}
-                    placeholder="Auto-généré si vide"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
+              {/* Date */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Date de vente</label>
+                <input
+                  type="date"
+                  name="date_vente"
+                  value={venteFormData.date_vente}
+                  onChange={handleVenteInputChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
               </div>
               
               {/* Quantité et Prix */}
@@ -3075,7 +2973,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Prix unitaire (€/kg)</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Prix/kg (€)</label>
                   <input
                     type="number"
                     name="prix_unitaire_kg"
@@ -3096,78 +2994,71 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
               </div>
               
               {/* Montant calculé */}
-              {venteFormData.quantite_grammes && venteFormData.prix_unitaire_kg && (
-                <div style={{
-                  marginBottom: '20px',
-                  padding: '15px',
-                  background: '#f8f9fa',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}>
-                  <strong style={{ fontSize: '18px', color: '#2196f3' }}>
-                    Montant total: {montantCalculeVente()} €
-                  </strong>
-                </div>
-              )}
-              
-              {/* Mode de paiement et Statut */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Mode de paiement</label>
-                  <input
-                    type="text"
-                    name="mode_paiement"
-                    value={venteFormData.mode_paiement}
-                    onChange={handleVenteInputChange}
-                    placeholder="Ex: Virement, Chèque"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Statut</label>
-                  <select
-                    name="statut"
-                    value={venteFormData.statut}
-                    onChange={handleVenteInputChange}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="En attente">En attente</option>
-                    <option value="Payée">Payée</option>
-                    <option value="Annulée">Annulée</option>
-                  </select>
-                </div>
+              <div style={{
+                marginBottom: '20px',
+                padding: '10px',
+                background: '#f0f0f0',
+                borderRadius: '6px'
+              }}>
+                <strong>Montant total estimé : {montantCalculeVente()} €</strong>
               </div>
               
-              {/* Notes */}
+              {/* Mode de paiement */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Notes</label>
-                <textarea
-                  name="notes"
-                  value={venteFormData.notes}
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Mode de paiement</label>
+                <input
+                  type="text"
+                  name="mode_paiement"
+                  value={venteFormData.mode_paiement}
                   onChange={handleVenteInputChange}
-                  rows="3"
+                  placeholder="ex: Carte bancaire, Espèces, Virement..."
                   style={{
                     width: '100%',
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px',
-                    resize: 'vertical'
+                    fontSize: '14px'
                   }}
                 />
+              </div>
+              
+              {/* Numéro de facture */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>N° Facture</label>
+                <input
+                  type="text"
+                  name="numero_facture"
+                  value={venteFormData.numero_facture}
+                  onChange={handleVenteInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              
+              {/* Statut */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Statut</label>
+                <select
+                  name="statut"
+                  value={venteFormData.statut}
+                  onChange={handleVenteInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="En attente">En attente</option>
+                  <option value="Payée">Payée</option>
+                  <option value="Annulée">Annulée</option>
+                </select>
               </div>
               
               {/* Boutons */}
@@ -3213,393 +3104,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
           </div>
         </div>
       )}
-      
-      {/* MODAL QUICK CLIENT */}
-      {showQuickClientModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          overflow: 'auto',
-          paddingTop: '20px',
-          paddingBottom: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <h2 style={{ marginTop: 0 }}>Créer un nouveau client rapidement</h2>
-            
-            <form onSubmit={handleCreateQuickClient}>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Type</label>
-                <select
-                  name="type"
-                  value={newClientData.type}
-                  onChange={handleQuickClientInputChange}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="Particulier">Particulier</option>
-                  <option value="Restaurant">Restaurant</option>
-                  <option value="Grossiste">Grossiste</option>
-                  <option value="Association">Association</option>
-                </select>
-              </div>
-              
-              {newClientData.type === 'Particulier' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Nom</label>
-                    <input
-                      type="text"
-                      name="nom"
-                      value={newClientData.nom}
-                      onChange={handleQuickClientInputChange}
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Prénom</label>
-                    <input
-                      type="text"
-                      name="prenom"
-                      value={newClientData.prenom}
-                      onChange={handleQuickClientInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Raison sociale</label>
-                  <input
-                    type="text"
-                    name="raison_sociale"
-                    value={newClientData.raison_sociale}
-                    onChange={handleQuickClientInputChange}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-              )}
-              
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={newClientData.email}
-                  onChange={handleQuickClientInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                gap: '10px',
-                justifyContent: 'flex-end',
-                marginTop: '30px'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickClientModal(false)}
-                  style={{
-                    padding: '12px 24px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isProcessing}
-                  style={{
-                    padding: '12px 24px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    background: '#2196f3',
-                    color: 'white',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? 'Création...' : 'Créer et retour'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-{/* MODAL TRANSACTIONS CLIENT */}
-{showTransactionsModal && selectedClientForTransactions && (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-    overflow: 'auto',
-    paddingTop: '20px',
-    paddingBottom: '20px'
-  }}>
-    <div style={{
-      background: 'white',
-      padding: '30px',
-      borderRadius: '12px',
-      maxWidth: '1000px',
-      width: '90%',
-      maxHeight: '90vh',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '30px'
-      }}>
-        <h2 style={{ margin: 0 }}>
-          Transactions de {selectedClientForTransactions.type === 'Particulier'
-            ? `${selectedClientForTransactions.nom} ${selectedClientForTransactions.prenom || ''}`
-            : selectedClientForTransactions.raison_sociale || selectedClientForTransactions.nom}
-        </h2>
-        <button
-          onClick={() => setShowTransactionsModal(false)}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            background: 'white',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          Fermer
-        </button>
-      </div>
-
-      {/* Statistiques */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px',
-        marginBottom: '30px'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.9 }}>Commandes</div>
-          <div style={{ fontSize: '28px', fontWeight: 700, marginTop: '10px' }}>
-            {clientTransactions.commandes.length}
-          </div>
-        </div>
-
-        <div style={{
-          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.9 }}>Ventes</div>
-          <div style={{ fontSize: '28px', fontWeight: 700, marginTop: '10px' }}>
-            {clientTransactions.ventes.length}
-          </div>
-        </div>
-
-        <div style={{
-          background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.9 }}>CA Total</div>
-          <div style={{ fontSize: '28px', fontWeight: 700, marginTop: '10px' }}>
-            {clientTransactions.ventes
-              .filter(v => v.statut === 'Payée')
-              .reduce((sum, v) => sum + parseFloat(v.montant_total || 0), 0)
-              .toFixed(2)} €
-          </div>
-        </div>
-      </div>
-
-      {/* Commandes */}
-      <div style={{ marginBottom: '30px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
-          📋 Commandes ({clientTransactions.commandes.length})
-        </h3>
-        {clientTransactions.commandes.length === 0 ? (
-          <p style={{ color: '#999', textAlign: 'center', padding: '20px' }}>
-            Aucune commande
-          </p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>N° Commande</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Quantité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Montant</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientTransactions.commandes.map((c, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                    <td style={{ padding: '12px' }}>
-                      {new Date(c.date_commande).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: 600 }}>
-                      {c.numero_commande || `CMD-${c.id}`}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      {parseFloat(c.poids_grammes || 0).toFixed(0)} g
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: 600 }}>
-                      {parseFloat(c.montant_total || 0).toFixed(2)} €
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '4px 10px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: STATUT_COLORS_COMMANDES[c.statut]?.background || '#f0f0f0',
-                        color: STATUT_COLORS_COMMANDES[c.statut]?.color || '#333'
-                      }}>
-                        {c.statut}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Ventes */}
-      <div>
-        <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
-          🛍️ Ventes ({clientTransactions.ventes.length})
-        </h3>
-        {clientTransactions.ventes.length === 0 ? (
-          <p style={{ color: '#999', textAlign: 'center', padding: '20px' }}>
-            Aucune vente
-          </p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>N° Facture</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Quantité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Montant</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Paiement</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientTransactions.ventes.map((v, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                    <td style={{ padding: '12px' }}>
-                      {new Date(v.date_vente).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: 600 }}>
-                      {v.numero_facture || '-'}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      {parseFloat(v.quantite_grammes || 0).toFixed(0)} g
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: 600 }}>
-                      {parseFloat(v.montant_total || 0).toFixed(2)} €
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      {v.mode_paiement || '-'}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '4px 10px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: STATUT_COLORS_VENTES[v.statut]?.background || '#f0f0f0',
-                        color: STATUT_COLORS_VENTES[v.statut]?.color || '#333'
-                      }}>
-                        {v.statut}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-)}
-	  
     </div>
   );
 }
