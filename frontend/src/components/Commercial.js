@@ -223,15 +223,19 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       setArbres(arbresRes.data);
       setStatsParType(statsRes.data);
       
-      // Charger les achats
+      // Charger les achats - utiliser le bon endpoint
       try {
-        const achatsRes = await axios.get('http://localhost:3000/api/v1/fournisseurs-truffes')
-          .catch(() => ({ data: { data: [] } }));
+        // Essayer d'abord l'endpoint des fournisseurs depuis l'API principale
+        const achatsRes = await axios.get(`${API_URL}/fournisseurs`)
+          .catch(() => {
+            // Fallback si l'endpoint n'existe pas
+            return { data: { data: [] } };
+          });
         setAchatsData({
-          fournisseurs: achatsRes.data.data || []
+          fournisseurs: Array.isArray(achatsRes.data) ? achatsRes.data : (achatsRes.data.data || [])
         });
       } catch (error) {
-        console.error('Erreur achats:', error);
+        console.warn('Impossible de charger les fournisseurs:', error.message);
         setAchatsData({ fournisseurs: [] });
       }
       
