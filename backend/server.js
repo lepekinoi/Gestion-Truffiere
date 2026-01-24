@@ -18,7 +18,7 @@ app.get('/api/arbres', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des arbres' });
+    res.status(500).json({ error: 'Erreur lors de la recuperation des arbres' });
   }
 });
 
@@ -43,18 +43,18 @@ app.post('/api/arbres', requireWriteAccess, async (req, res) => {
     const { 
       parcelle_id, numero, espece, variete_truffe, date_plantation, etat, 
       circonference_cm, hauteur_m, latitude, longitude, notes,
-      age_ans, porte_greffe, etat_sanitaire, rendement_estimé
+      porte_greffe, rendement_estimé
     } = req.body;
     
-    console.log('📥 POST /api/arbres - Données reçues:', {
-      numero, espece, variete_truffe, age_ans, porte_greffe, etat_sanitaire, rendement_estimé
+    console.log('POST /api/arbres - Donnees reçues:', {
+      numero, espece, variete_truffe, porte_greffe, rendement_estimé
     });
     
     const result = await pool.query(
       `INSERT INTO arbres (parcelle_id, numero, espece, variete_truffe, date_plantation, etat, 
                            circonference_cm, hauteur_m, latitude, longitude, notes,
-                           age_ans, porte_greffe, etat_sanitaire, rendement_estimé)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+                           porte_greffe, rendement_estimé)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
        RETURNING *`,
       [
         emptyToNull(parcelle_id),
@@ -68,18 +68,16 @@ app.post('/api/arbres', requireWriteAccess, async (req, res) => {
         emptyToNull(latitude),
         emptyToNull(longitude),
         emptyToNull(notes),
-        emptyToNull(age_ans),
         emptyToNull(porte_greffe),
-        emptyToNull(etat_sanitaire),
         emptyToNull(rendement_estimé)
       ]
     );
     
-    console.log('✅ Arbre créé, ID:', result.rows[0].id);
+    console.log('Arbre cree, ID:', result.rows[0].id);
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Erreur création arbre:', err);
-    res.status(500).json({ error: 'Erreur lors de la création de l\'arbre', details: err.message });
+    console.error('Erreur creation arbre:', err);
+    res.status(500).json({ error: 'Erreur lors de la creation de l\'arbre', details: err.message });
   }
 });
 
@@ -89,19 +87,19 @@ app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
     const { 
       parcelle_id, numero, espece, variete_truffe, date_plantation, etat, 
       circonference_cm, hauteur_m, date_derniere_taille, latitude, longitude, notes,
-      age_ans, porte_greffe, etat_sanitaire, rendement_estimé
+      porte_greffe, rendement_estimé
     } = req.body;
     
-    console.log('📝 PUT /api/arbres/:id - Données reçues:', {
-      id, numero, espece, age_ans, porte_greffe, etat_sanitaire, rendement_estimé
+    console.log('PUT /api/arbres/:id - Donnees reçues:', {
+      id, numero, espece, porte_greffe, rendement_estimé
     });
     
     const result = await pool.query(
       `UPDATE arbres SET parcelle_id = $1, numero = $2, espece = $3, variete_truffe = $4, 
        date_plantation = $5, etat = $6, circonference_cm = $7, hauteur_m = $8, 
        date_derniere_taille = $9, latitude = $10, longitude = $11, notes = $12,
-       age_ans = $13, porte_greffe = $14, etat_sanitaire = $15, rendement_estimé = $16
-       WHERE id = $17 AND deleted_at IS NULL 
+       porte_greffe = $13, rendement_estimé = $14
+       WHERE id = $15 AND deleted_at IS NULL 
        RETURNING *`,
       [
         emptyToNull(parcelle_id),
@@ -116,27 +114,25 @@ app.put('/api/arbres/:id', requireWriteAccess, async (req, res) => {
         emptyToNull(latitude),
         emptyToNull(longitude),
         emptyToNull(notes),
-        emptyToNull(age_ans),
         emptyToNull(porte_greffe),
-        emptyToNull(etat_sanitaire),
         emptyToNull(rendement_estimé),
         id
       ]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Arbre non trouvé' });
+      return res.status(404).json({ error: 'Arbre non trouve' });
     }
     
-    console.log('✅ Arbre mis à jour, ID:', result.rows[0].id);
+    console.log('Arbre mis a jour, ID:', result.rows[0].id);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Erreur modification arbre:', err);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour', details: err.message });
+    console.error('Erreur modification arbre:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise a jour', details: err.message });
   }
 });
 
-// Routes corbeille (spécifiques) AVANT la route générique /:id
+// Routes corbeille (specifiques) AVANT la route generique /:id
 app.post('/api/arbres/corbeille/:id/restaurer', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -145,9 +141,9 @@ app.post('/api/arbres/corbeille/:id/restaurer', requireWriteAccess, async (req, 
       [id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Arbre non trouvé dans la corbeille' });
+      return res.status(404).json({ error: 'Arbre non trouve dans la corbeille' });
     }
-    res.json({ message: 'Arbre restauré', arbre: result.rows[0] });
+    res.json({ message: 'Arbre restaure', arbre: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur' });
@@ -162,9 +158,9 @@ app.delete('/api/arbres/corbeille/:id', requireWriteAccess, async (req, res) => 
       [id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Arbre non trouvé dans la corbeille' });
+      return res.status(404).json({ error: 'Arbre non trouve dans la corbeille' });
     }
-    res.json({ message: 'Arbre supprimé définitivement', arbre: result.rows[0] });
+    res.json({ message: 'Arbre supprime definitivement', arbre: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur' });
@@ -177,7 +173,7 @@ app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    // Récupérer les IDs des arbres à supprimer
+    // Recuperer les IDs des arbres a supprimer
     const treesToDelete = await client.query(
       'SELECT id FROM arbres WHERE deleted_at IS NOT NULL'
     );
@@ -188,7 +184,7 @@ app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
       return res.json({ message: 'Corbeille vide', count: 0 });
     }
     
-    // Supprimer les références en cascade
+    // Supprimer les references en cascade
     await client.query('DELETE FROM interventions WHERE arbre_id = ANY($1)', [treeIds]);
     await client.query('DELETE FROM recoltes WHERE arbre_id = ANY($1)', [treeIds]);
     
@@ -196,7 +192,7 @@ app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
     const result = await client.query('DELETE FROM arbres WHERE deleted_at IS NOT NULL RETURNING id');
     
     await client.query('COMMIT');
-    res.json({ message: 'Corbeille vidée', count: result.rows.length });
+    res.json({ message: 'Corbeille videe', count: result.rows.length });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erreur lors du vidage de la corbeille', details: err.message });
@@ -205,7 +201,7 @@ app.delete('/api/arbres/corbeille', requireWriteAccess, async (req, res) => {
   }
 });
 
-// Route générique APRÈS les routes /corbeille
+// Route generique APRES les routes /corbeille
 app.delete('/api/arbres/:id', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -214,9 +210,9 @@ app.delete('/api/arbres/:id', requireWriteAccess, async (req, res) => {
       [id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Arbre non trouvé' });
+      return res.status(404).json({ error: 'Arbre non trouve' });
     }
-    res.json({ message: 'Arbre mis à la corbeille', arbre: result.rows[0] });
+    res.json({ message: 'Arbre mis a la corbeille', arbre: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur' });
