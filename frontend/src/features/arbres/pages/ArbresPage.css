@@ -1,112 +1,343 @@
-.arbres-page {
-  padding: 20px;
-  max-width: 1200px;
+/* ============================================================
+   ArbresPage.css - Styles pour la gestion des arbres
+   Conforme au style de RecoltesPage
+============================================================ */
+
+.page-container {
+  padding: 20px 40px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
-.arbres-page h1 {
-  color: #333;
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 30px;
-  font-size: 28px;
-  font-weight: 600;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
 }
 
 .loading {
-  padding: 40px;
+  padding: 60px 20px;
   text-align: center;
   font-size: 18px;
-  color: #666;
+  color: #999;
 }
 
-.error {
-  padding: 20px;
-  background-color: #fee;
-  color: #c33;
-  border: 1px solid #fcc;
-  border-radius: 4px;
-  margin-bottom: 20px;
-  font-weight: 500;
-}
-
-.arbres-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  min-height: 500px;
-}
-
-.arbres-list {
-  background: #f5f5f5;
+.btn {
+  padding: 10px 16px;
+  border: none;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.arbres-list ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.arbres-list li {
-  padding: 12px 16px;
-  background: white;
-  margin-bottom: 8px;
-  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border-left: 4px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.arbres-list li:hover {
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2c5f2d, #4a8c4a);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1e4620, #3a7c3a);
+}
+
+.btn-secondary {
   background: #f0f0f0;
-  transform: translateX(4px);
+  color: #333;
+  border: 1px solid #ddd;
 }
 
-.arbres-list li.active {
-  background: #e3f2fd;
-  border-left-color: #2196f3;
-  font-weight: 600;
+.btn-secondary:hover {
+  background: #e8e8e8;
 }
 
-.arbre-detail {
+.btn-danger {
+  background: #f44336;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
 }
 
-.arbre-detail h2 {
-  color: #333;
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.arbre-detail pre {
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 4px;
-  overflow-x: auto;
+.card-title {
   font-size: 12px;
-  line-height: 1.5;
+  color: #999;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2c5f2d;
+}
+
+/* Tableau */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+thead {
+  background: linear-gradient(135deg, #f8f8f8, #f0f0f0);
+  border-bottom: 2px solid #e0e0e0;
+}
+
+thead th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+tbody td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+  background: #f9f9f9;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f5f5f5;
   color: #333;
+}
+
+.modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Formulaire */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2c5f2d;
+  box-shadow: 0 0 0 3px rgba(44, 95, 45, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal form {
+  padding: 24px;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .arbres-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .page-container {
+    padding: 15px 20px;
   }
 
-  .arbres-page {
-    padding: 10px;
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
   }
 
-  .arbres-page h1 {
+  .page-header h2 {
     font-size: 24px;
-    margin-bottom: 20px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal {
+    max-height: 100vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  table th,
+  table td {
+    padding: 10px 8px;
+  }
+
+  thead th {
+    font-size: 12px;
   }
 }
