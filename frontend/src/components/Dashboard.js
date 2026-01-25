@@ -19,9 +19,9 @@ if (!API_URL) {
 // Configuration Météo Concept
 const METEO_CONFIG = {
   TOKEN: process.env.REACT_APP_METEO_CONCEPT_TOKEN || '',
-  INSEE_CODE: '44110', // Notre-Dame-des-Landes
-  LATITUDE: 47.3667,
-  LONGITUDE: -1.7167,
+  INSEE_CODE: '79170', // Lusseray
+  LATITUDE: 46.1465496,
+  LONGITUDE: -0.1639706,
   USE_METEO_CONCEPT: process.env.REACT_APP_USE_METEO_CONCEPT === 'true'
 };
 
