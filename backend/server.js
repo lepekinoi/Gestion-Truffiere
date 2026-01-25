@@ -19,6 +19,7 @@ const tokenRotation = require('./utils/tokenRotation');
 
 
 
+
 const app = express();
 app.set('trust proxy', 1);
 
@@ -883,7 +884,7 @@ app.post('/api/auth/cleanup-tokens', authMiddleware, requireRole('admin'), async
 // Toutes les routes /api/* suivantes nécessitent une authentification
 app.use('/api', (req, res, next) => {
   // Skip les routes publiques
-  if (req.path.startsWith('/auth') || req.path === '/health') {
+  if (req.path.startsWith('/auth') || req.path === '/health' || req.path.startsWith('/especes')) {
     return next();
   }
   authMiddleware(req, res, next);
@@ -897,6 +898,7 @@ app.use('/api/especes', (req, res, next) => {
   req.pool = pool;
   next();
 }, especesRoutes);
+
 
 // ==================== ROUTES HISTORIQUE ====================
 app.get('/api/historique', async (req, res) => {
