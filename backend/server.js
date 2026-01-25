@@ -16,6 +16,9 @@ const { Pool } = require('pg');
 require('dotenv').config();
 const tokenRotation = require('./utils/tokenRotation');
 
+
+
+
 const app = express();
 app.set('trust proxy', 1);
 
@@ -587,7 +590,7 @@ app.post('/api/auth/register', authMiddleware, requireRole('admin'), async (req,
 
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: 'Email déjÃ  utilisé', code: 'EMAIL_EXISTS' });
+      return res.status(409).json({ error: 'Email déjÃ  utilisé', code: 'EMAIL_EXISTS' });
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -647,7 +650,7 @@ app.put('/api/auth/users/:id', authMiddleware, requireRole('admin'), async (req,
     if (email !== undefined) {
       const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, id]);
       if (emailCheck.rows.length > 0) {
-        return res.status(409).json({ error: 'Email déjÃ  utilisé', code: 'EMAIL_EXISTS' });
+        return res.status(409).json({ error: 'Email déjÃ  utilisé', code: 'EMAIL_EXISTS' });
       }
       updates.push(`email = $${idx++}`);
       values.push(email);
@@ -667,7 +670,7 @@ app.put('/api/auth/users/:id', authMiddleware, requireRole('admin'), async (req,
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ error: 'Aucune donnée Ã  mettre Ã  jour', code: 'NO_DATA' });
+      return res.status(400).json({ error: 'Aucune donnée Ã  mettre Ã  jour', code: 'NO_DATA' });
     }
 
     values.push(id);
@@ -680,7 +683,7 @@ app.put('/api/auth/users/:id', authMiddleware, requireRole('admin'), async (req,
       return res.status(404).json({ error: 'Utilisateur non trouvé', code: 'USER_NOT_FOUND' });
     }
 
-    res.json({ message: 'Utilisateur mis Ã  jour', user: result.rows[0] });
+    res.json({ message: 'Utilisateur mis Ã  jour', user: result.rows[0] });
   } catch (err) {
     console.error('Erreur update user:', err);
     res.status(500).json({ error: 'Erreur', code: 'UPDATE_USER_ERROR' });
@@ -880,7 +883,7 @@ app.post('/api/auth/cleanup-tokens', authMiddleware, requireRole('admin'), async
 // Toutes les routes /api/* suivantes nécessitent une authentification
 app.use('/api', (req, res, next) => {
   // Skip les routes publiques
-  if (req.path.startsWith('/auth') || req.path === '/health' || req.path.startsWith('/especes')) {
+  if (req.path.startsWith('/auth') || req.path === '/health') {
     return next();
   }
   authMiddleware(req, res, next);
@@ -1043,7 +1046,7 @@ app.put('/api/caveurs/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
   }
 });
 
@@ -1094,7 +1097,7 @@ app.put('/api/chiens/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
   }
 });
 
@@ -1206,7 +1209,7 @@ app.post('/api/parcelles', requireWriteAccess, async (req, res) => {
     if (coordinates && coordinates.length > 0) {
       try {
 const coordsString = coordinates.map(coord => 
-  `${coord[1]} ${coord[0]}`
+  `${coord[1]} ${coord[0]}`  // ✅ Backticks normaux
 ).join(', ');
 		
 
@@ -1226,7 +1229,7 @@ const coordsString = coordinates.map(coord =>
           nom.trim(),
           parseFloat(surface_ha),
           type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
-          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
+          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,  // ← Gestion de ''
           notes && notes.trim() !== '' ? notes.trim() : null,
           polygonWKT
         ];
@@ -1258,7 +1261,7 @@ const coordsString = coordinates.map(coord =>
         nom.trim(),
         parseFloat(surface_ha),
         type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
-        ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
+        ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,  // ← Conversion '' → null
         notes && notes.trim() !== '' ? notes.trim() : null
       ];
     }
@@ -1318,7 +1321,7 @@ app.put('/api/parcelles/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
   }
 });
 
@@ -1523,7 +1526,7 @@ app.delete('/api/arbres/:id', requireWriteAccess, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Arbre non trouvé' });
     }
-    res.json({ message: 'Arbre mis Ã  la corbeille', arbre: result.rows[0] });
+    res.json({ message: 'Arbre mis Ã  la corbeille', arbre: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur' });
@@ -1724,7 +1727,7 @@ app.post('/api/interventions', requireWriteAccess, async (req, res) => {
         values
       );
     } else {
-      console.log('ℹ️ Aucun détail spécifique fourni, pas d'entrée dans intervention_details');
+      console.log('ℹ️ Aucun détail spécifique fourni, pas d’entrée dans intervention_details');
     }
 
     await client.query('COMMIT');
@@ -1761,7 +1764,7 @@ app.put('/api/interventions/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
   }
 });
 
@@ -1800,7 +1803,7 @@ app.get('/api/interventions/:id/details', async (req, res) => {
   }
 });
 
-// POST - Créer ou mettre Ã  jour les détails d'une intervention
+// POST - Créer ou mettre Ã  jour les détails d'une intervention
 app.post('/api/interventions/:id/details', requireWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1812,7 +1815,7 @@ app.post('/api/interventions/:id/details', requireWriteAccess, async (req, res) 
       return res.status(404).json({ error: 'Intervention non trouvée' });
     }
     
-    // Vérifier si des détails existent déjÃ 
+    // Vérifier si des détails existent déjÃ 
     const existingDetails = await pool.query(
       'SELECT id FROM intervention_details WHERE intervention_id = $1',
       [id]
@@ -1822,7 +1825,7 @@ app.post('/api/interventions/:id/details', requireWriteAccess, async (req, res) 
     const fields = Object.keys(details).filter(key => details[key] !== undefined && details[key] !== '');
     
     if (fields.length === 0) {
-      return res.json({ message: 'Aucun détail Ã  enregistrer' });
+      return res.json({ message: 'Aucun détail Ã  enregistrer' });
     }
     
     let result;
@@ -2276,7 +2279,7 @@ app.put('/api/recoltes/:id', requireWriteAccess, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
   }
 });
 
@@ -2308,13 +2311,69 @@ app.get('/api/clients', async (req, res) => {
 app.get('/api/clients/:id/stats', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      `SELECT c.*, COUNT(r.id) as nombre_recoltes, SUM(r.poids_grammes) as poids_total
-       FROM clients c
-       LEFT JOIN recoltes r ON c.id = r.client_id
-       WHERE c.id = $1
-       GROUP BY c.id`,
+    
+    const commandesResult = await pool.query(
+      'SELECT COUNT(*) as count, COALESCE(SUM(montant_total), 0) as total FROM commandes WHERE client_id = $1',
       [id]
+    );
+    
+    const ventesResult = await pool.query(
+      'SELECT COUNT(*) as count, COALESCE(SUM(montant_total), 0) as total FROM ventes WHERE client_id = $1',
+      [id]
+    );
+    
+    res.json({
+      commandes: { count: parseInt(commandesResult.rows[0].count), total: parseFloat(commandesResult.rows[0].total) },
+      ventes: { count: parseInt(ventesResult.rows[0].count), total: parseFloat(ventesResult.rows[0].total) }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.get('/api/clients/stats/by-type', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT c.type, COUNT(DISTINCT c.id) as nb_clients,
+             COALESCE(SUM(cmd.montant_total), 0) as total_commandes,
+             COALESCE(SUM(v.montant_total), 0) as total_ventes
+      FROM clients c
+      LEFT JOIN commandes cmd ON c.id = cmd.client_id
+      LEFT JOIN ventes v ON c.id = v.client_id
+      GROUP BY c.type
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.post('/api/clients', requireWriteAccess, async (req, res) => {
+  try {
+    const { type, nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, siret, notes } = req.body;
+    const result = await pool.query(
+      `INSERT INTO clients (type, nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, siret, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [type || 'Particulier', nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays || 'France', siret, notes]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la création' });
+  }
+});
+
+app.put('/api/clients/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, siret, notes } = req.body;
+    const result = await pool.query(
+      `UPDATE clients SET type = $1, nom = $2, prenom = $3, raison_sociale = $4, email = $5,
+       telephone = $6, adresse = $7, code_postal = $8, ville = $9, pays = $10, siret = $11, notes = $12
+       WHERE id = $13 RETURNING *`,
+      [type, nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, siret, notes, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Client non trouvé' });
@@ -2322,6 +2381,1170 @@ app.get('/api/clients/:id/stats', async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+  }
+});
+
+app.delete('/api/clients/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM clients WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Client non trouvé' });
+    }
+    res.json({ message: 'Client supprimé' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur' });
   }
 });
+
+// ==================== ROUTES VENTES ====================
+app.get('/api/ventes', async (req, res) => {
+  try {
+    const { client_id, recolte_id } = req.query;
+    
+    let query = `
+      SELECT v.*, c.type as client_type, c.nom as client_nom, c.prenom as client_prenom, c.raison_sociale,
+             r.date_recolte, r.poids_grammes as recolte_poids, a.numero as arbre_numero
+      FROM ventes v
+      LEFT JOIN clients c ON v.client_id = c.id
+      LEFT JOIN recoltes r ON v.recolte_id = r.id
+      LEFT JOIN arbres a ON r.arbre_id = a.id
+    `;
+    
+    const conditions = [];
+    const params = [];
+    let idx = 1;
+    
+    if (client_id) { conditions.push(`v.client_id = $${idx++}`); params.push(client_id); }
+    if (recolte_id) { conditions.push(`v.recolte_id = $${idx++}`); params.push(recolte_id); }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ' ORDER BY v.date_vente DESC';
+    
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.post('/api/ventes', requireWriteAccess, async (req, res) => {
+  try {
+    const { client_id, recolte_id, commande_id, date_vente, quantite_grammes, prix_unitaire_kg, mode_paiement, statut, numero_facture, notes } = req.body;
+    
+    const montant_total = quantite_grammes && prix_unitaire_kg 
+      ? (parseFloat(quantite_grammes) / 1000) * parseFloat(prix_unitaire_kg) 
+      : 0;
+    
+    const result = await pool.query(
+      `INSERT INTO ventes (client_id, recolte_id, commande_id, date_vente, quantite_grammes, prix_unitaire_kg, montant_total, mode_paiement, statut, numero_facture, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [client_id, recolte_id || null, commande_id || null, date_vente, quantite_grammes, prix_unitaire_kg || null, montant_total, mode_paiement, statut || 'En attente', numero_facture, notes]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la création' });
+  }
+});
+
+app.put('/api/ventes/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { client_id, recolte_id, commande_id, date_vente, quantite_grammes, prix_unitaire_kg, mode_paiement, statut, numero_facture, notes } = req.body;
+    
+    const montant_total = quantite_grammes && prix_unitaire_kg 
+      ? (parseFloat(quantite_grammes) / 1000) * parseFloat(prix_unitaire_kg) 
+      : 0;
+    
+    const result = await pool.query(
+      `UPDATE ventes SET client_id = $1, recolte_id = $2, commande_id = $3, date_vente = $4, quantite_grammes = $5,
+       prix_unitaire_kg = $6, montant_total = $7, mode_paiement = $8, statut = $9, numero_facture = $10, notes = $11
+       WHERE id = $12 RETURNING *`,
+      [client_id, recolte_id || null, commande_id || null, date_vente, quantite_grammes, prix_unitaire_kg || null, montant_total, mode_paiement, statut, numero_facture, notes, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Vente non trouvée' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+  }
+});
+
+app.delete('/api/ventes/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM ventes WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Vente non trouvée' });
+    }
+    res.json({ message: 'Vente supprimée' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+// ==================== ROUTES COMMANDES ====================
+app.get('/api/commandes', async (req, res) => {
+  try {
+    const { client_id } = req.query;
+    
+    let query = `
+      SELECT c.*, cl.type as client_type, cl.nom as client_nom, cl.prenom as client_prenom, cl.raison_sociale
+      FROM commandes c
+      LEFT JOIN clients cl ON c.client_id = cl.id
+    `;
+    
+    if (client_id) {
+      query += ' WHERE c.client_id = $1 ORDER BY c.date_commande DESC';
+      const result = await pool.query(query, [client_id]);
+      return res.json(result.rows);
+    }
+    
+    query += ' ORDER BY c.date_commande DESC';
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.get('/api/commandes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT c.*, cl.type as client_type, cl.nom as client_nom, cl.prenom as client_prenom, 
+             cl.raison_sociale, cl.email, cl.telephone, cl.adresse, cl.code_postal, cl.ville
+      FROM commandes c
+      LEFT JOIN clients cl ON c.client_id = cl.id
+      WHERE c.id = $1
+    `, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.post('/api/commandes', requireWriteAccess, async (req, res) => {
+  try {
+    const { client_id, date_commande, date_livraison_demandee, poids_grammes, calibre, qualite, maturite, prix_unitaire_kg, statut, notes } = req.body;
+    
+    const year = new Date().getFullYear();
+    const countResult = await pool.query('SELECT COUNT(*) FROM commandes WHERE EXTRACT(YEAR FROM date_commande) = $1', [year]);
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const numero_commande = `CMD-${year}-${String(count).padStart(4, '0')}`;
+    
+    const poidsGrammesVal = poids_grammes === '' || poids_grammes === null || poids_grammes === undefined ? null : poids_grammes;
+    const prixUnitaireKgVal = prix_unitaire_kg === '' || prix_unitaire_kg === null || prix_unitaire_kg === undefined ? null : prix_unitaire_kg;
+    
+    const montant_total = poidsGrammesVal && prixUnitaireKgVal 
+      ? (parseFloat(poidsGrammesVal) / 1000) * parseFloat(prixUnitaireKgVal) 
+      : null;
+    
+    const result = await pool.query(
+      `INSERT INTO commandes (client_id, numero_commande, date_commande, date_livraison_demandee, poids_grammes, calibre, qualite, maturite, prix_unitaire_kg, montant_total, statut, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [client_id || null, numero_commande, date_commande, date_livraison_demandee || null, poidsGrammesVal, calibre || null, qualite || null, maturite || null, prixUnitaireKgVal, montant_total, statut || 'En attente', notes || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la création' });
+  }
+});
+
+app.put('/api/commandes/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { client_id, date_commande, date_livraison_demandee, poids_grammes, calibre, qualite, maturite, prix_unitaire_kg, statut, notes } = req.body;
+    
+    const poidsGrammesVal = poids_grammes === '' || poids_grammes === null || poids_grammes === undefined ? null : poids_grammes;
+    const prixUnitaireKgVal = prix_unitaire_kg === '' || prix_unitaire_kg === null || prix_unitaire_kg === undefined ? null : prix_unitaire_kg;
+    
+    const montant_total = poidsGrammesVal && prixUnitaireKgVal 
+      ? (parseFloat(poidsGrammesVal) / 1000) * parseFloat(prixUnitaireKgVal) 
+      : null;
+    
+    const result = await pool.query(
+      `UPDATE commandes SET client_id = $1, date_commande = $2, date_livraison_demandee = $3, 
+       poids_grammes = $4, calibre = $5, qualite = $6, maturite = $7, prix_unitaire_kg = $8, 
+       montant_total = $9, statut = $10, notes = $11 WHERE id = $12 RETURNING *`,
+      [client_id || null, date_commande, date_livraison_demandee || null, poidsGrammesVal, calibre || null, qualite || null, maturite || null, prixUnitaireKgVal, montant_total, statut, notes || null, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+  }
+});
+
+app.delete('/api/commandes/:id', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM commandes WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+    res.json({ message: 'Commande supprimée' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.post('/api/commandes/:id/creer-vente', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const commandeResult = await pool.query('SELECT * FROM commandes WHERE id = $1', [id]);
+    if (commandeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+    
+    const commande = commandeResult.rows[0];
+    
+    const venteExistante = await pool.query('SELECT id FROM ventes WHERE commande_id = $1', [id]);
+    if (venteExistante.rows.length > 0) {
+      return res.status(400).json({ error: 'Une vente existe déjÃ  pour cette commande' });
+    }
+    
+    const year = new Date().getFullYear();
+    const countResult = await pool.query('SELECT COUNT(*) FROM ventes WHERE numero_facture LIKE $1', [`FACT-${year}%`]);
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const numero_facture = `FACT-${year}-${String(count).padStart(3, '0')}`;
+    
+    const venteResult = await pool.query(
+      `INSERT INTO ventes (client_id, commande_id, date_vente, quantite_grammes, prix_unitaire_kg, montant_total, mode_paiement, statut, numero_facture, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [commande.client_id, commande.id, new Date().toISOString().split('T')[0], commande.poids_grammes, commande.prix_unitaire_kg, commande.montant_total, '', 'En attente', numero_facture, `Vente créée depuis commande ${commande.numero_commande}`]
+    );
+    
+    res.status(201).json(venteResult.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la création de la vente' });
+  }
+});
+
+// ==================== ROUTES PARAMETRES ====================
+app.get('/api/parametres', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM parametres ORDER BY cle');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.get('/api/parametres/:cle', async (req, res) => {
+  try {
+    const { cle } = req.params;
+    const result = await pool.query('SELECT * FROM parametres WHERE cle = $1', [cle]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.put('/api/parametres/:cle', requireWriteAccess, async (req, res) => {
+  try {
+    const { cle } = req.params;
+    const { valeur } = req.body;
+    const result = await pool.query(
+      'UPDATE parametres SET valeur = $1 WHERE cle = $2 RETURNING *',
+      [valeur, cle]
+    );
+    if (result.rows.length === 0) {
+      const insertResult = await pool.query(
+        'INSERT INTO parametres (cle, valeur) VALUES ($1, $2) RETURNING *',
+        [cle, valeur]
+      );
+      return res.json(insertResult.rows[0]);
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+  }
+});
+
+app.post('/api/parametres/reset', requireWriteAccess, async (req, res) => {
+  try {
+    const defaults = {
+      'colonnes_affichees_parcelles': '["nom", "surface_ha", "type_sol", "ph_sol", "date_creation"]',
+      'colonnes_affichees_arbres': '["numero", "espece", "variete_truffe", "parcelle_nom", "etat_sanitaire", "date_plantation", "circonference_cm"]',
+      'colonnes_affichees_interventions': '["date_prevue", "type_nom", "parcelle_nom", "arbre_numero", "statut", "personnel", "cout"]',
+      'colonnes_affichees_recoltes': '["date_recolte", "parcelle_nom", "arbre_numero", "poids_grammes", "qualite", "calibre", "caveur"]',
+      'colonnes_affichees_clients': '["nom", "type", "email", "telephone", "ville"]',
+      'colonnes_affichees_ventes': '["date_vente", "client_nom", "quantite_grammes", "prix_unitaire_kg", "montant_total", "statut"]'
+    };
+    
+    for (const [cle, valeur] of Object.entries(defaults)) {
+      await pool.query(
+        'INSERT INTO parametres (cle, valeur) VALUES ($1, $2) ON CONFLICT (cle) DO UPDATE SET valeur = $2',
+        [cle, valeur]
+      );
+    }
+    
+    res.json({ message: 'Paramètres réinitialisés' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+// Créer un nouveau paramètre
+app.post('/api/parametres', requireWriteAccess, async (req, res) => {
+  try {
+    const { cle, valeur, description } = req.body;
+    
+    if (!cle || !cle.trim()) {
+      return res.status(400).json({ error: 'La clé est obligatoire' });
+    }
+    
+    // Vérifier si le paramètre existe déjÃ 
+    const existing = await pool.query('SELECT id FROM parametres WHERE cle = $1', [cle.trim()]);
+    
+    if (existing.rows.length > 0) {
+      // Mettre Ã  jour si existe
+      const result = await pool.query(
+        'UPDATE parametres SET valeur = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE cle = $3 RETURNING *',
+        [valeur, description, cle.trim()]
+      );
+      return res.json(result.rows[0]);
+    }
+    
+    // Créer nouveau
+    const result = await pool.query(
+      'INSERT INTO parametres (cle, valeur, description) VALUES ($1, $2, $3) RETURNING *',
+      [cle.trim(), valeur, description]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erreur création paramètre:', err);
+    res.status(500).json({ error: 'Erreur lors de la création du paramètre' });
+  }
+});
+
+// Mettre Ã  jour un paramètre par ID
+app.put('/api/parametres/:id(\\d+)', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cle, valeur, description } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE parametres SET cle = COALESCE($1, cle), valeur = COALESCE($2, valeur), description = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [cle, valeur, description, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Erreur mise Ã  jour paramètre:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise Ã  jour' });
+  }
+});
+
+// Supprimer un paramètre par ID
+app.delete('/api/parametres/:id(\\d+)', requireWriteAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query('DELETE FROM parametres WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
+    
+    res.json({ message: 'Paramètre supprimé', parametre: result.rows[0] });
+  } catch (err) {
+    console.error('Erreur suppression paramètre:', err);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// ==================== ROUTES PREFERENCES UTILISATEUR ====================
+app.get('/api/preferences-utilisateur', async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.user_id || 'default';
+    const result = await pool.query('SELECT * FROM preferences_utilisateur WHERE user_id = $1', [userId.toString()]);
+    if (result.rows.length === 0) {
+      const insertResult = await pool.query(
+        'INSERT INTO preferences_utilisateur (user_id, colonnes_affichees, colonnes_export) VALUES ($1, $2, $3) RETURNING *',
+        [userId.toString(), '{}', '{}']
+      );
+      return res.json(insertResult.rows[0]);
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.put('/api/preferences-utilisateur', requireWriteAccess, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.user_id || 'default';
+    const { colonnes_affichees, colonnes_export } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO preferences_utilisateur (user_id, colonnes_affichees, colonnes_export) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (user_id) DO UPDATE SET colonnes_affichees = $2, colonnes_export = $3 
+       RETURNING *`,
+      [userId.toString(), JSON.stringify(colonnes_affichees || {}), JSON.stringify(colonnes_export || {})]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.post('/api/preferences-utilisateur/reset', requireWriteAccess, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.user_id || 'default';
+    const result = await pool.query(
+      'UPDATE preferences_utilisateur SET colonnes_affichees = $1, colonnes_export = $2 WHERE user_id = $3 RETURNING *',
+      ['{}', '{}', userId.toString()]
+    );
+    res.json(result.rows[0] || { message: 'Préférences réinitialisées' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+// ==================== ROUTES STATISTIQUES ====================
+app.get('/api/stats/dashboard', async (req, res) => {
+  try {
+    const parcelles = await pool.query('SELECT COUNT(*) as count, SUM(surface_ha) as surface FROM parcelles');
+    const arbres = await pool.query('SELECT COUNT(*) as count FROM arbres WHERE deleted_at IS NULL');
+    const arbresParEtat = await pool.query('SELECT etat_sanitaire, COUNT(*) as count FROM arbres WHERE deleted_at IS NULL GROUP BY etat_sanitaire');
+    
+    const recoltesSaison = await pool.query(`
+      SELECT SUM(poids_grammes) as total_grammes, COUNT(*) as count
+      FROM recoltes WHERE date_recolte >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '3 months'
+    `);
+    
+    const ventesMois = await pool.query(`
+      SELECT SUM(montant_total) as chiffre_affaires, COUNT(*) as count
+      FROM ventes WHERE date_vente >= DATE_TRUNC('month', CURRENT_DATE)
+    `);
+    
+    const interventionsAVenir = await pool.query(`
+      SELECT COUNT(*) as count FROM interventions WHERE date_prevue >= CURRENT_DATE AND statut = 'Planifié'
+    `);
+    
+    const commandesEnCours = await pool.query(`
+      SELECT COUNT(*) as count FROM commandes WHERE statut IN ('En attente', 'Confirmée', 'En préparation')
+    `);
+
+    res.json({
+      parcelles: { count: parseInt(parcelles.rows[0].count), surface: parseFloat(parcelles.rows[0].surface) || 0 },
+      arbres: { count: parseInt(arbres.rows[0].count), parEtat: arbresParEtat.rows },
+      recoltes: { totalGrammes: parseFloat(recoltesSaison.rows[0].total_grammes) || 0, count: parseInt(recoltesSaison.rows[0].count) },
+      ventes: { chiffreAffaires: parseFloat(ventesMois.rows[0].chiffre_affaires) || 0, count: parseInt(ventesMois.rows[0].count) },
+      interventions: { aVenir: parseInt(interventionsAVenir.rows[0].count) },
+      commandes: { enCours: parseInt(commandesEnCours.rows[0].count) }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.get('/api/stats/recoltes-annuelles', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT EXTRACT(YEAR FROM date_recolte) as annee,
+             SUM(poids_grammes) as total_grammes,
+             COUNT(*) as nombre_recoltes
+      FROM recoltes
+      GROUP BY EXTRACT(YEAR FROM date_recolte)
+      ORDER BY annee DESC
+      LIMIT 10
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+app.get('/api/stats/recoltes-mensuelles', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT TO_CHAR(date_recolte, 'YYYY-MM') as mois,
+             SUM(poids_grammes) as total_grammes,
+             COUNT(*) as nombre_recoltes
+      FROM recoltes
+      GROUP BY TO_CHAR(date_recolte, 'YYYY-MM')
+      ORDER BY mois
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+// ==================== ROUTE DASHBOARD CONSOLIDÉE ====================
+app.get('/api/dashboard/full', async (req, res) => {
+  try {
+    const [
+      parcellesStats, arbresCount, arbresParEtat, recoltesSaison, ventesMois,
+      interventionsAVenir, commandesEnCours, commandesEnAttente, ventesEnAttente,
+      dernieresRecoltes, prochainesInterventions, commandesRecentes,
+      productionMensuelle, productionParParcelle
+    ] = await Promise.all([
+      pool.query('SELECT COUNT(*) as count, COALESCE(SUM(surface_ha), 0) as surface FROM parcelles'),
+      pool.query('SELECT COUNT(*) as count FROM arbres WHERE deleted_at IS NULL'),
+      pool.query(`SELECT etat_sanitaire, COUNT(*) as count FROM arbres WHERE deleted_at IS NULL GROUP BY etat_sanitaire
+        ORDER BY CASE etat_sanitaire WHEN 'Bon' THEN 1 WHEN 'Moyen' THEN 2 WHEN 'Mauvais' THEN 3 WHEN 'Mort' THEN 4 ELSE 5 END`),
+      pool.query(`SELECT COALESCE(SUM(poids_grammes), 0) as total_grammes, COUNT(*) as count
+        FROM recoltes WHERE date_recolte >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '3 months'`),
+      pool.query(`SELECT COALESCE(SUM(montant_total), 0) as chiffre_affaires, COUNT(*) as count
+        FROM ventes WHERE date_vente >= DATE_TRUNC('month', CURRENT_DATE)`),
+      pool.query(`SELECT COUNT(*) as count FROM interventions WHERE date_prevue >= CURRENT_DATE AND statut = 'Planifié'`),
+      pool.query(`SELECT COUNT(*) as count FROM commandes WHERE statut IN ('En attente', 'Confirmée', 'En préparation')`),
+      pool.query(`SELECT COUNT(*) as count FROM commandes WHERE statut IN ('En attente', 'Confirmée')`),
+      pool.query(`SELECT COUNT(*) as count FROM ventes WHERE statut = 'En attente'`),
+      pool.query(`SELECT r.id, r.date_recolte, r.poids_grammes, r.qualite, r.calibre,
+        p.nom as parcelle_nom, a.numero as arbre_numero FROM recoltes r
+        LEFT JOIN parcelles p ON r.parcelle_id = p.id LEFT JOIN arbres a ON r.arbre_id = a.id
+        ORDER BY r.date_recolte DESC LIMIT 5`),
+      pool.query(`SELECT i.id, i.date_prevue, i.statut, i.description,
+        t.nom as type_nom, t.couleur as type_couleur, p.nom as parcelle_nom, a.numero as arbre_numero
+        FROM interventions i LEFT JOIN types_intervention t ON i.type_id = t.id
+        LEFT JOIN parcelles p ON i.parcelle_id = p.id LEFT JOIN arbres a ON i.arbre_id = a.id
+        WHERE i.date_prevue >= CURRENT_DATE AND i.statut = 'Planifié' ORDER BY i.date_prevue ASC LIMIT 5`),
+      pool.query(`SELECT c.id, c.numero_commande, c.date_commande, c.date_livraison_demandee,
+        c.poids_grammes, c.montant_total, c.statut, cl.nom as client_nom
+        FROM commandes c LEFT JOIN clients cl ON c.client_id = cl.id
+        WHERE c.statut NOT IN ('Annulée', 'Livrée') ORDER BY c.date_commande DESC LIMIT 5`),
+      pool.query(`SELECT TO_CHAR(date_recolte, 'YYYY-MM') as mois, SUM(poids_grammes) as total_grammes,
+        COUNT(*) as nombre_recoltes FROM recoltes
+        WHERE date_recolte >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+        GROUP BY TO_CHAR(date_recolte, 'YYYY-MM') ORDER BY mois`),
+      pool.query(`SELECT p.nom as parcelle_nom, COALESCE(SUM(r.poids_grammes), 0) as total_grammes
+        FROM parcelles p LEFT JOIN recoltes r ON r.parcelle_id = p.id GROUP BY p.id, p.nom
+        HAVING COALESCE(SUM(r.poids_grammes), 0) > 0 ORDER BY total_grammes DESC LIMIT 10`)
+    ]);
+
+    res.json({
+      stats: {
+        parcelles: { count: parseInt(parcellesStats.rows[0].count), surface: parseFloat(parcellesStats.rows[0].surface) || 0 },
+        arbres: { count: parseInt(arbresCount.rows[0].count), parEtat: arbresParEtat.rows.map(r => ({ etat_sanitaire: r.etat_sanitaire, count: parseInt(r.count) })) },
+        recoltes: { totalGrammes: parseFloat(recoltesSaison.rows[0].total_grammes) || 0, count: parseInt(recoltesSaison.rows[0].count) },
+        ventes: { chiffreAffaires: parseFloat(ventesMois.rows[0].chiffre_affaires) || 0, count: parseInt(ventesMois.rows[0].count) },
+        interventions: { aVenir: parseInt(interventionsAVenir.rows[0].count) },
+        commandes: { enCours: parseInt(commandesEnCours.rows[0].count) }
+      },
+      alertes: { commandesEnAttente: parseInt(commandesEnAttente.rows[0].count), ventesEnAttente: parseInt(ventesEnAttente.rows[0].count) },
+      activites: { dernieresRecoltes: dernieresRecoltes.rows, prochainesInterventions: prochainesInterventions.rows, commandesEnCours: commandesRecentes.rows },
+      graphiques: {
+        productionMensuelle: productionMensuelle.rows.map(r => ({ mois: r.mois, totalGrammes: parseFloat(r.total_grammes) || 0, nombreRecoltes: parseInt(r.nombre_recoltes) })),
+        productionParParcelle: productionParParcelle.rows.map(r => ({ nom: r.parcelle_nom, totalGrammes: parseFloat(r.total_grammes) || 0 }))
+      },
+      meta: { generatedAt: new Date().toISOString(), periode: { recoltes: 'Saison en cours', ventes: 'Mois en cours', graphiqueMensuel: '12 derniers mois' } }
+    });
+  } catch (err) {
+    console.error('Erreur dashboard/full:', err);
+    res.status(500).json({ error: 'Erreur', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
+  }
+});
+
+// ============================================================
+// ROUTES STOCK AUTOMATIQUE
+// ============================================================
+
+// Calcul du stock automatique (Récoltes - Ventes payées)
+app.get('/api/stock', async (req, res) => {
+  try {
+    // Total récolté
+    const totalRecolte = await pool.query(`
+      SELECT COALESCE(SUM(poids_grammes), 0) as total_grammes
+      FROM recoltes
+    `);
+
+    // Total vendu (uniquement ventes payées)
+    const totalVendu = await pool.query(`
+      SELECT COALESCE(SUM(quantite_grammes), 0) as total_grammes
+      FROM ventes
+      WHERE statut = 'Payée'
+    `);
+
+    // Détail par qualité et calibre
+    const detailsStock = await pool.query(`
+      WITH recoltes_agg AS (
+        SELECT 
+          COALESCE(qualite, 'Non spécifié') as qualite,
+          COALESCE(calibre, 'Non spécifié') as calibre,
+          SUM(poids_grammes) as total_recolte
+        FROM recoltes
+        GROUP BY COALESCE(qualite, 'Non spécifié'), COALESCE(calibre, 'Non spécifié')
+      ),
+      ventes_agg AS (
+        SELECT 
+          COALESCE(r.qualite, 'Non spécifié') as qualite,
+          COALESCE(r.calibre, 'Non spécifié') as calibre,
+          SUM(v.quantite_grammes) as total_vendu
+        FROM ventes v
+        LEFT JOIN recoltes r ON v.recolte_id = r.id
+        WHERE v.statut = 'Payée'
+        GROUP BY COALESCE(r.qualite, 'Non spécifié'), COALESCE(r.calibre, 'Non spécifié')
+      )
+      SELECT 
+        COALESCE(ra.qualite, va.qualite) as qualite,
+        COALESCE(ra.calibre, va.calibre) as calibre,
+        COALESCE(ra.total_recolte, 0) as recolte_grammes,
+        COALESCE(va.total_vendu, 0) as vendu_grammes,
+        COALESCE(ra.total_recolte, 0) - COALESCE(va.total_vendu, 0) as disponible_grammes
+      FROM recoltes_agg ra
+      FULL OUTER JOIN ventes_agg va ON ra.qualite = va.qualite AND ra.calibre = va.calibre
+      ORDER BY qualite, calibre
+    `);
+
+    // Stock par saison (année de récolte)
+    const stockParSaison = await pool.query(`
+      WITH recoltes_saison AS (
+        SELECT 
+          CASE 
+            WHEN EXTRACT(MONTH FROM date_recolte) >= 11 THEN 
+              EXTRACT(YEAR FROM date_recolte)::text || '-' || (EXTRACT(YEAR FROM date_recolte) + 1)::text
+            ELSE 
+              (EXTRACT(YEAR FROM date_recolte) - 1)::text || '-' || EXTRACT(YEAR FROM date_recolte)::text
+          END as saison,
+          SUM(poids_grammes) as total_recolte
+        FROM recoltes
+        GROUP BY saison
+      ),
+      ventes_saison AS (
+        SELECT 
+          CASE 
+            WHEN EXTRACT(MONTH FROM r.date_recolte) >= 11 THEN 
+              EXTRACT(YEAR FROM r.date_recolte)::text || '-' || (EXTRACT(YEAR FROM r.date_recolte) + 1)::text
+            ELSE 
+              (EXTRACT(YEAR FROM r.date_recolte) - 1)::text || EXTRACT(YEAR FROM r.date_recolte)::text
+          END as saison,
+          SUM(v.quantite_grammes) as total_vendu
+        FROM ventes v
+        JOIN recoltes r ON v.recolte_id = r.id
+        WHERE v.statut = 'Payée'
+        GROUP BY saison
+      )
+      SELECT 
+        COALESCE(rs.saison, vs.saison) as saison,
+        COALESCE(rs.total_recolte, 0) as recolte_grammes,
+        COALESCE(vs.total_vendu, 0) as vendu_grammes,
+        COALESCE(rs.total_recolte, 0) - COALESCE(vs.total_vendu, 0) as disponible_grammes
+      FROM recoltes_saison rs
+      FULL OUTER JOIN ventes_saison vs ON rs.saison = vs.saison
+      ORDER BY saison DESC
+    `);
+
+    // Prix moyen au kg pour estimation de valeur
+    const prixMoyen = await pool.query(`
+      SELECT COALESCE(AVG(prix_unitaire_kg), 800) as prix_moyen_kg
+      FROM ventes
+      WHERE statut = 'Payée' AND date_vente >= NOW() - INTERVAL '1 year'
+    `);
+
+    const stockDisponible = parseFloat(totalRecolte.rows[0].total_grammes) - parseFloat(totalVendu.rows[0].total_grammes);
+    const prixMoyenKg = parseFloat(prixMoyen.rows[0].prix_moyen_kg);
+    const valeurEstimee = (stockDisponible / 1000) * prixMoyenKg;
+    const tauxUtilisation = parseFloat(totalRecolte.rows[0].total_grammes) > 0 
+      ? (parseFloat(totalVendu.rows[0].total_grammes) / parseFloat(totalRecolte.rows[0].total_grammes)) * 100 
+      : 0;
+
+    res.json({
+      stock_disponible_grammes: stockDisponible,
+      total_recolte_grammes: parseFloat(totalRecolte.rows[0].total_grammes),
+      total_vendu_grammes: parseFloat(totalVendu.rows[0].total_grammes),
+      taux_utilisation: tauxUtilisation,
+      prix_moyen_kg: prixMoyenKg,
+      valeur_estimee: valeurEstimee,
+      details_stock: detailsStock.rows.map(d => ({
+        qualite: d.qualite,
+        calibre: d.calibre,
+        recolte_grammes: parseFloat(d.recolte_grammes),
+        vendu_grammes: parseFloat(d.vendu_grammes),
+        disponible_grammes: parseFloat(d.disponible_grammes)
+      })),
+      stock_par_saison: stockParSaison.rows.map(s => ({
+        saison: s.saison,
+        recolte_grammes: parseFloat(s.recolte_grammes),
+        vendu_grammes: parseFloat(s.vendu_grammes),
+        disponible_grammes: parseFloat(s.disponible_grammes)
+      })),
+      generated_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Erreur calcul stock:', err);
+    res.status(500).json({ error: 'Erreur lors du calcul du stock' });
+  }
+});
+
+// Stock disponible pour une récolte spécifique
+app.get('/api/stock/recolte/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const recolte = await pool.query(`
+      SELECT poids_grammes FROM recoltes WHERE id = $1
+    `, [id]);
+
+    if (recolte.rows.length === 0) {
+      return res.status(404).json({ error: 'Récolte non trouvée' });
+    }
+
+    const vendu = await pool.query(`
+      SELECT COALESCE(SUM(quantite_grammes), 0) as total_vendu
+      FROM ventes
+      WHERE recolte_id = $1 AND statut = 'Payée'
+    `, [id]);
+
+    const poidsRecolte = parseFloat(recolte.rows[0].poids_grammes);
+    const poidsVendu = parseFloat(vendu.rows[0].total_vendu);
+
+    res.json({
+      recolte_id: parseInt(id),
+      poids_recolte: poidsRecolte,
+      poids_vendu: poidsVendu,
+      stock_disponible: poidsRecolte - poidsVendu
+    });
+  } catch (err) {
+    console.error('Erreur stock récolte:', err);
+    res.status(500).json({ error: 'Erreur lors du calcul du stock de la récolte' });
+  }
+});
+
+// ============================================================
+// ROUTES RECHERCHE GLOBALE
+// ============================================================
+
+app.get('/api/search/global', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json([]);
+    }
+
+    const searchTerm = `%${q.toLowerCase()}%`;
+    const results = [];
+
+    // Recherche dans les parcelles
+    try {
+      const parcelles = await pool.query(`
+        SELECT id, nom, surface_ha, type_sol
+        FROM parcelles
+        WHERE LOWER(COALESCE(nom, '')) LIKE $1 
+           OR LOWER(COALESCE(type_sol, '')) LIKE $1 
+           OR LOWER(COALESCE(notes, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (parcelles.rows.length > 0) {
+        results.push({
+          category: 'parcelles',
+          items: parcelles.rows.map(p => ({
+            id: p.id,
+            title: p.nom,
+            subtitle: `${p.surface_ha} ha - ${p.type_sol || 'Type non défini'}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche parcelles:', e.message);
+    }
+
+    // Recherche dans les arbres
+    try {
+      const arbres = await pool.query(`
+        SELECT a.id, a.numero, a.espece, a.variete_truffe, a.etat_sanitaire, p.nom as parcelle_nom
+        FROM arbres a
+        LEFT JOIN parcelles p ON a.parcelle_id = p.id
+        WHERE LOWER(COALESCE(a.numero, '')) LIKE $1 
+           OR LOWER(COALESCE(a.espece, '')) LIKE $1 
+           OR LOWER(COALESCE(a.variete_truffe, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (arbres.rows.length > 0) {
+        results.push({
+          category: 'arbres',
+          items: arbres.rows.map(a => ({
+            id: a.id,
+            title: `${a.numero} - ${a.espece}`,
+            subtitle: `${a.parcelle_nom || 'Sans parcelle'} - ${a.etat_sanitaire}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche arbres:', e.message);
+    }
+
+    // Recherche dans les récoltes
+    try {
+      const recoltes = await pool.query(`
+        SELECT r.id, r.date_recolte, r.poids_grammes, r.qualite, r.calibre, 
+               a.numero as arbre_numero, p.nom as parcelle_nom
+        FROM recoltes r
+        LEFT JOIN arbres a ON r.arbre_id = a.id
+        LEFT JOIN parcelles p ON r.parcelle_id = p.id
+        WHERE LOWER(COALESCE(r.qualite, '')) LIKE $1 
+           OR LOWER(COALESCE(r.calibre, '')) LIKE $1 
+           OR LOWER(COALESCE(r.caveur, '')) LIKE $1
+           OR LOWER(COALESCE(p.nom, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (recoltes.rows.length > 0) {
+        results.push({
+          category: 'recoltes',
+          items: recoltes.rows.map(r => ({
+            id: r.id,
+            title: `${new Date(r.date_recolte).toLocaleDateString('fr-FR')} - ${r.poids_grammes}g`,
+            subtitle: `${r.qualite || 'Qualité NC'} - ${r.calibre || 'Calibre NC'} - ${r.parcelle_nom || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche récoltes:', e.message);
+    }
+
+    // Recherche dans les clients
+    try {
+      const clients = await pool.query(`
+        SELECT id, type, nom, prenom, raison_sociale, email, telephone, ville
+        FROM clients
+        WHERE LOWER(COALESCE(nom, '')) LIKE $1 
+           OR LOWER(COALESCE(prenom, '')) LIKE $1 
+           OR LOWER(COALESCE(raison_sociale, '')) LIKE $1
+           OR LOWER(COALESCE(email, '')) LIKE $1 
+           OR LOWER(COALESCE(telephone, '')) LIKE $1 
+           OR LOWER(COALESCE(ville, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (clients.rows.length > 0) {
+        results.push({
+          category: 'clients',
+          items: clients.rows.map(c => ({
+            id: c.id,
+            title: c.type === 'Professionnel' ? (c.raison_sociale || c.nom) : `${c.prenom || ''} ${c.nom}`.trim(),
+            subtitle: `${c.type} - ${c.ville || 'Ville NC'} - ${c.email || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche clients:', e.message);
+    }
+
+    // Recherche dans les ventes
+    try {
+      const ventes = await pool.query(`
+        SELECT v.id, v.date_vente, v.quantite_grammes, v.montant_total, v.statut, v.numero_facture,
+               c.nom as client_nom, c.prenom as client_prenom, c.raison_sociale as client_raison_sociale
+        FROM ventes v
+        LEFT JOIN clients c ON v.client_id = c.id
+        WHERE LOWER(COALESCE(v.numero_facture, '')) LIKE $1 
+           OR LOWER(COALESCE(v.statut, '')) LIKE $1
+           OR LOWER(COALESCE(c.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(c.raison_sociale, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (ventes.rows.length > 0) {
+        results.push({
+          category: 'ventes',
+          items: ventes.rows.map(v => ({
+            id: v.id,
+            title: `${v.numero_facture || 'Sans n°'} - ${v.montant_total}ââ€Å¡¬`,
+            subtitle: `${v.client_raison_sociale || `${v.client_prenom || ''} ${v.client_nom || ''}`.trim() || 'Client NC'} - ${v.statut}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche ventes:', e.message);
+    }
+
+    // Recherche dans les commandes
+    try {
+      const commandes = await pool.query(`
+        SELECT co.id, co.numero_commande, co.date_commande, co.poids_grammes, co.statut,
+               c.nom as client_nom, c.prenom as client_prenom, c.raison_sociale as client_raison_sociale
+        FROM commandes co
+        LEFT JOIN clients c ON co.client_id = c.id
+        WHERE LOWER(COALESCE(co.numero_commande, '')) LIKE $1 
+           OR LOWER(COALESCE(co.statut, '')) LIKE $1
+           OR LOWER(COALESCE(c.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(c.raison_sociale, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (commandes.rows.length > 0) {
+        results.push({
+          category: 'commandes',
+          items: commandes.rows.map(co => ({
+            id: co.id,
+            title: `${co.numero_commande || 'Sans n°'} - ${co.poids_grammes}g`,
+            subtitle: `${co.client_raison_sociale || `${co.client_prenom || ''} ${co.client_nom || ''}`.trim() || 'Client NC'} - ${co.statut}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche commandes:', e.message);
+    }
+
+    // Recherche dans les interventions
+    try {
+      const interventions = await pool.query(`
+        SELECT i.id, i.date_prevue, i.date_realisee, i.description, i.statut,
+               t.nom as type_nom, p.nom as parcelle_nom
+        FROM interventions i
+        LEFT JOIN types_intervention t ON i.type_intervention_id = t.id
+        LEFT JOIN parcelles p ON i.parcelle_id = p.id
+        WHERE LOWER(COALESCE(t.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(i.description, '')) LIKE $1 
+           OR LOWER(COALESCE(p.nom, '')) LIKE $1
+           OR LOWER(COALESCE(i.personnel, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (interventions.rows.length > 0) {
+        results.push({
+          category: 'interventions',
+          items: interventions.rows.map(i => ({
+            id: i.id,
+            title: `${i.type_nom || 'Intervention'} - ${new Date(i.date_prevue).toLocaleDateString('fr-FR')}`,
+            subtitle: `${i.parcelle_nom || 'Sans parcelle'} - ${i.statut || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche interventions:', e.message);
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error('Erreur recherche globale:', err);
+    res.status(500).json({ error: 'Erreur lors de la recherche', details: err.message });
+  }
+});
+
+// ============================================================
+// ROUTES FACTURES PDF
+// ============================================================
+
+// Récupérer les données pour générer une facture
+app.get('/api/factures/:venteId', async (req, res) => {
+  try {
+    const { venteId } = req.params;
+
+    const vente = await pool.query(`
+      SELECT 
+        v.*,
+        c.type as client_type,
+        c.nom as client_nom,
+        c.prenom as client_prenom,
+        c.raison_sociale as client_raison_sociale,
+        c.email as client_email,
+        c.telephone as client_telephone,
+        c.adresse as client_adresse,
+        c.code_postal as client_code_postal,
+        c.ville as client_ville,
+        c.pays as client_pays,
+        c.siret as client_siret,
+        r.date_recolte,
+        r.qualite as recolte_qualite,
+        r.calibre as recolte_calibre,
+        r.maturite as recolte_maturite,
+        p.nom as parcelle_nom
+      FROM ventes v
+      LEFT JOIN clients c ON v.client_id = c.id
+      LEFT JOIN recoltes r ON v.recolte_id = r.id
+      LEFT JOIN parcelles p ON r.parcelle_id = p.id
+      WHERE v.id = $1
+    `, [venteId]);
+
+    if (vente.rows.length === 0) {
+      return res.status(404).json({ error: 'Vente non trouvée' });
+    }
+
+    // Récupérer les paramètres de l'entreprise
+    const parametres = await pool.query(`
+      SELECT cle, valeur FROM parametres 
+      WHERE cle IN ('entreprise_nom', 'entreprise_adresse', 'entreprise_code_postal', 
+                    'entreprise_ville', 'entreprise_telephone', 'entreprise_email',
+                    'entreprise_siret', 'entreprise_tva', 'facture_mentions_legales',
+                    'facture_conditions_paiement', 'facture_iban', 'facture_bic')
+    `);
+
+    const params = {};
+    parametres.rows.forEach(p => {
+      params[p.cle] = p.valeur;
+    });
+
+    const venteData = vente.rows[0];
+    
+    // Générer le numéro de facture si non existant
+    let numeroFacture = venteData.numero_facture;
+    if (!numeroFacture) {
+      const year = new Date(venteData.date_vente).getFullYear();
+      const countResult = await pool.query(`
+        SELECT COUNT(*) as count FROM ventes 
+        WHERE EXTRACT(YEAR FROM date_vente) = $1 AND numero_facture IS NOT NULL
+      `, [year]);
+      const count = parseInt(countResult.rows[0].count) + 1;
+      numeroFacture = `FAC-${year}-${String(count).padStart(4, '0')}`;
+      
+      // Mettre Ã  jour la vente avec le numéro de facture
+      await pool.query(`UPDATE ventes SET numero_facture = $1 WHERE id = $2`, [numeroFacture, venteId]);
+    }
+
+    res.json({
+      facture: {
+        numero: numeroFacture,
+        date_emission: new Date().toISOString(),
+        date_vente: venteData.date_vente,
+        quantite_grammes: venteData.quantite_grammes,
+        prix_unitaire_kg: venteData.prix_unitaire_kg,
+        montant_ht: venteData.montant_total,
+        tva_taux: 5.5, // TVA réduite pour produits alimentaires
+        tva_montant: venteData.montant_total * 0.055,
+        montant_ttc: venteData.montant_total * 1.055,
+        mode_paiement: venteData.mode_paiement,
+        statut: venteData.statut,
+        notes: venteData.notes
+      },
+      client: {
+        type: venteData.client_type,
+        nom: venteData.client_nom,
+        prenom: venteData.client_prenom,
+        raison_sociale: venteData.client_raison_sociale,
+        email: venteData.client_email,
+        telephone: venteData.client_telephone,
+        adresse: venteData.client_adresse,
+        code_postal: venteData.client_code_postal,
+        ville: venteData.client_ville,
+        pays: venteData.client_pays,
+        siret: venteData.client_siret
+      },
+      produit: {
+        description: 'Truffes fraîches',
+        qualite: venteData.recolte_qualite,
+        calibre: venteData.recolte_calibre,
+        maturite: venteData.recolte_maturite,
+        date_recolte: venteData.date_recolte,
+        parcelle: venteData.parcelle_nom
+      },
+      entreprise: {
+        nom: params.entreprise_nom || 'Truffière',
+        adresse: params.entreprise_adresse || '',
+        code_postal: params.entreprise_code_postal || '',
+        ville: params.entreprise_ville || '',
+        telephone: params.entreprise_telephone || '',
+        email: params.entreprise_email || '',
+        siret: params.entreprise_siret || '',
+        tva_intra: params.entreprise_tva || '',
+        iban: params.facture_iban || '',
+        bic: params.facture_bic || '',
+        mentions_legales: params.facture_mentions_legales || '',
+        conditions_paiement: params.facture_conditions_paiement || 'Paiement Ã  réception'
+      }
+    });
+  } catch (err) {
+    console.error('Erreur récupération facture:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des données de facture' });
+  }
+});
+
+// Générer un numéro de facture
+app.post('/api/factures/generer-numero', requireWriteAccess, async (req, res) => {
+  try {
+    const year = new Date().getFullYear();
+    const countResult = await pool.query(`
+      SELECT COUNT(*) as count FROM ventes 
+      WHERE EXTRACT(YEAR FROM date_vente) = $1 AND numero_facture IS NOT NULL
+    `, [year]);
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const numeroFacture = `FAC-${year}-${String(count).padStart(4, '0')}`;
+    
+    res.json({ numero_facture: numeroFacture });
+  } catch (err) {
+    console.error('Erreur génération numéro facture:', err);
+    res.status(500).json({ error: 'Erreur lors de la génération du numéro de facture' });
+  }
+});
+
+
+
+
+// ============================================================
+// GESTION DES ERREURS
+// ============================================================
+
+// ✅ 1. ENDPOINT /HEALTH EN PREMIER (avant le middleware 404)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// ✅ 2. MIDDLEWARE 404 (capture tout ce qui n'a pas été défini avant)
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route non trouvée', code: 'NOT_FOUND', path: req.path });
+});
+
+// ✅ 3. GESTIONNAIRE D'ERREURS GLOBAL (toujours en dernier)
+app.use((err, req, res, next) => {
+	console.error('Erreur serveur:', {
+		message: err.message, 
+		stack: process.env.NODE_ENV === 'development' ? err.stack : undefined, 
+		route: req.path, 
+		user: req.user?.id, 
+		ip: req.ip 
+	});
+	
+	if (err.message === 'Non autorisé par CORS') {
+		return res.status(403).json({ error: 'Origine non autorisée', code: 'CORS_ERROR' });
+	}
+	// Erreurs PostgreSQL courantes
+	if (err.code === '23505') {
+		return res.status(409).json({ error: 'Conflit : doublon détecté', code: 'UNIQUE_VIOLATION' });
+	}
+	
+	res.status(500).json({ 
+		error: 'Erreur interne', 
+		code: 'INTERNAL_ERROR', 
+		details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+	}); 
+});
+
+module.exports = app;
