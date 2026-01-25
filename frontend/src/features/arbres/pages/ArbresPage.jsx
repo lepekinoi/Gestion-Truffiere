@@ -8,6 +8,8 @@ import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
 import ArbresTrashModal from '../components/ArbresTrashModal';
 import './ArbresPage.css';
+import EspeceSelector from '../components/EspeceSelector';
+
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -908,10 +910,16 @@ function ArbresPage({ highlightId }) {
               </div>
 
               <div className="form-grid">
-                <div className="form-group">
-                  <label>Espèce</label>
-                  <input type="text" name="espece" value={formData.espece} onChange={handleInputChange} placeholder="Ex: Noisetier" />
-                </div>
+			<div className="form-group">
+			  <label>Espèce</label>
+			  <EspeceSelector
+				value={formData.espece}
+				onChange={(value) => setFormData({...formData, espece: value})}
+				placeholder="Sélectionner une espèce..."
+				required={false}
+				showInfos={true}
+			  />
+			</div>
 
                 <div className="form-group">
                   <label>Variété de truffe</label>
