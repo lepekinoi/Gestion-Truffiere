@@ -5,16 +5,16 @@ export default function useArbresFilters(arbres) {
     search: '',
     parcelle: '',
     espece: '',
-    etat: '',
+    etat_sanitaire: '',
     variete_truffe: '',
     avecPosition: ''
   });
 
   const filterOptions = useMemo(() => {
     const especes = [...new Set(arbres.map(a => a.espece).filter(Boolean))].sort();
-    const etats = [...new Set(arbres.map(a => a.etat).filter(Boolean))].sort();
+    const etats_sanitaire = [...new Set(arbres.map(a => a.etat_sanitaire).filter(Boolean))].sort();
     const varietes = [...new Set(arbres.map(a => a.variete_truffe).filter(Boolean))].sort();
-    return { especes, etats, varietes };
+    return { especes, etats_sanitaire, varietes };
   }, [arbres]);
 
   const filteredArbres = useMemo(() => {
@@ -29,7 +29,7 @@ export default function useArbresFilters(arbres) {
       }
       if (filters.parcelle && arbre.parcelle_id !== parseInt(filters.parcelle)) return false;
       if (filters.espece && arbre.espece !== filters.espece) return false;
-      if (filters.etat && arbre.etat !== filters.etat) return false;
+      if (filters.etat_sanitaire && arbre.etat_sanitaire !== filters.etat_sanitaire) return false;
       if (filters.variete_truffe && arbre.variete_truffe !== filters.variete_truffe) return false;
       if (filters.avecPosition === 'oui' && (!arbre.latitude || !arbre.longitude)) return false;
       if (filters.avecPosition === 'non' && (arbre.latitude && arbre.longitude)) return false;
@@ -46,7 +46,7 @@ export default function useArbresFilters(arbres) {
       search: '',
       parcelle: '',
       espece: '',
-      etat: '',
+      etat_sanitaire: '',
       variete_truffe: '',
       avecPosition: ''
     });

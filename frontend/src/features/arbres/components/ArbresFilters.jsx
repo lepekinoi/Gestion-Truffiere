@@ -138,8 +138,8 @@ export default function ArbresFilters({
           <div>
             <label>État</label>
             <select
-              value={filters.etat}
-              onChange={(e) => onChange('etat', e.target.value)}
+              value={filters.etat_sanitaire}
+              onChange={(e) => onChange('etat_sanitaire', e.target.value)}
             >
               <option value="">Tous</option>
               <option value="Bon">Bon</option>

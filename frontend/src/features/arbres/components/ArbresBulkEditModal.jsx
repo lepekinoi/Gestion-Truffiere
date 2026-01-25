@@ -59,7 +59,7 @@ export default function ArbresBulkEditModal({
 
           <div className="form-group">
             <label>État</label>
-            <select name="etat" value={bulkEditData.etat} onChange={onChange}>
+            <select name="etat_sanitaire" value={bulkEditData.etat_sanitaire} onChange={onChange}>
               <option value="">-- Ne pas modifier --</option>
               <option value="Bon">Bon</option>
               <option value="Moyen">Moyen</option>

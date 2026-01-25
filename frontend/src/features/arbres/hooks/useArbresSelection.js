@@ -61,7 +61,7 @@ export default function useArbresSelection({ arbres, filteredArbres, paginatedAr
       if (bulkEditData.variete_truffe) updates.variete_truffe = bulkEditData.variete_truffe;
       if (bulkEditData.date_plantation) updates.date_plantation = bulkEditData.date_plantation;
       if (bulkEditData.porte_greffe) updates.porte_greffe = bulkEditData.porte_greffe;
-      // if (bulkEditData.etat) updates.etat = bulkEditData.etat;
+      if (bulkEditData.etat_sanitaire) updates.etat_sanitaire = bulkEditData.etat_sanitaire;
       if (bulkEditData.rendement_estimé) updates.rendement_estimé = bulkEditData.rendement_estimé;
       if (bulkEditData.circonference_cm) updates.circonference_cm = bulkEditData.circonference_cm;
       if (bulkEditData.hauteur_m) updates.hauteur_m = bulkEditData.hauteur_m;
