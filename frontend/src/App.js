@@ -14,7 +14,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Parcelles from './components/Parcelles';
-// Import de la nouvelle structure de la feature arbres
 import ArbresPage from './features/arbres/pages/ArbresPage';
 import Carte from './components/Carte';
 import Interventions from './components/Interventions';
