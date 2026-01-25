@@ -62,43 +62,57 @@ const EspeceSelector = ({
   }, [value, especes]);
 
   // Filtrer les espèces selon l'input
-  useEffect(() => {
-    if (!inputValue) {
-      setFilteredEspeces(especes);
-      return;
-    }
+  // useEffect(() => {
+    // if (!inputValue) {
+      // setFilteredEspeces(especes);
+      // return;
+    // }
 
-    const searchLower = inputValue.toLowerCase();
-    const filtered = especes.filter(e => 
-      e.nom.toLowerCase().includes(searchLower) ||
-      e.code.toLowerCase().includes(searchLower) ||
-      e.nom_scientifique?.toLowerCase().includes(searchLower) ||
-      e.groupe_principal?.toLowerCase().includes(searchLower)
-    );
+    // const searchLower = inputValue.toLowerCase();
+    // const filtered = especes.filter(e => 
+      // e.nom.toLowerCase().includes(searchLower) ||
+      // e.code.toLowerCase().includes(searchLower) ||
+      // e.nom_scientifique?.toLowerCase().includes(searchLower) ||
+      // e.groupe_principal?.toLowerCase().includes(searchLower)
+    // );
     
-    setFilteredEspeces(filtered);
-  }, [inputValue, especes]);
+    // setFilteredEspeces(filtered);
+  // }, [inputValue, especes]);
+  
+
 
   // Fermer le dropdown au clic extérieur
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
+  // useEffect(() => {
+    // const handleClickOutside = (event) => {
+      // if (containerRef.current && !containerRef.current.contains(event.target)) {
+        // setIsOpen(false);
+      // }
+    // };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // document.addEventListener('mousedown', handleClickOutside);
+    // return () => document.removeEventListener('mousedown', handleClickOutside);
+  // }, []);
+  
+  // TOUJOURS toutes les espèces (pas de filtre)
+useEffect(() => {
+  setFilteredEspeces(especes);
+}, [especes]);
 
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInputValue(val);
-    setIsOpen(true);
+// NOUVEAU : Toggle au clic
+const handleInputClick = () => {
+  setIsOpen(!isOpen);
+};
+
+// SUPPRIME : handleInputChange, handleInputBlur (inutiles)
+
+  // const handleInputChange = (e) => {
+    // const val = e.target.value;
+    // setInputValue(val);
+    // setIsOpen(true);
     
     // Réinitialiser l'espèce sélectionnée si on change l'input
-    setSelectedEspece(null);
-  };
+    // setSelectedEspece(null);
+  // };
 
   const handleSelectEspece = (espece) => {
     setInputValue(espece.nom);
@@ -107,15 +121,15 @@ const EspeceSelector = ({
     onChange(espece.nom); // Passer le nom complet au parent
   };
 
-  const handleInputBlur = () => {
+  // const handleInputBlur = () => {
     // Si allowFreeText est false et aucune espèce n'est sélectionnée, réinitialiser
-    if (!allowFreeText && !selectedEspece) {
-      if (inputValue && !especes.some(e => e.nom === inputValue || e.code === inputValue)) {
-        setInputValue('');
-        onChange('');
-      }
-    }
-  };
+    // if (!allowFreeText && !selectedEspece) {
+      // if (inputValue && !especes.some(e => e.nom === inputValue || e.code === inputValue)) {
+        // setInputValue('');
+        // onChange('');
+      // }
+    // }
+  // };
 
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
@@ -130,18 +144,29 @@ const EspeceSelector = ({
     <div className="espece-selector" ref={containerRef}>
       <div className="espece-input-wrapper">
         <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onBlur={handleInputBlur}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsOpen(true)}
-          placeholder={placeholder}
-          disabled={disabled || loading}
-          required={required}
-          className="espece-input"
-          autoComplete="off"
+          // ref={inputRef}
+          // type="text"
+          // value={inputValue}
+          // onChange={handleInputChange}
+          // onBlur={handleInputBlur}
+          // onKeyDown={handleKeyDown}
+          // onFocus={() => setIsOpen(true)}
+          // placeholder={placeholder}
+          // disabled={disabled || loading}
+          // required={required}
+          // className="espece-input"
+          // autoComplete="off"
+		  ref={inputRef}
+		  type="text"
+		  value={inputValue || ''}  // Affiche nom sélectionné
+		  readOnly  // ← CLÉ : interdit saisie
+		  onClick={handleInputClick}  // ← Ouvre/ferme liste
+		  onKeyDown={handleKeyDown}   // Garde flèches/Escape
+		  placeholder={placeholder}
+		  disabled={disabled || loading}
+		  required={required}
+		  className="espece-input"
+		  autoComplete="off"		  
         />
         
         {inputValue && !loading && (
