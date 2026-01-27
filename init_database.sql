@@ -1,9 +1,9 @@
 --
 -- Base de données Gestion Truffière - Fichier d'initialisation complet
--- Généré le 2025-01-25
+-- Généré le 27 janvier 2026
 -- Fichier minimal pour Docker - nouveau projet
--- Contient TOUS les éléments système obligatoires (types, énums, fonctions, tables - SANS DONNÉES)
--- VERSION 2: Correction - etat_sanitaire dans la table arbres
+-- Contient TOUS les éléments système obligatoires (types, énums, fonctions, tables)
+-- AVEC compte administrateur
 --
 
 SET statement_timeout = 0;
@@ -78,8 +78,8 @@ CREATE TYPE public.statut_reception_achat AS ENUM (
 --
 
 CREATE FUNCTION public.check_account_lock(p_email character varying) RETURNS TABLE(is_locked boolean, locked_until timestamp without time zone, attempts integer)
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 DECLARE
     v_user RECORD;
     v_recent_failures INTEGER;
@@ -92,8 +92,8 @@ BEGIN
     SELECT COUNT(*) INTO v_recent_failures
     FROM public.login_attempts
     WHERE email = p_email
-    AND success = false
-    AND attempted_at > NOW() - INTERVAL '15 minutes';
+      AND success = false
+      AND attempted_at > NOW() - INTERVAL '15 minutes';
 
     RETURN QUERY SELECT
         (v_user.locked_until IS NOT NULL AND v_user.locked_until > NOW()) AS is_locked,
@@ -103,14 +103,14 @@ END;
 $$;
 
 CREATE FUNCTION public.cleanup_expired_refresh_tokens(p_days_old integer DEFAULT 30) RETURNS integer
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 DECLARE
     v_deleted_count INTEGER;
 BEGIN
     DELETE FROM refresh_tokens
     WHERE (expires_at < NOW() - INTERVAL '1 day' * p_days_old)
-    OR (revoked = TRUE AND revoked_at < NOW() - INTERVAL '1 day' * p_days_old);
+       OR (revoked = TRUE AND revoked_at < NOW() - INTERVAL '1 day' * p_days_old);
 
     GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
     RETURN v_deleted_count;
@@ -118,8 +118,8 @@ END;
 $$;
 
 CREATE FUNCTION public.cleanup_expired_tokens() RETURNS void
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     DELETE FROM public.refresh_tokens
     WHERE expires_at < NOW() - INTERVAL '30 days';
@@ -136,8 +136,8 @@ END;
 $$;
 
 CREATE FUNCTION public.detect_token_reuse(p_token_hash character varying) RETURNS TABLE(is_reused boolean, user_id integer, token_id integer, last_used timestamp without time zone)
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     RETURN QUERY
     SELECT
@@ -151,8 +151,8 @@ END;
 $$;
 
 CREATE FUNCTION public.get_consommation_eau(p_date_debut date, p_date_fin date, p_parcelle_id integer DEFAULT NULL::integer) RETURNS TABLE(parcelle_nom character varying, volume_total_m3 numeric, nb_irrigations bigint, volume_moyen_m3 numeric)
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     RETURN QUERY
     SELECT
@@ -164,16 +164,16 @@ BEGIN
     JOIN intervention_details id ON i.id = id.intervention_id
     JOIN parcelles p ON i.parcelle_id = p.id
     WHERE i.type_intervention_id = (SELECT id FROM types_intervention WHERE nom = 'Irrigation')
-    AND i.date_realisee BETWEEN p_date_debut AND p_date_fin
-    AND (p_parcelle_id IS NULL OR i.parcelle_id = p_parcelle_id)
+      AND i.date_realisee BETWEEN p_date_debut AND p_date_fin
+      AND (p_parcelle_id IS NULL OR i.parcelle_id = p_parcelle_id)
     GROUP BY p.nom
     ORDER BY volume_total DESC;
 END;
 $$;
 
 CREATE FUNCTION public.increment_login_failures(p_email character varying) RETURNS void
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 DECLARE
     v_failures INTEGER;
 BEGIN
@@ -191,8 +191,8 @@ END;
 $$;
 
 CREATE FUNCTION public.log_historique() RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     IF (TG_OP = 'DELETE') THEN
         INSERT INTO historique (table_name, record_id, action, old_data)
@@ -211,8 +211,8 @@ END;
 $$;
 
 CREATE FUNCTION public.reset_login_failures(p_user_id integer) RETURNS void
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     UPDATE public.users
     SET
@@ -224,8 +224,8 @@ END;
 $$;
 
 CREATE FUNCTION public.revoke_token_chain(p_token_id integer, p_reason character varying) RETURNS integer
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 DECLARE
     v_revoked_count INTEGER := 0;
     v_child_count INTEGER := 0;
@@ -235,7 +235,8 @@ BEGIN
         revoked_at = NOW(),
         revoked_reason = p_reason
     WHERE id = p_token_id
-    AND revoked = FALSE;
+      AND revoked = FALSE;
+
     GET DIAGNOSTICS v_revoked_count = ROW_COUNT;
 
     WITH RECURSIVE token_tree AS (
@@ -249,16 +250,16 @@ BEGIN
         revoked_at = NOW(),
         revoked_reason = p_reason || '_chain'
     WHERE id IN (SELECT id FROM token_tree)
-    AND revoked = FALSE;
-    GET DIAGNOSTICS v_child_count = ROW_COUNT;
+      AND revoked = FALSE;
 
+    GET DIAGNOSTICS v_child_count = ROW_COUNT;
     RETURN v_revoked_count + v_child_count;
 END;
 $$;
 
 CREATE FUNCTION public.update_intervention_details_timestamp() RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
@@ -266,8 +267,8 @@ END;
 $$;
 
 CREATE FUNCTION public.update_token_last_used() RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     NEW.last_used_at = NOW();
     RETURN NEW;
@@ -275,8 +276,8 @@ END;
 $$;
 
 CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
@@ -288,6 +289,7 @@ $$;
 --
 
 CREATE SEQUENCE public.users_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.users (
     id integer NOT NULL,
     email character varying(255) NOT NULL,
@@ -303,11 +305,13 @@ CREATE TABLE public.users (
     locked_until timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT users_role_check CHECK (role = ANY (ARRAY['admin'::text, 'user'::text, 'readonly'::text]))
+    CONSTRAINT users_role_check CHECK ((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('user'::character varying)::text, ('readonly'::character varying)::text]))
 );
+
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 CREATE SEQUENCE public.parametres_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.parametres (
     id integer NOT NULL,
     cle character varying(100) NOT NULL,
@@ -315,9 +319,11 @@ CREATE TABLE public.parametres (
     description text,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.parametres_id_seq OWNED BY public.parametres.id;
 
 CREATE SEQUENCE public.preferences_utilisateur_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.preferences_utilisateur (
     id integer NOT NULL,
     user_id character varying(100) DEFAULT 'default'::character varying,
@@ -326,9 +332,11 @@ CREATE TABLE public.preferences_utilisateur (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.preferences_utilisateur_id_seq OWNED BY public.preferences_utilisateur.id;
 
 CREATE SEQUENCE public.refresh_tokens_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.refresh_tokens (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -347,9 +355,11 @@ CREATE TABLE public.refresh_tokens (
     CONSTRAINT rotation_count_limit CHECK (rotation_count <= 10),
     CONSTRAINT rotation_count_positive CHECK (rotation_count >= 0)
 );
+
 ALTER SEQUENCE public.refresh_tokens_id_seq OWNED BY public.refresh_tokens.id;
 
 CREATE SEQUENCE public.password_reset_tokens_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.password_reset_tokens (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -359,9 +369,11 @@ CREATE TABLE public.password_reset_tokens (
     used_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.password_reset_tokens_id_seq OWNED BY public.password_reset_tokens.id;
 
 CREATE SEQUENCE public.user_sessions_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.user_sessions (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -373,9 +385,11 @@ CREATE TABLE public.user_sessions (
     expires_at timestamp without time zone NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.user_sessions_id_seq OWNED BY public.user_sessions.id;
 
 CREATE SEQUENCE public.login_attempts_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.login_attempts (
     id integer NOT NULL,
     email character varying(255),
@@ -385,9 +399,11 @@ CREATE TABLE public.login_attempts (
     failure_reason character varying(100),
     attempted_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.login_attempts_id_seq OWNED BY public.login_attempts.id;
 
 CREATE SEQUENCE public.historique_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.historique (
     id integer NOT NULL,
     table_name character varying(50) NOT NULL,
@@ -398,18 +414,22 @@ CREATE TABLE public.historique (
     user_name character varying(100),
     timestamp timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.historique_id_seq OWNED BY public.historique.id;
 
 CREATE SEQUENCE public.types_intervention_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.types_intervention (
     id integer NOT NULL,
     nom character varying(100) NOT NULL,
     description text,
     couleur character varying(7)
 );
+
 ALTER SEQUENCE public.types_intervention_id_seq OWNED BY public.types_intervention.id;
 
 CREATE SEQUENCE public.amendements_ref_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.amendements_ref (
     id integer NOT NULL,
     nom character varying(150) NOT NULL,
@@ -422,9 +442,11 @@ CREATE TABLE public.amendements_ref (
     actif boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.amendements_ref_id_seq OWNED BY public.amendements_ref.id;
 
 CREATE SEQUENCE public.produits_phyto_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.produits_phyto (
     id integer NOT NULL,
     nom_commercial character varying(150) NOT NULL,
@@ -441,6 +463,7 @@ CREATE TABLE public.produits_phyto (
     actif boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.produits_phyto_id_seq OWNED BY public.produits_phyto.id;
 
 --
@@ -448,6 +471,7 @@ ALTER SEQUENCE public.produits_phyto_id_seq OWNED BY public.produits_phyto.id;
 --
 
 CREATE SEQUENCE public.parcelles_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.parcelles (
     id integer NOT NULL,
     nom character varying(100) NOT NULL,
@@ -459,9 +483,11 @@ CREATE TABLE public.parcelles (
     date_creation timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     notes text
 );
+
 ALTER SEQUENCE public.parcelles_id_seq OWNED BY public.parcelles.id;
 
 CREATE SEQUENCE public.arbres_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.arbres (
     id integer NOT NULL,
     parcelle_id integer,
@@ -479,20 +505,26 @@ CREATE TABLE public.arbres (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     latitude numeric(10,8),
     longitude numeric(11,8),
-    deleted_at timestamp without time zone
+    deleted_at timestamp without time zone,
+    porte_greffe character varying(100),
+    rendement_estime numeric(10,2)
 );
+
 ALTER SEQUENCE public.arbres_id_seq OWNED BY public.arbres.id;
 
 CREATE SEQUENCE public.caveurs_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.caveurs (
     id integer NOT NULL,
     nom character varying(100) NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.caveurs_id_seq OWNED BY public.caveurs.id;
 
 CREATE SEQUENCE public.chiens_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.chiens (
     id integer NOT NULL,
     nom character varying(100) NOT NULL,
@@ -500,9 +532,11 @@ CREATE TABLE public.chiens (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.chiens_id_seq OWNED BY public.chiens.id;
 
 CREATE SEQUENCE public.clients_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.clients (
     id integer NOT NULL,
     type character varying(20) NOT NULL,
@@ -521,9 +555,11 @@ CREATE TABLE public.clients (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.clients_id_seq OWNED BY public.clients.id;
 
 CREATE SEQUENCE public.fournisseurs_truffes_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.fournisseurs_truffes (
     id integer NOT NULL,
     nom character varying(200) NOT NULL,
@@ -546,9 +582,11 @@ CREATE TABLE public.fournisseurs_truffes (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted_at timestamp without time zone
 );
+
 ALTER SEQUENCE public.fournisseurs_truffes_id_seq OWNED BY public.fournisseurs_truffes.id;
 
 CREATE SEQUENCE public.interventions_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.interventions (
     id integer NOT NULL,
     type_intervention_id integer,
@@ -566,9 +604,11 @@ CREATE TABLE public.interventions (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.interventions_id_seq OWNED BY public.interventions.id;
 
 CREATE SEQUENCE public.intervention_details_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.intervention_details (
     id integer NOT NULL,
     intervention_id integer NOT NULL,
@@ -697,9 +737,11 @@ CREATE TABLE public.intervention_details (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.intervention_details_id_seq OWNED BY public.intervention_details.id;
 
 CREATE SEQUENCE public.recoltes_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.recoltes (
     id integer NOT NULL,
     parcelle_id integer,
@@ -718,9 +760,11 @@ CREATE TABLE public.recoltes (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     exposition character varying(20)
 );
+
 ALTER SEQUENCE public.recoltes_id_seq OWNED BY public.recoltes.id;
 
 CREATE SEQUENCE public.commandes_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.commandes (
     id integer NOT NULL,
     client_id integer,
@@ -738,9 +782,11 @@ CREATE TABLE public.commandes (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.commandes_id_seq OWNED BY public.commandes.id;
 
 CREATE SEQUENCE public.ventes_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.ventes (
     id integer NOT NULL,
     client_id integer,
@@ -756,9 +802,11 @@ CREATE TABLE public.ventes (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     commande_id integer
 );
+
 ALTER SEQUENCE public.ventes_id_seq OWNED BY public.ventes.id;
 
 CREATE SEQUENCE public.commandes_achat_truffes_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.commandes_achat_truffes (
     id integer NOT NULL,
     fournisseur_id integer NOT NULL,
@@ -772,9 +820,11 @@ CREATE TABLE public.commandes_achat_truffes (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.commandes_achat_truffes_id_seq OWNED BY public.commandes_achat_truffes.id;
 
 CREATE SEQUENCE public.lignes_commande_achat_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.lignes_commande_achat (
     id integer NOT NULL,
     commande_id integer NOT NULL,
@@ -788,9 +838,11 @@ CREATE TABLE public.lignes_commande_achat (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.lignes_commande_achat_id_seq OWNED BY public.lignes_commande_achat.id;
 
 CREATE SEQUENCE public.stocks_truffes_achetees_id_seq AS integer START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE public.stocks_truffes_achetees (
     id integer NOT NULL,
     ligne_commande_id integer NOT NULL,
@@ -806,6 +858,7 @@ CREATE TABLE public.stocks_truffes_achetees (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
 ALTER SEQUENCE public.stocks_truffes_achetees_id_seq OWNED BY public.stocks_truffes_achetees.id;
 
 --
@@ -951,6 +1004,7 @@ CREATE INDEX idx_stocks_achetees_localisation ON public.stocks_truffes_achetees 
 -- Triggers (système et métier)
 --
 
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER types_intervention_historique AFTER INSERT OR DELETE OR UPDATE ON public.types_intervention FOR EACH ROW EXECUTE FUNCTION public.log_historique();
 CREATE TRIGGER amendements_ref_historique AFTER INSERT OR DELETE OR UPDATE ON public.amendements_ref FOR EACH ROW EXECUTE FUNCTION public.log_historique();
 CREATE TRIGGER produits_phyto_historique AFTER INSERT OR DELETE OR UPDATE ON public.produits_phyto FOR EACH ROW EXECUTE FUNCTION public.log_historique();
@@ -976,10 +1030,9 @@ CREATE TRIGGER stocks_truffes_achetees_historique AFTER INSERT OR DELETE OR UPDA
 
 -- Utilisateur administrateur par défaut
 -- Email: admin@truffiere.local
--- Mot de passe: Admin123! (À changer immédiatement après la première connexion)
-
+-- Mot de passe: admin123 (À changer immédiatement après la première connexion)
 INSERT INTO public.users (id, email, password_hash, nom, prenom, role, is_active, email_verified, created_at, updated_at) VALUES
-(1, 'admin@truffiere.local', '$2b$10$rKZLvVxZxqxGx5F5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K', 'Administrateur', 'Système', 'admin', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+(1, 'admin@truffiere.local', '$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu', 'Administrateur', 'Système', 'admin', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 SELECT pg_catalog.setval('public.users_id_seq', 1, true);
 
@@ -1028,6 +1081,5 @@ INSERT INTO public.produits_phyto (id, nom_commercial, matiere_active, numero_am
 SELECT pg_catalog.setval('public.produits_phyto_id_seq', 5, true);
 
 --
--- Fin du fichier d'initialisation - V2
--- Correction: etat_sanitaire remplace etat dans la table arbres
+-- Fin du fichier d'initialisation
 --
