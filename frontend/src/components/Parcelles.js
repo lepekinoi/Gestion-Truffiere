@@ -1171,7 +1171,7 @@ const handleSubmit = async (e) => {
               <WeatherWidget 
                 inseeCode="79170"
                 location="Lusseray,FR"
-                showForecastByDefault={true}
+                showForecastByDefault={false}
                 showIndicators={true}
               />
               

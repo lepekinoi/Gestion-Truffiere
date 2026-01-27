@@ -8,11 +8,11 @@ const METEO_CONFIG = {
 };
 
 function WeatherWidget({ 
-  inseeCode = '44110', // Notre-Dame-des-Landes par défaut
-  location = "Notre-Dame-des-Landes,FR",
-  compact = false, // Mode compact pour sidebar
+  inseeCode = '79170', // Lusseray
+  location = "Lusseray,FR",
+  compact = true, // Mode compact pour sidebar
   showForecastByDefault = false,
-  showIndicators = true // Afficher indicateurs trufficulture
+  showIndicators = false // Afficher indicateurs trufficulture
 }) {
   const [weather, setWeather] = useState(null);
   const [enrichedData, setEnrichedData] = useState(null);
