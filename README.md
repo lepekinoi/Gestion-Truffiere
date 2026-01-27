@@ -1,13 +1,13 @@
-# 🍄 Gestion-Truffière v6 - Plateforme de gestion intégrée
+# 🍄 Gestion-Truffière v7 - Plateforme de gestion intégrée
 
 > **Système complet de gestion pour exploitations truffières en Pays de la Loire**  
 > Stack moderne React + Express.js | Docker ready | Production-ready
 
 [![Status](https://img.shields.io/badge/Status-Finalisation-FF6B6B?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere)
-[![Version](https://img.shields.io/badge/Version-6.0-4ECDC4?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/releases)
+[![Version](https://img.shields.io/badge/Version-7.0-4ECDC4?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/releases)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=flat-square&logo=javascript)](https://www.javascript.com/)
 [![License](https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square)](LICENSE)
-[![Last Update](https://img.shields.io/badge/Last%20Update-Jan%202026-3498DB?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/commits/V6)
+[![Last Update](https://img.shields.io/badge/Last%20Update-Jan%202026-3498DB?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/commits/V7)
 
 ---
 
@@ -16,6 +16,7 @@
 - [✨ Aperçu rapide](#-aperçu-rapide)
 - [🎯 Fonctionnalités](#-fonctionnalités-complètes)
 - [🚀 Démarrage rapide](#-démarrage-rapide)
+- [🔐 Identifiants par défaut](#-identifiants-par-défaut)
 - [📖 Documentation](#-documentation-technique)
 - [🐛 Problèmes connus](#-problèmes-connus)
 - [💡 Prochains ajouts](#-prochains-ajouts)
@@ -26,11 +27,11 @@
 
 ## ✨ Aperçu rapide
 
-**Gestion-Truffière v6** est une plateforme web **enterprise** conçue spécifiquement pour les exploitants truffiers. Elle centralise l'ensemble de la gestion opérationnelle :
+**Gestion-Truffière v7** est une plateforme web **enterprise** conçue spécifiquement pour les exploitants truffiers. Elle centralise l'ensemble de la gestion opérationnelle :
 
 ```
 ┌─────────────────────────────────────────┐
-│   🍄 GESTION-TRUFFIÈRE v6              │
+│   🍄 GESTION-TRUFFIÈRE v7              │
 ├─────────────────────────────────────────┤
 │                                         │
 │  📊 Dashboard temps réel               │
@@ -55,7 +56,7 @@
 
 ## 🎯 Fonctionnalités complètes
 
-### ✅ Core Features (v6.0 - Production Ready)
+### ✅ Core Features (v7.0 - Production Ready)
 
 | Fonctionnalité | Description |
 |---|---|
@@ -107,7 +108,7 @@
 # 1. Cloner le repo
 git clone https://github.com/lepekinoi/Gestion-Truffiere.git
 cd Gestion-Truffiere
-git checkout V6
+git checkout V7
 
 # 2. Configurer
 cp backend/.env.example backend/.env
@@ -140,6 +141,39 @@ npm start
 ```
 
 **→ Voir [SETUP.md](SETUP.md) pour installation détaillée pas-à-pas**
+
+---
+
+## 🔐 Identifiants par défaut
+
+Après le premier démarrage de l'application, connectez-vous avec les identifiants administrateur par défaut :
+
+```
+Email    : admin@truffiere.local
+Password : admin123
+```
+
+### ⚠️ IMPORTANT - Sécurité
+
+**Changez ce mot de passe immédiatement après votre première connexion !**
+
+Ces identifiants sont définis dans le fichier `init_database_complete.sql` et sont communs à toutes les installations par défaut. Pour sécuriser votre application en production :
+
+**Procédure de changement :**
+
+1. ✅ Connectez-vous avec les identifiants par défaut
+2. ✅ Accédez à **Paramètres** > **Mon profil**
+3. ✅ Cliquez sur **"Modifier le mot de passe"**
+4. ✅ Saisissez un nouveau mot de passe fort (min. 8 caractères, majuscules, minuscules, chiffres, caractères spéciaux)
+5. ✅ Confirmez et enregistrez
+
+### 🔒 Bonnes pratiques de sécurité
+
+- 🔑 Utilisez un gestionnaire de mots de passe
+- 🔄 Changez régulièrement vos mots de passe
+- 👤 Créez des comptes utilisateurs distincts pour chaque membre de l'équipe
+- 🚫 Ne partagez jamais vos identifiants
+- 📧 Activez la vérification par email dès que possible
 
 ---
 
@@ -374,11 +408,12 @@ OS / Node.js / Docker version
 
 ---
 
-## 📈 Roadmap v6-v7
+## 📈 Roadmap v7
 
-### v6.0 (Actuel - Janvier 2026)
+### v7.0 (Actuel - Janvier 2026)
 
-✅ Core features  
+✅ Base de données complète avec structure enrichie  
+✅ Compte administrateur par défaut  
 ✅ Architecture stable  
 🔄 En finalisation :
 - [ ] Corriger bugs critiques
@@ -386,13 +421,13 @@ OS / Node.js / Docker version
 - [ ] Dashboard fixes
 - [x] Commercial.js: Pagination emoji, filtres, analytics saison
 
-### v6.1 (Février 2026)
+### v7.1 (Février 2026)
 
 - [ ] PWA & offline support
 - [ ] Tests automatisés
 - [ ] Swagger documentation
 
-### v7.0 (Trimestre 2, 2026)
+### v7.5 (Trimestre 2, 2026)
 
 - [ ] Système alertes intelligentes
 - [ ] Rapports professionnels
@@ -421,7 +456,7 @@ Merci à :
 
 ---
 
-**🎉 Bienvenue dans Gestion-Truffière!**
+**🎉 Bienvenue dans Gestion-Truffière v7!**
 
-*Dernière mise à jour : 24 janvier 2026*  
+*Dernière mise à jour : 27 janvier 2026*  
 *By: lepekinoi | Location: Notre-Dame-des-Landes, Pays de la Loire 🇫🇷*
