@@ -1,5 +1,6 @@
 // backend/routes/commandes.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -29,8 +30,11 @@ module.exports = (pool, requireWriteAccess) => {
       const result = await pool.query(query);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération commandes:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des commandes',
+        code: 'LIST_COMMANDES_ERROR'
+      });
     }
   });
 
@@ -55,12 +59,18 @@ module.exports = (pool, requireWriteAccess) => {
       `, [id]);
       
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Commande non trouvée' });
+        return res.status(404).json({ 
+          error: 'Commande non trouvée',
+          code: 'COMMANDE_NOT_FOUND'
+        });
       }
       res.json(result.rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération commande:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération de la commande',
+        code: 'GET_COMMANDE_ERROR'
+      });
     }
   });
 
@@ -81,8 +91,8 @@ module.exports = (pool, requireWriteAccess) => {
       const count = parseInt(countResult.rows[0].count) + 1;
       const numero_commande = `CMD-${year}-${String(count).padStart(4, '0')}`;
       
-      const poidsGrammesVal = poids_grammes === '' || poids_grammes === null || poids_grammes === undefined ? null : poids_grammes;
-      const prixUnitaireKgVal = prix_unitaire_kg === '' || prix_unitaire_kg === null || prix_unitaire_kg === undefined ? null : prix_unitaire_kg;
+      const poidsGrammesVal = emptyToNull(poids_grammes);
+      const prixUnitaireKgVal = emptyToNull(prix_unitaire_kg);
       
       const montant_total = poidsGrammesVal && prixUnitaireKgVal 
         ? (parseFloat(poidsGrammesVal) / 1000) * parseFloat(prixUnitaireKgVal) 
@@ -97,24 +107,36 @@ module.exports = (pool, requireWriteAccess) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
         RETURNING *`,
         [
-          client_id || null, 
+          emptyToNull(client_id), 
           numero_commande, 
           date_commande, 
-          date_livraison_demandee || null, 
+          emptyToNull(date_livraison_demandee), 
           poidsGrammesVal, 
-          calibre || null, 
-          qualite || null, 
-          maturite || null, 
+          emptyToNull(calibre), 
+          emptyToNull(qualite), 
+          emptyToNull(maturite), 
           prixUnitaireKgVal, 
           montant_total, 
           statut || 'En attente', 
-          notes || null
+          emptyToNull(notes)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newCommande = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'commande', newCommande.id, null, newCommande);
+      }
+
+      res.status(201).json(newCommande);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      console.error('Erreur création commande:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de la commande',
+        code: 'CREATE_COMMANDE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -127,8 +149,21 @@ module.exports = (pool, requireWriteAccess) => {
         calibre, qualite, maturite, prix_unitaire_kg, statut, notes 
       } = req.body;
       
-      const poidsGrammesVal = poids_grammes === '' || poids_grammes === null || poids_grammes === undefined ? null : poids_grammes;
-      const prixUnitaireKgVal = prix_unitaire_kg === '' || prix_unitaire_kg === null || prix_unitaire_kg === undefined ? null : prix_unitaire_kg;
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM commandes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Commande non trouvée',
+          code: 'COMMANDE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
+      const poidsGrammesVal = emptyToNull(poids_grammes);
+      const prixUnitaireKgVal = emptyToNull(prix_unitaire_kg);
       
       const montant_total = poidsGrammesVal && prixUnitaireKgVal 
         ? (parseFloat(poidsGrammesVal) / 1000) * parseFloat(prixUnitaireKgVal) 
@@ -142,28 +177,36 @@ module.exports = (pool, requireWriteAccess) => {
         WHERE id = $12 
         RETURNING *`,
         [
-          client_id || null, 
+          emptyToNull(client_id), 
           date_commande, 
-          date_livraison_demandee || null, 
+          emptyToNull(date_livraison_demandee), 
           poidsGrammesVal, 
-          calibre || null, 
-          qualite || null, 
-          maturite || null, 
+          emptyToNull(calibre), 
+          emptyToNull(qualite), 
+          emptyToNull(maturite), 
           prixUnitaireKgVal, 
           montant_total, 
           statut, 
-          notes || null, 
+          emptyToNull(notes), 
           id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Commande non trouvée' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'commande', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour commande:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour de la commande',
+        code: 'UPDATE_COMMANDE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -171,17 +214,41 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM commandes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Commande non trouvée',
+          code: 'COMMANDE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM commandes WHERE id = $1 RETURNING *', 
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Commande non trouvée' });
+      
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'commande', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Commande supprimée' });
+      
+      res.json({ 
+        message: 'Commande supprimée',
+        code: 'COMMANDE_DELETED'
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur suppression commande:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression de la commande',
+        code: 'DELETE_COMMANDE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -196,7 +263,10 @@ module.exports = (pool, requireWriteAccess) => {
       );
       
       if (commandeResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Commande non trouvée' });
+        return res.status(404).json({ 
+          error: 'Commande non trouvée',
+          code: 'COMMANDE_NOT_FOUND'
+        });
       }
       
       const commande = commandeResult.rows[0];
@@ -208,7 +278,8 @@ module.exports = (pool, requireWriteAccess) => {
       
       if (venteExistante.rows.length > 0) {
         return res.status(400).json({ 
-          error: 'Une vente existe déjà pour cette commande' 
+          error: 'Une vente existe déjà pour cette commande',
+          code: 'VENTE_ALREADY_EXISTS'
         });
       }
       
@@ -243,10 +314,21 @@ module.exports = (pool, requireWriteAccess) => {
         ]
       );
       
-      res.status(201).json(venteResult.rows[0]);
+      const newVente = venteResult.rows[0];
+
+      // Audit trail pour la vente créée
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create_from_commande', 'vente', newVente.id, null, newVente);
+      }
+
+      res.status(201).json(newVente);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création de la vente' });
+      console.error('Erreur création vente depuis commande:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de la vente',
+        code: 'CREATE_VENTE_FROM_COMMANDE_ERROR',
+        details: err.message
+      });
     }
   });
 
