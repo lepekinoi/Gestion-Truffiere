@@ -107,14 +107,33 @@ export default function useArbresData() {
     setIsProcessing(true);
     try {
       if (editingArbre) {
-        await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
+        // Modification d'un arbre existant
+        const response = await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
         showMessage('Arbre mis à jour avec succès !', 'success');
+        
+        // ✅ FIX : Mettre à jour l'état local IMMÉDIATEMENT avec les données retournées par l'API
+        // Cela évite que loadData() n'écrase les modifications avec d'anciennes données
+        setArbres(prevArbres => 
+          prevArbres.map(arbre => 
+            arbre.id === editingArbre.id ? response.data : arbre
+          )
+        );
       } else {
-        await axios.post(`${API_URL}/arbres`, formData);
+        // Création d'un nouvel arbre
+        const response = await axios.post(`${API_URL}/arbres`, formData);
         showMessage('Arbre créé avec succès !', 'success');
+        
+        // ✅ FIX : Ajouter le nouvel arbre immédiatement à l'état local
+        setArbres(prevArbres => [...prevArbres, response.data]);
       }
-      loadData();
+      
       closeModal();
+      
+      // Optionnel : Recharger les données en arrière-plan pour synchroniser
+      // avec d'éventuels changements faits par d'autres utilisateurs
+      // Note : On ne recharge QUE si nécessaire (ex: nouvelles interventions)
+      // Pour éviter d'écraser l'état local qu'on vient de mettre à jour
+      
     } catch (e) {
       console.error(e);
       showMessage('Erreur lors de la sauvegarde de l\'arbre', 'error');
@@ -133,7 +152,10 @@ export default function useArbresData() {
     try {
       await axios.delete(`${API_URL}/arbres/${arbre.id}`);
       showMessage('Arbre mis à la corbeille', 'success');
-      loadData();
+      
+      // ✅ FIX : Retirer l'arbre de l'état local immédiatement
+      setArbres(prevArbres => prevArbres.filter(a => a.id !== arbre.id));
+      
       after && after();
     } catch (e) {
       console.error(e);
@@ -146,10 +168,15 @@ export default function useArbresData() {
   // Import CSV
   const handleImportCSV = async (validData) => {
     try {
+      const newArbres = [];
       for (const arbre of validData) {
-        await axios.post(`${API_URL}/arbres`, arbre);
+        const response = await axios.post(`${API_URL}/arbres`, arbre);
+        newArbres.push(response.data);
       }
-      loadData();
+      
+      // ✅ FIX : Ajouter les arbres importés immédiatement
+      setArbres(prevArbres => [...prevArbres, ...newArbres]);
+      
       showMessage(`${validData.length} arbre(s) importé(s) avec succès !`, 'success');
     } catch (e) {
       console.error(e);
