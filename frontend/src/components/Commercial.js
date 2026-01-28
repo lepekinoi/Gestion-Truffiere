@@ -16,6 +16,15 @@ import { validateVentesCSV, validateClientsCSV } from '../utils/csvImport';
 import CSVImportModal from './CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
 
+// Imports Phase 2 - Composants UI
+import { StatsCard } from './Commercial/components/StatsCard';
+import { StatusBadge } from './Commercial/components/StatusBadge';
+import { PaginationControls as PaginationControlsComponent } from './Commercial/components/PaginationControls';
+import { ClientTile } from './Commercial/components/ClientTile';
+import { 
+  STATUT_COLORS_COMMANDES as STATUT_COLORS_CMD, 
+  STATUT_COLORS_VENTES as STATUT_COLORS_VT 
+} from './Commercial/utils/constants';
 
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -831,20 +840,15 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     return Math.ceil(dataLength / itemsPerPage);
   };
   
-  const PaginationControls = ({ currentPage, setCurrentPage, totalItems, itemsPerPage, setItemsPerPage, entity }) => {
-    const totalPages = getTotalPages(totalItems, itemsPerPage);
-    if (totalPages <= 1) return null;
-    
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: '20px',
-        padding: '15px',
-        background: '#f8f9fa',
-        borderRadius: '8px'
-      }}>
+  <PaginationControlsComponent
+  currentPage={currentPageClients}
+  setCurrentPage={setCurrentPageClients}
+  totalItems={sortedClients.length}
+  itemsPerPage={itemsPerPageClients}
+  setItemsPerPage={setItemsPerPageClients}
+  entity="clients"
+/>
+    >
         <div style={{ fontSize: '14px', color: '#666' }}>
           Affichage {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
         </div>
@@ -1197,56 +1201,33 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       {/* ============================================================ */}
       {activeTab === 'clients' && (
         <div>
-          {/* STATS CLIENTS */}
+         {/* STATS CLIENTS */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '15px',
             marginBottom: '30px'
           }}>
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #2196f3'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>TOTAL</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196f3' }}>{statsClients.total}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #4caf50'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>👤 PARTICULIERS</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>{statsClients.particuliers}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #ff9800'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>🍽️ RESTAURANTS</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9800' }}>{statsClients.restaurants}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #9c27b0'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>📦 GROSSISTES</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9c27b0' }}>{statsClients.grossistes}</div>
-            </div>
+            <StatsCard 
+              label="TOTAL"
+              value={statsClients.total}
+              color="#2196f3"
+            />
+            <StatsCard 
+              label="👤 PARTICULIERS"
+              value={statsClients.particuliers}
+              color="#4caf50"
+            />
+            <StatsCard 
+              label="🍽️ RESTAURANTS"
+              value={statsClients.restaurants}
+              color="#ff9800"
+            />
+            <StatsCard 
+              label="📦 GROSSISTES"
+              value={statsClients.grossistes}
+              color="#9c27b0"
+            />
           </div>
           
           {/* CONTRÔLES CLIENTS */}
@@ -1436,51 +1417,26 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             gap: '15px',
             marginBottom: '30px'
           }}>
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #2196f3'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>TOTAL</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196f3' }}>{statsCommandes.total}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #ff9800'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>EN ATTENTE</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9800' }}>{statsCommandes.enAttente}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #4caf50'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>LIVRÉES</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>{statsCommandes.livrees}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #9c27b0'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>MONTANT TOTAL</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9c27b0' }}>
-                {statsCommandes.montantTotal.toFixed(2)} €
-              </div>
-            </div>
+            <StatsCard 
+              label="TOTAL"
+              value={statsCommandes.total}
+              color="#2196f3"
+            />
+            <StatsCard 
+              label="EN ATTENTE"
+              value={statsCommandes.enAttente}
+              color="#ff9800"
+            />
+            <StatsCard 
+              label="LIVRÉES"
+              value={statsCommandes.livrees}
+              color="#4caf50"
+            />
+            <StatsCard 
+              label="MONTANT TOTAL"
+              value={`${statsCommandes.montantTotal.toFixed(2)} €`}
+              color="#9c27b0"
+            />
           </div>
           
           {/* CONTRÔLES COMMANDES */}
@@ -1625,17 +1581,10 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                         {parseFloat(commande.montant_total || 0).toFixed(2)} €
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          backgroundColor: STATUT_COLORS_COMMANDES[commande.statut]?.background || '#f0f0f0',
-                          color: STATUT_COLORS_COMMANDES[commande.statut]?.color || '#333'
-                        }}>
-                          {commande.statut}
-                        </span>
+                        <StatusBadge 
+                          statut={commande.statut}
+                          type="commande"
+                        />
                       </td>
                       <td style={{ padding: '12px' }}>
                         <button
@@ -1699,51 +1648,26 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
             gap: '15px',
             marginBottom: '30px'
           }}>
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #2196f3'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>TOTAL</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196f3' }}>{statsVentes.total}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #4caf50'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>PAYÉES</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>{statsVentes.payees}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #ff9800'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>EN ATTENTE</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9800' }}>{statsVentes.enAttente}</div>
-            </div>
-            
-            <div style={{
-              background: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #9c27b0'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', fontWeight: 600, marginBottom: '10px' }}>CA</div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9c27b0' }}>
-                {statsVentes.chiffreAffaires.toFixed(2)} €
-              </div>
-            </div>
+            <StatsCard 
+              label="TOTAL"
+              value={statsVentes.total}
+              color="#2196f3"
+            />
+            <StatsCard 
+              label="PAYÉES"
+              value={statsVentes.payees}
+              color="#4caf50"
+            />
+            <StatsCard 
+              label="EN ATTENTE"
+              value={statsVentes.enAttente}
+              color="#ff9800"
+            />
+            <StatsCard 
+              label="CA"
+              value={`${statsVentes.chiffreAffaires.toFixed(2)} €`}
+              color="#9c27b0"
+            />
           </div>
           
           {/* CONTRÔLES VENTES */}
@@ -1909,17 +1833,10 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
                         {vente.mode_paiement || '-'}
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          backgroundColor: STATUT_COLORS_VENTES[vente.statut]?.background || '#f0f0f0',
-                          color: STATUT_COLORS_VENTES[vente.statut]?.color || '#333'
-                        }}>
-                          {vente.statut}
-                        </span>
+                        <StatusBadge 
+                          statut={vente.statut}
+                          type="vente"
+                        />
                       </td>
                       <td style={{ padding: '12px' }}>
                         <button
