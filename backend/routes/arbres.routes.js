@@ -1,7 +1,8 @@
 // backend/routes/arbres.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail, logSecurityEvent } = require('../utils');
 
-module.exports = (pool, requireWriteAccess, emptyToNull) => {
+module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
 
   // GET /api/arbres - Liste des arbres (avec option includeDeleted)
@@ -23,8 +24,11 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       const result = await pool.query(query);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la récupération des arbres' });
+      console.error('Erreur récupération arbres:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des arbres',
+        code: 'LIST_ARBRES_ERROR'
+      });
     }
   });
 
@@ -40,8 +44,11 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       `);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération corbeille:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération de la corbeille',
+        code: 'GET_CORBEILLE_ERROR'
+      });
     }
   });
 
@@ -78,11 +85,20 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
           emptyToNull(etat_sanitaire) || 'bon'
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newArbre = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'arbre', newArbre.id, null, newArbre);
+      }
+
+      res.status(201).json(newArbre);
     } catch (err) {
       console.error('Erreur création arbre:', err);
       res.status(500).json({ 
-        error: 'Erreur lors de la création de l\'arbre', 
+        error: 'Erreur lors de la création de l\'arbre',
+        code: 'CREATE_ARBRE_ERROR',
         details: err.message 
       });
     }
@@ -97,6 +113,19 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
         porte_greffe, rendement_estimé, circonference_cm, hauteur_m, 
         date_derniere_taille, latitude, longitude, notes, etat_sanitaire 
       } = req.body;
+      
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM arbres WHERE id = $1 AND deleted_at IS NULL',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Arbre non trouvé',
+          code: 'ARBRE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
       
       const result = await pool.query(
         `UPDATE arbres SET 
@@ -125,14 +154,19 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Arbre non trouvé' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'arbre', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+      
+      res.json(newData);
     } catch (err) {
       console.error('Erreur modification arbre:', err);
       res.status(500).json({ 
-        error: 'Erreur lors de la mise à jour', 
+        error: 'Erreur lors de la mise à jour de l\'arbre',
+        code: 'UPDATE_ARBRE_ERROR',
         details: err.message 
       });
     }
@@ -147,12 +181,34 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
         [id]
       );
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Arbre non trouvé dans la corbeille' });
+        return res.status(404).json({ 
+          error: 'Arbre non trouvé dans la corbeille',
+          code: 'ARBRE_NOT_IN_TRASH'
+        });
       }
-      res.json({ message: 'Arbre restauré', arbre: result.rows[0] });
+
+      const restoredArbre = result.rows[0];
+
+      // Security event
+      if (req.user && req.user.id) {
+        await logSecurityEvent(pool, req.user.id, 'arbre_restored', {
+          arbreId: parseInt(id),
+          arbreNumero: restoredArbre.numero,
+          restoredBy: req.user.id
+        });
+      }
+
+      res.json({ 
+        message: 'Arbre restauré', 
+        arbre: restoredArbre 
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur restauration arbre:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la restauration de l\'arbre',
+        code: 'RESTORE_ARBRE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -160,17 +216,41 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
   router.delete('/corbeille/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM arbres WHERE id = $1 AND deleted_at IS NOT NULL',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Arbre non trouvé dans la corbeille',
+          code: 'ARBRE_NOT_IN_TRASH'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM arbres WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *',
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Arbre non trouvé dans la corbeille' });
+      
+      // Audit trail (suppression définitive)
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete_permanent', 'arbre', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Arbre supprimé définitivement', arbre: result.rows[0] });
+
+      res.json({ 
+        message: 'Arbre supprimé définitivement', 
+        arbre: result.rows[0] 
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur suppression définitive arbre:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression définitive de l\'arbre',
+        code: 'DELETE_PERMANENT_ARBRE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -200,11 +280,26 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       const result = await client.query('DELETE FROM arbres WHERE deleted_at IS NOT NULL RETURNING id');
       
       await client.query('COMMIT');
-      res.json({ message: 'Corbeille vidée', count: result.rows.length });
+
+      // Security event
+      if (req.user && req.user.id) {
+        await logSecurityEvent(pool, req.user.id, 'trash_emptied', {
+          entity: 'arbres',
+          count: result.rows.length,
+          treeIds: treeIds
+        });
+      }
+
+      res.json({ 
+        message: 'Corbeille vidée', 
+        count: result.rows.length 
+      });
     } catch (err) {
       await client.query('ROLLBACK');
+      console.error('Erreur vidage corbeille:', err);
       res.status(500).json({ 
-        error: 'Erreur lors du vidage de la corbeille', 
+        error: 'Erreur lors du vidage de la corbeille',
+        code: 'EMPTY_TRASH_ERROR',
         details: err.message 
       });
     } finally {
@@ -216,17 +311,41 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM arbres WHERE id = $1 AND deleted_at IS NULL',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Arbre non trouvé',
+          code: 'ARBRE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'UPDATE arbres SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL RETURNING *',
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Arbre non trouvé' });
+      
+      // Audit trail (soft delete)
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'soft_delete', 'arbre', parseInt(id), oldData, result.rows[0]);
       }
-      res.json({ message: 'Arbre mis à la corbeille', arbre: result.rows[0] });
+
+      res.json({ 
+        message: 'Arbre mis à la corbeille', 
+        arbre: result.rows[0] 
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur soft delete arbre:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à la corbeille de l\'arbre',
+        code: 'SOFT_DELETE_ARBRE_ERROR',
+        details: err.message
+      });
     }
   });
 
