@@ -5,10 +5,9 @@
 
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
-// Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGEZ_MOI_EN_PRODUCTION_minimum_64_caracteres_de_securite';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+// Configuration refresh token
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 const REFRESH_TOKEN_BYTES = 64;
 
@@ -66,6 +65,15 @@ const generateRefreshToken = () => {
  * @returns {string} Hash du token
  */
 const hashRefreshToken = (token) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+/**
+ * Hash un token générique (alias de hashRefreshToken)
+ * @param {string} token - Token brut
+ * @returns {string} Hash du token
+ */
+const hashToken = (token) => {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
@@ -172,15 +180,23 @@ const getTokenTimeRemaining = (token) => {
 };
 
 module.exports = {
+  // Génération de tokens
   generateAccessToken,
   generateRefreshToken,
-  hashRefreshToken,
-  verifyAccessToken,
-  decodeToken,
   generatePasswordResetToken,
   generateEmailVerificationToken,
+  
+  // Hash
+  hashRefreshToken,
+  hashToken,              // Alias pour compatibilité
+  
+  // Vérification
+  verifyAccessToken,
+  decodeToken,
   extractBearerToken,
   getTokenTimeRemaining,
+  
+  // Config (pour compatibilité)
   JWT_SECRET,
   JWT_EXPIRES_IN,
   REFRESH_TOKEN_EXPIRES_IN
