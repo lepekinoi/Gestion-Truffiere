@@ -1,5 +1,6 @@
 // backend/routes/parametres.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -10,8 +11,11 @@ module.exports = (pool, requireWriteAccess) => {
       const result = await pool.query('SELECT * FROM parametres ORDER BY cle');
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération paramètres:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des paramètres',
+        code: 'LIST_PARAMETRES_ERROR'
+      });
     }
   });
 
@@ -24,76 +28,135 @@ module.exports = (pool, requireWriteAccess) => {
         [cle]
       );
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Paramètre non trouvé' });
+        return res.status(404).json({ 
+          error: 'Paramètre non trouvé',
+          code: 'PARAMETRE_NOT_FOUND'
+        });
       }
       res.json(result.rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération paramètre:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération du paramètre',
+        code: 'GET_PARAMETRE_ERROR'
+      });
     }
   });
 
-  // POST /api/parametres - Créer un paramètre
+  // POST /api/parametres - Créer un paramètre (ou update si existe)
   router.post('/', requireWriteAccess, async (req, res) => {
     try {
       const { cle, valeur, description } = req.body;
       
       if (!cle || !cle.trim()) {
-        return res.status(400).json({ error: 'La clé est obligatoire' });
+        return res.status(400).json({ 
+          error: 'La clé est obligatoire',
+          code: 'CLE_REQUIRED'
+        });
       }
       
       // Vérifier si le paramètre existe déjà
       const existing = await pool.query(
-        'SELECT id FROM parametres WHERE cle = $1', 
+        'SELECT * FROM parametres WHERE cle = $1', 
         [cle.trim()]
       );
       
       if (existing.rows.length > 0) {
         // Mettre à jour si existe
+        const oldData = existing.rows[0];
         const result = await pool.query(
           `UPDATE parametres 
            SET valeur = $1, description = $2, updated_at = CURRENT_TIMESTAMP 
            WHERE cle = $3 
            RETURNING *`,
-          [valeur, description, cle.trim()]
+          [valeur, emptyToNull(description), cle.trim()]
         );
-        return res.json(result.rows[0]);
+
+        const newData = result.rows[0];
+
+        // Audit trail
+        if (req.user && req.user.id) {
+          await logAuditTrail(pool, req.user.id, 'update', 'parametre', newData.id, oldData, newData);
+        }
+
+        return res.json(newData);
       }
       
       // Créer nouveau
       const result = await pool.query(
         'INSERT INTO parametres (cle, valeur, description) VALUES ($1, $2, $3) RETURNING *',
-        [cle.trim(), valeur, description]
+        [cle.trim(), valeur, emptyToNull(description)]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newParametre = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'parametre', newParametre.id, null, newParametre);
+      }
+
+      res.status(201).json(newParametre);
     } catch (err) {
       console.error('Erreur création paramètre:', err);
-      res.status(500).json({ error: 'Erreur lors de la création du paramètre' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la création du paramètre',
+        code: 'CREATE_PARAMETRE_ERROR',
+        details: err.message
+      });
     }
   });
 
-  // PUT /api/parametres/:cle - Mettre à jour un paramètre par clé
+  // PUT /api/parametres/:cle - Mettre à jour un paramètre par clé (upsert)
   router.put('/:cle', requireWriteAccess, async (req, res) => {
     try {
       const { cle } = req.params;
       const { valeur } = req.body;
       
-      const result = await pool.query(
-        'UPDATE parametres SET valeur = $1 WHERE cle = $2 RETURNING *',
-        [valeur, cle]
+      // Vérifier si existe
+      const existing = await pool.query(
+        'SELECT * FROM parametres WHERE cle = $1',
+        [cle]
       );
-      
-      if (result.rows.length === 0) {
+
+      if (existing.rows.length === 0) {
+        // Créer si n'existe pas
         const insertResult = await pool.query(
           'INSERT INTO parametres (cle, valeur) VALUES ($1, $2) RETURNING *',
           [cle, valeur]
         );
-        return res.json(insertResult.rows[0]);
+
+        const newParametre = insertResult.rows[0];
+
+        // Audit trail
+        if (req.user && req.user.id) {
+          await logAuditTrail(pool, req.user.id, 'create', 'parametre', newParametre.id, null, newParametre);
+        }
+
+        return res.json(newParametre);
       }
-      res.json(result.rows[0]);
+
+      // Update si existe
+      const oldData = existing.rows[0];
+      const result = await pool.query(
+        'UPDATE parametres SET valeur = $1, updated_at = CURRENT_TIMESTAMP WHERE cle = $2 RETURNING *',
+        [valeur, cle]
+      );
+
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'parametre', newData.id, oldData, newData);
+      }
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour paramètre:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour du paramètre',
+        code: 'UPDATE_PARAMETRE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -103,6 +166,20 @@ module.exports = (pool, requireWriteAccess) => {
       const { id } = req.params;
       const { cle, valeur, description } = req.body;
       
+      // Récupérer anciennes valeurs
+      const oldDataResult = await pool.query(
+        'SELECT * FROM parametres WHERE id = $1',
+        [id]
+      );
+
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Paramètre non trouvé',
+          code: 'PARAMETRE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         `UPDATE parametres 
          SET cle = COALESCE($1, cle), 
@@ -111,17 +188,24 @@ module.exports = (pool, requireWriteAccess) => {
              updated_at = CURRENT_TIMESTAMP 
          WHERE id = $4 
          RETURNING *`,
-        [cle, valeur, description, id]
+        [emptyToNull(cle), emptyToNull(valeur), emptyToNull(description), id]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Paramètre non trouvé' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'parametre', parseInt(id), oldData, newData);
       }
       
-      res.json(result.rows[0]);
+      res.json(newData);
     } catch (err) {
       console.error('Erreur mise à jour paramètre:', err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour du paramètre',
+        code: 'UPDATE_PARAMETRE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -130,19 +214,42 @@ module.exports = (pool, requireWriteAccess) => {
     try {
       const { id } = req.params;
       
+      // Récupérer les données
+      const oldDataResult = await pool.query(
+        'SELECT * FROM parametres WHERE id = $1',
+        [id]
+      );
+
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Paramètre non trouvé',
+          code: 'PARAMETRE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM parametres WHERE id = $1 RETURNING *', 
         [id]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Paramètre non trouvé' });
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'parametre', parseInt(id), oldData, null);
       }
-      
-      res.json({ message: 'Paramètre supprimé', parametre: result.rows[0] });
+
+      res.json({ 
+        message: 'Paramètre supprimé',
+        code: 'PARAMETRE_DELETED',
+        parametre: result.rows[0] 
+      });
     } catch (err) {
       console.error('Erreur suppression paramètre:', err);
-      res.status(500).json({ error: 'Erreur lors de la suppression' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression du paramètre',
+        code: 'DELETE_PARAMETRE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -162,15 +269,28 @@ module.exports = (pool, requireWriteAccess) => {
         await pool.query(
           `INSERT INTO parametres (cle, valeur) 
            VALUES ($1, $2) 
-           ON CONFLICT (cle) DO UPDATE SET valeur = $2`,
+           ON CONFLICT (cle) DO UPDATE SET valeur = $2, updated_at = CURRENT_TIMESTAMP`,
           [cle, valeur]
         );
       }
       
-      res.json({ message: 'Paramètres réinitialisés' });
+      // Audit trail (reset operation)
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'reset', 'parametres', null, null, { defaults_count: Object.keys(defaults).length });
+      }
+
+      res.json({ 
+        message: 'Paramètres réinitialisés',
+        code: 'PARAMETRES_RESET',
+        count: Object.keys(defaults).length
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur reset paramètres:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la réinitialisation des paramètres',
+        code: 'RESET_PARAMETRES_ERROR',
+        details: err.message
+      });
     }
   });
 
