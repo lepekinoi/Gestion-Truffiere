@@ -166,9 +166,10 @@ module.exports = (pool) => {
         }
       });
     } catch (err) {
-      console.error('Erreur dashboard/full:', err);
+      console.error('Erreur dashboard complet:', err);
       res.status(500).json({ 
-        error: 'Erreur', 
+        error: 'Erreur lors de la génération du dashboard',
+        code: 'DASHBOARD_ERROR',
         details: process.env.NODE_ENV === 'development' ? err.message : undefined 
       });
     }
