@@ -71,8 +71,11 @@ module.exports = (pool) => {
         }
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats dashboard:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques',
+        code: 'STATS_DASHBOARD_ERROR'
+      });
     }
   });
 
@@ -90,8 +93,11 @@ module.exports = (pool) => {
       `);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats récoltes annuelles:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques annuelles',
+        code: 'STATS_RECOLTES_ANNUELLES_ERROR'
+      });
     }
   });
 
@@ -108,8 +114,11 @@ module.exports = (pool) => {
       `);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats récoltes mensuelles:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques mensuelles',
+        code: 'STATS_RECOLTES_MENSUELLES_ERROR'
+      });
     }
   });
 
