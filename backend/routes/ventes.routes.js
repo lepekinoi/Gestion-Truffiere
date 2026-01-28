@@ -1,5 +1,6 @@
 // backend/routes/ventes.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -46,8 +47,11 @@ module.exports = (pool, requireWriteAccess) => {
       const result = await pool.query(query, params);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération ventes:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des ventes',
+        code: 'LIST_VENTES_ERROR'
+      });
     }
   });
 
@@ -73,22 +77,34 @@ module.exports = (pool, requireWriteAccess) => {
         RETURNING *`,
         [
           client_id, 
-          recolte_id || null, 
-          commande_id || null, 
+          emptyToNull(recolte_id), 
+          emptyToNull(commande_id), 
           date_vente, 
           quantite_grammes, 
-          prix_unitaire_kg || null, 
+          emptyToNull(prix_unitaire_kg), 
           montant_total, 
           mode_paiement, 
           statut || 'En attente', 
           numero_facture, 
-          notes
+          emptyToNull(notes)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newVente = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'vente', newVente.id, null, newVente);
+      }
+
+      res.status(201).json(newVente);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      console.error('Erreur création vente:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de la vente',
+        code: 'CREATE_VENTE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -100,6 +116,19 @@ module.exports = (pool, requireWriteAccess) => {
         client_id, recolte_id, commande_id, date_vente, quantite_grammes, 
         prix_unitaire_kg, mode_paiement, statut, numero_facture, notes 
       } = req.body;
+      
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM ventes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Vente non trouvée',
+          code: 'VENTE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
       
       const montant_total = quantite_grammes && prix_unitaire_kg 
         ? (parseFloat(quantite_grammes) / 1000) * parseFloat(prix_unitaire_kg) 
@@ -114,27 +143,35 @@ module.exports = (pool, requireWriteAccess) => {
         RETURNING *`,
         [
           client_id, 
-          recolte_id || null, 
-          commande_id || null, 
+          emptyToNull(recolte_id), 
+          emptyToNull(commande_id), 
           date_vente, 
           quantite_grammes, 
-          prix_unitaire_kg || null, 
+          emptyToNull(prix_unitaire_kg), 
           montant_total, 
           mode_paiement, 
           statut, 
           numero_facture, 
-          notes, 
+          emptyToNull(notes), 
           id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Vente non trouvée' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'vente', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour vente:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour de la vente',
+        code: 'UPDATE_VENTE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -142,17 +179,41 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM ventes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Vente non trouvée',
+          code: 'VENTE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM ventes WHERE id = $1 RETURNING *', 
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Vente non trouvée' });
+      
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'vente', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Vente supprimée' });
+      
+      res.json({ 
+        message: 'Vente supprimée',
+        code: 'VENTE_DELETED'
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur suppression vente:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression de la vente',
+        code: 'DELETE_VENTE_ERROR',
+        details: err.message
+      });
     }
   });
 
