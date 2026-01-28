@@ -132,7 +132,14 @@ const createAuthRoutes = (pool) => {
       // 8. Logger la connexion réussie
       await logLoginAttempt(pool, email, clientIp, userAgent, true, null);
 
-      // 9. Retourner la réponse
+      // ✅ 9. AUDIT TRAIL - Login success
+      await logAuditTrail(pool, user.id, 'login', 'auth', user.id, null, {
+        email: user.email,
+        ip: clientIp,
+        userAgent: userAgent.substring(0, 100)
+      });
+
+      // 10. Retourner la réponse
       res.json({
         message: 'Connexion réussie',
         accessToken,
@@ -151,7 +158,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur login:', err);
       res.status(500).json({
         error: 'Erreur lors de la connexion',
-        code: 'LOGIN_ERROR'
+        code: 'LOGIN_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -178,6 +186,9 @@ const createAuthRoutes = (pool) => {
 
       // Générer un nouveau access token
       const accessToken = generateAccessToken(result.user);
+
+      // ✅ AUDIT TRAIL - Token refresh (optionnel car peut être verbeux)
+      // await logAuditTrail(pool, result.user.id, 'token_refresh', 'auth', result.user.id, null, { ip: clientIp });
 
       res.json({
         accessToken,
@@ -212,7 +223,8 @@ const createAuthRoutes = (pool) => {
 
       res.status(500).json({
         error: 'Erreur lors du rafraîchissement',
-        code: 'REFRESH_ERROR'
+        code: 'REFRESH_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -236,13 +248,22 @@ const createAuthRoutes = (pool) => {
         );
       }
 
-      res.json({ message: 'Déconnexion réussie' });
+      // ✅ AUDIT TRAIL - Logout
+      await logAuditTrail(pool, req.user.id, 'logout', 'auth', req.user.id, null, {
+        email: req.user.email
+      });
+
+      res.json({ 
+        message: 'Déconnexion réussie',
+        code: 'LOGOUT_SUCCESS'
+      });
 
     } catch (err) {
       console.error('Erreur logout:', err);
       res.status(500).json({
         error: 'Erreur lors de la déconnexion',
-        code: 'LOGOUT_ERROR'
+        code: 'LOGOUT_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -256,8 +277,15 @@ const createAuthRoutes = (pool) => {
     try {
       const count = await revokeAllUserTokens(pool, req.user.id, 'logout_all');
 
+      // ✅ AUDIT TRAIL - Logout all devices
+      await logAuditTrail(pool, req.user.id, 'logout_all', 'auth', req.user.id, null, {
+        email: req.user.email,
+        sessionsRevoked: count
+      });
+
       res.json({
         message: 'Déconnexion de tous les appareils réussie',
+        code: 'LOGOUT_ALL_SUCCESS',
         sessionsRevoked: count
       });
 
@@ -265,7 +293,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur logout-all:', err);
       res.status(500).json({
         error: 'Erreur lors de la déconnexion',
-        code: 'LOGOUT_ALL_ERROR'
+        code: 'LOGOUT_ALL_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -296,7 +325,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur get me:', err);
       res.status(500).json({
         error: 'Erreur lors de la récupération du profil',
-        code: 'PROFILE_ERROR'
+        code: 'PROFILE_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -336,11 +366,12 @@ const createAuthRoutes = (pool) => {
 
       const newUser = result.rows[0];
 
-      // Audit trail
+      // ✅ Audit trail
       await logAuditTrail(pool, req.user.id, 'create', 'user', newUser.id, null, newUser);
 
       res.status(201).json({
         message: 'Utilisateur créé avec succès',
+        code: 'USER_CREATED',
         user: newUser
       });
 
@@ -348,7 +379,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur register:', err);
       res.status(500).json({
         error: 'Erreur lors de la création de l\'utilisateur',
-        code: 'REGISTER_ERROR'
+        code: 'REGISTER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -372,7 +404,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur list users:', err);
       res.status(500).json({
         error: 'Erreur lors de la récupération des utilisateurs',
-        code: 'LIST_USERS_ERROR'
+        code: 'LIST_USERS_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -404,7 +437,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur get user:', err);
       res.status(500).json({
         error: 'Erreur lors de la récupération de l\'utilisateur',
-        code: 'GET_USER_ERROR'
+        code: 'GET_USER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -501,11 +535,12 @@ const createAuthRoutes = (pool) => {
 
       const newData = result.rows[0];
 
-      // Audit trail
+      // ✅ Audit trail
       await logAuditTrail(pool, req.user.id, 'update', 'user', parseInt(id), oldData, newData);
 
       res.json({
         message: 'Utilisateur mis à jour',
+        code: 'USER_UPDATED',
         user: newData
       });
 
@@ -513,7 +548,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur update user:', err);
       res.status(500).json({
         error: 'Erreur lors de la mise à jour',
-        code: 'UPDATE_USER_ERROR'
+        code: 'UPDATE_USER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -555,11 +591,12 @@ const createAuthRoutes = (pool) => {
         [id]
       );
 
-      // Audit trail
+      // ✅ Audit trail
       await logAuditTrail(pool, req.user.id, 'delete', 'user', parseInt(id), deletedUser, null);
 
       res.json({
         message: 'Utilisateur supprimé',
+        code: 'USER_DELETED',
         user: result.rows[0]
       });
 
@@ -567,7 +604,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur delete user:', err);
       res.status(500).json({
         error: 'Erreur lors de la suppression',
-        code: 'DELETE_USER_ERROR'
+        code: 'DELETE_USER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -622,13 +660,23 @@ const createAuthRoutes = (pool) => {
         changedBy: 'self'
       });
 
-      res.json({ message: 'Mot de passe modifié avec succès' });
+      // ✅ AUDIT TRAIL - Change password (user)
+      await logAuditTrail(pool, req.user.id, 'change_password', 'user', req.user.id, null, {
+        email: req.user.email,
+        changedBy: 'self'
+      });
+
+      res.json({ 
+        message: 'Mot de passe modifié avec succès',
+        code: 'PASSWORD_CHANGED'
+      });
 
     } catch (err) {
       console.error('Erreur change password:', err);
       res.status(500).json({
         error: 'Erreur lors du changement de mot de passe',
-        code: 'CHANGE_PASSWORD_ERROR'
+        code: 'CHANGE_PASSWORD_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -675,8 +723,15 @@ const createAuthRoutes = (pool) => {
         resetByEmail: req.user.email
       });
 
+      // ✅ AUDIT TRAIL - Reset password by admin
+      await logAuditTrail(pool, req.user.id, 'reset_password', 'user', parseInt(id), null, {
+        targetEmail: result.rows[0].email,
+        resetBy: req.user.email
+      });
+
       res.json({
         message: 'Mot de passe réinitialisé',
+        code: 'PASSWORD_RESET',
         user: result.rows[0]
       });
 
@@ -684,7 +739,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur reset password:', err);
       res.status(500).json({
         error: 'Erreur lors de la réinitialisation',
-        code: 'RESET_PASSWORD_ERROR'
+        code: 'RESET_PASSWORD_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -717,8 +773,15 @@ const createAuthRoutes = (pool) => {
         unlockedByEmail: req.user.email
       });
 
+      // ✅ AUDIT TRAIL - Unlock account
+      await logAuditTrail(pool, req.user.id, 'unlock_account', 'user', parseInt(id), null, {
+        targetEmail: result.rows[0].email,
+        unlockedBy: req.user.email
+      });
+
       res.json({
         message: 'Compte déverrouillé',
+        code: 'ACCOUNT_UNLOCKED',
         user: result.rows[0]
       });
 
@@ -726,7 +789,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur unlock:', err);
       res.status(500).json({
         error: 'Erreur lors du déverrouillage',
-        code: 'UNLOCK_ERROR'
+        code: 'UNLOCK_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -752,7 +816,8 @@ const createAuthRoutes = (pool) => {
       console.error('Erreur get sessions:', err);
       res.status(500).json({
         error: 'Erreur lors de la récupération des sessions',
-        code: 'GET_SESSIONS_ERROR'
+        code: 'GET_SESSIONS_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
@@ -768,7 +833,7 @@ const createAuthRoutes = (pool) => {
     try {
       const result = await pool.query(
         `UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'user_revoked'
-         WHERE id = $1 AND user_id = $2 RETURNING id`,
+         WHERE id = $1 AND user_id = $2 RETURNING id, device_info`,
         [id, req.user.id]
       );
 
@@ -779,13 +844,24 @@ const createAuthRoutes = (pool) => {
         });
       }
 
-      res.json({ message: 'Session révoquée' });
+      // ✅ AUDIT TRAIL - Revoke session
+      await logAuditTrail(pool, req.user.id, 'revoke_session', 'auth', parseInt(id), null, {
+        email: req.user.email,
+        sessionId: id,
+        deviceInfo: result.rows[0].device_info
+      });
+
+      res.json({ 
+        message: 'Session révoquée',
+        code: 'SESSION_REVOKED'
+      });
 
     } catch (err) {
       console.error('Erreur revoke session:', err);
       res.status(500).json({
         error: 'Erreur lors de la révocation',
-        code: 'REVOKE_SESSION_ERROR'
+        code: 'REVOKE_SESSION_ERROR',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   });
