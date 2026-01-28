@@ -1,7 +1,8 @@
 // backend/routes/parcelles.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
-module.exports = (pool, requireWriteAccess, emptyToNull) => {
+module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
 
   // GET /api/parcelles - Liste toutes les parcelles avec géométrie
@@ -40,8 +41,11 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       
       res.json(parcelles);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la récupération des parcelles' });
+      console.error('Erreur récupération parcelles:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des parcelles',
+        code: 'LIST_PARCELLES_ERROR'
+      });
     }
   });
 
@@ -51,12 +55,18 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       const { id } = req.params;
       const result = await pool.query('SELECT * FROM parcelles WHERE id = $1', [id]);
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Parcelle non trouvée' });
+        return res.status(404).json({ 
+          error: 'Parcelle non trouvée',
+          code: 'PARCELLE_NOT_FOUND'
+        });
       }
       res.json(result.rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération parcelle:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération de la parcelle',
+        code: 'GET_PARCELLE_ERROR'
+      });
     }
   });
 
@@ -123,9 +133,9 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
           params = [
             nom.trim(),
             parseFloat(surface_ha),
-            type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
+            emptyToNull(type_sol),
             ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
-            notes && notes.trim() !== '' ? notes.trim() : null,
+            emptyToNull(notes),
             polygonWKT
           ];
 
@@ -140,9 +150,9 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
           params = [
             nom.trim(),
             parseFloat(surface_ha),
-            type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
+            emptyToNull(type_sol),
             ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
-            notes && notes.trim() !== '' ? notes.trim() : null
+            emptyToNull(notes)
           ];
         }
       } 
@@ -155,19 +165,25 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
         params = [
           nom.trim(),
           parseFloat(surface_ha),
-          type_sol && type_sol.trim() !== '' ? type_sol.trim() : null,
+          emptyToNull(type_sol),
           ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null,
-          notes && notes.trim() !== '' ? notes.trim() : null
+          emptyToNull(notes)
         ];
       }
 
       console.log('🔵 Exécution SQL:', { query: query.substring(0, 80) + '...', params });
 
       const result = await pool.query(query, params);
+      const newParcelle = result.rows[0];
 
-      console.log('✅ Parcelle créée, ID:', result.rows[0].id);
+      console.log('✅ Parcelle créée, ID:', newParcelle.id);
 
-      res.status(201).json(result.rows[0]);
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'parcelle', newParcelle.id, null, newParcelle);
+      }
+
+      res.status(201).json(newParcelle);
 
     } catch (err) {
       console.error('═══════════════════════════════════════');
@@ -178,9 +194,9 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       console.error('═══════════════════════════════════════');
 
       res.status(500).json({ 
-        error: 'Erreur lors de la création',
-        details: err.message,
-        code: err.code
+        error: 'Erreur lors de la création de la parcelle',
+        code: 'CREATE_PARCELLE_ERROR',
+        details: err.message
       });
     }
   });
@@ -191,33 +207,73 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
       const { id } = req.params;
       const { nom, surface_ha, type_sol, ph_sol, notes, coordinates, deleteGeometry } = req.body;
       
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query('SELECT * FROM parcelles WHERE id = $1', [id]);
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Parcelle non trouvée',
+          code: 'PARCELLE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       let query, params;
       
       if (deleteGeometry === true) {
         query = `UPDATE parcelles SET nom = $1, surface_ha = $2, type_sol = $3, ph_sol = $4, 
                  notes = $5, geometrie = NULL WHERE id = $6 RETURNING *`;
-        params = [nom, surface_ha, type_sol, ph_sol, notes, id];
+        params = [
+          nom, 
+          surface_ha, 
+          emptyToNull(type_sol), 
+          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null, 
+          emptyToNull(notes), 
+          id
+        ];
       } else if (coordinates && coordinates.length > 0) {
         const coordsString = coordinates.map(coord => `${coord[1]} ${coord[0]}`).join(', ');
         const polygonWKT = `POLYGON((${coordsString}, ${coordinates[0][1]} ${coordinates[0][0]}))`;
         
         query = `UPDATE parcelles SET nom = $1, surface_ha = $2, type_sol = $3, ph_sol = $4, 
                  notes = $5, geometrie = ST_GeomFromText($6, 4326) WHERE id = $7 RETURNING *`;
-        params = [nom, surface_ha, type_sol, ph_sol, notes, polygonWKT, id];
+        params = [
+          nom, 
+          surface_ha, 
+          emptyToNull(type_sol), 
+          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null, 
+          emptyToNull(notes), 
+          polygonWKT, 
+          id
+        ];
       } else {
         query = `UPDATE parcelles SET nom = $1, surface_ha = $2, type_sol = $3, ph_sol = $4, 
                  notes = $5 WHERE id = $6 RETURNING *`;
-        params = [nom, surface_ha, type_sol, ph_sol, notes, id];
+        params = [
+          nom, 
+          surface_ha, 
+          emptyToNull(type_sol), 
+          ph_sol && ph_sol !== '' ? parseFloat(ph_sol) : null, 
+          emptyToNull(notes), 
+          id
+        ];
       }
       
       const result = await pool.query(query, params);
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Parcelle non trouvée' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'parcelle', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour parcelle:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour de la parcelle',
+        code: 'UPDATE_PARCELLE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -225,14 +281,35 @@ module.exports = (pool, requireWriteAccess, emptyToNull) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await pool.query('DELETE FROM parcelles WHERE id = $1 RETURNING *', [id]);
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Parcelle non trouvée' });
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query('SELECT * FROM parcelles WHERE id = $1', [id]);
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Parcelle non trouvée',
+          code: 'PARCELLE_NOT_FOUND'
+        });
       }
-      res.json({ message: 'Parcelle supprimée' });
+      const oldData = oldDataResult.rows[0];
+      
+      const result = await pool.query('DELETE FROM parcelles WHERE id = $1 RETURNING *', [id]);
+      
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'parcelle', parseInt(id), oldData, null);
+      }
+
+      res.json({ 
+        message: 'Parcelle supprimée',
+        code: 'PARCELLE_DELETED'
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la suppression' });
+      console.error('Erreur suppression parcelle:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression de la parcelle',
+        code: 'DELETE_PARCELLE_ERROR',
+        details: err.message
+      });
     }
   });
 
