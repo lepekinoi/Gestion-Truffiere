@@ -17,10 +17,10 @@ import CSVImportModal from './CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
 
 // Imports Phase 2 - Composants UI
-import { StatsCard } from './Commercial/components/StatsCard';
-import { StatusBadge } from './Commercial/components/StatusBadge';
-import { PaginationControls as PaginationControlsComponent } from './Commercial/components/PaginationControls';
-import { ClientTile } from './Commercial/components/ClientTile';
+import StatsCard from './Commercial/components/StatsCard';
+import StatusBadge from './Commercial/components/StatusBadge';
+import PaginationControlsComponent from './Commercial/components/PaginationControls';
+import ClientTile from './Commercial/components/ClientTile';
 import { 
   STATUT_COLORS_COMMANDES as STATUT_COLORS_CMD, 
   STATUT_COLORS_VENTES as STATUT_COLORS_VT 
@@ -840,14 +840,9 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     return Math.ceil(dataLength / itemsPerPage);
   };
   
-  <PaginationControlsComponent
-  currentPage={currentPageClients}
-  setCurrentPage={setCurrentPageClients}
-  totalItems={sortedClients.length}
-  itemsPerPage={itemsPerPageClients}
-  setItemsPerPage={setItemsPerPageClients}
-  entity="clients"
-/>
+// Alias pour compatibilité
+const PaginationControls = PaginationControlsComponent;
+
   
   // ==================== FILTRAGE ====================
   
