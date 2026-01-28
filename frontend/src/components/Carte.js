@@ -169,8 +169,7 @@ function Carte() {
     
     try {
       // Envoyer avec deleteGeometry = true pour supprimer la geometrie
-      // Si le serveur ne supporte pas, on envoie coordinates vide
-      await axios.put(`${API_URL}/parcelles/${parcelle.id}`, {
+      const response = await axios.put(`${API_URL}/parcelles/${parcelle.id}`, {
         nom: parcelle.nom,
         surface_ha: parcelle.surface_ha,
         type_sol: parcelle.type_sol || '',
@@ -182,7 +181,13 @@ function Carte() {
       });
       
       showMessage('Trace supprime !', 'success');
-      await loadData();
+      
+      // ✅ FIX : Mettre à jour l'état local immédiatement
+      setParcelles(prevParcelles => 
+        prevParcelles.map(p => 
+          p.id === parcelle.id ? { ...p, coordinates: [] } : p
+        )
+      );
       
     } catch (error) {
       console.error('Erreur:', error);
@@ -215,7 +220,7 @@ function Carte() {
         return;
       }
 
-      await axios.put(`${API_URL}/parcelles/${selectedParcelle}`, {
+      const response = await axios.put(`${API_URL}/parcelles/${selectedParcelle}`, {
         nom: parcelle.nom,
         surface_ha: parcelle.surface_ha,
         type_sol: parcelle.type_sol || '',
@@ -226,8 +231,16 @@ function Carte() {
       });
       
       showMessage(isRedrawing ? 'Parcelle redessinee !' : 'Parcelle enregistree !', 'success');
+      
+      // ✅ FIX : Mettre à jour l'état local immédiatement avec les données de l'API
+      setParcelles(prevParcelles => 
+        prevParcelles.map(p => 
+          p.id === parseInt(selectedParcelle) ? response.data : p
+        )
+      );
+      
       cancelEdit();
-      await loadData();
+      
     } catch (error) {
       console.error('Erreur:', error);
       showMessage('Erreur: ' + (error.response?.data?.error || error.message), 'error');
@@ -260,7 +273,7 @@ function Carte() {
     showMessage('Suppression de la position...', 'success');
     
     try {
-      await axios.put(`${API_URL}/arbres/${arbre.id}`, {
+      const response = await axios.put(`${API_URL}/arbres/${arbre.id}`, {
         parcelle_id: arbre.parcelle_id,
         numero: arbre.numero,
         espece: arbre.espece,
@@ -275,7 +288,13 @@ function Carte() {
       });
       
       showMessage('Position supprimee !', 'success');
-      await loadData();
+      
+      // ✅ FIX : Mettre à jour l'état local immédiatement
+      setArbres(prevArbres => 
+        prevArbres.map(a => 
+          a.id === arbre.id ? { ...a, latitude: null, longitude: null } : a
+        )
+      );
       
     } catch (error) {
       console.error('Erreur:', error);
@@ -325,7 +344,7 @@ function Carte() {
     try {
       const arbre = arbres.find(a => a.id === parseInt(selectedArbre));
       
-      await axios.put(`${API_URL}/arbres/${selectedArbre}`, {
+      const response = await axios.put(`${API_URL}/arbres/${selectedArbre}`, {
         parcelle_id: arbre.parcelle_id,
         numero: arbre.numero,
         espece: arbre.espece,
@@ -340,8 +359,16 @@ function Carte() {
       });
       
       showMessage('Arbre positionne !', 'success');
+      
+      // ✅ FIX : Mettre à jour l'état local immédiatement avec les données de l'API
+      setArbres(prevArbres => 
+        prevArbres.map(a => 
+          a.id === parseInt(selectedArbre) ? response.data : a
+        )
+      );
+      
       cancelEdit();
-      await loadData();
+      
     } catch (error) {
       console.error('Erreur:', error);
       showMessage('Erreur: ' + (error.response?.data?.error || error.message), 'error');
