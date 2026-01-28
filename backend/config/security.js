@@ -185,6 +185,12 @@ const isPublicRoute = (path, method) => {
   });
 };
 
+// À la fin du fichier
+console.log('🔒 Configuration sécurité chargée :');
+console.log(`   - CORS origines : ${process.env.CORS_ORIGINS || process.env.FRONTEND_URL}`);
+console.log(`   - Rate limiting global : ${globalLimiter.max} req/${globalLimiter.windowMs/60000}min`);
+console.log(`   - Rate limiting auth : ${authLimiter.max} req/${authLimiter.windowMs/60000}min`);
+
 module.exports = {
   corsOptions,
   helmetConfig,
