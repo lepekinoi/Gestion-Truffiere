@@ -1,5 +1,6 @@
 // backend/routes/recoltes.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -16,8 +17,11 @@ module.exports = (pool, requireWriteAccess) => {
       `);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération récoltes:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des récoltes',
+        code: 'LIST_RECOLTES_ERROR'
+      });
     }
   });
 
@@ -39,26 +43,38 @@ module.exports = (pool, requireWriteAccess) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
         RETURNING *`,
         [
-          parcelle_id || null, 
-          arbre_id || null, 
+          emptyToNull(parcelle_id), 
+          emptyToNull(arbre_id), 
           date_recolte, 
           poids_grammes, 
-          qualite || null, 
-          calibre || null, 
-          maturite || null, 
-          profondeur_cm || null, 
-          exposition || null, 
-          conditions_meteo || null, 
-          temperature_sol || null, 
-          caveur || null, 
-          chien || null, 
-          notes || null
+          emptyToNull(qualite), 
+          emptyToNull(calibre), 
+          emptyToNull(maturite), 
+          emptyToNull(profondeur_cm), 
+          emptyToNull(exposition), 
+          emptyToNull(conditions_meteo), 
+          emptyToNull(temperature_sol), 
+          emptyToNull(caveur), 
+          emptyToNull(chien), 
+          emptyToNull(notes)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newRecolte = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'recolte', newRecolte.id, null, newRecolte);
+      }
+
+      res.status(201).json(newRecolte);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      console.error('Erreur création récolte:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de la récolte',
+        code: 'CREATE_RECOLTE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -72,6 +88,19 @@ module.exports = (pool, requireWriteAccess) => {
         temperature_sol, caveur, chien, notes 
       } = req.body;
       
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM recoltes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Récolte non trouvée',
+          code: 'RECOLTE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         `UPDATE recoltes SET 
           parcelle_id = $1, arbre_id = $2, date_recolte = $3, poids_grammes = $4,
@@ -81,31 +110,39 @@ module.exports = (pool, requireWriteAccess) => {
         WHERE id = $15 
         RETURNING *`,
         [
-          parcelle_id || null, 
-          arbre_id || null, 
+          emptyToNull(parcelle_id), 
+          emptyToNull(arbre_id), 
           date_recolte, 
           poids_grammes, 
-          qualite || null, 
-          calibre || null, 
-          maturite || null, 
-          profondeur_cm || null, 
-          exposition || null, 
-          conditions_meteo || null, 
-          temperature_sol || null, 
-          caveur || null, 
-          chien || null, 
-          notes || null, 
+          emptyToNull(qualite), 
+          emptyToNull(calibre), 
+          emptyToNull(maturite), 
+          emptyToNull(profondeur_cm), 
+          emptyToNull(exposition), 
+          emptyToNull(conditions_meteo), 
+          emptyToNull(temperature_sol), 
+          emptyToNull(caveur), 
+          emptyToNull(chien), 
+          emptyToNull(notes), 
           id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Récolte non trouvée' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'recolte', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour récolte:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour de la récolte',
+        code: 'UPDATE_RECOLTE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -113,17 +150,42 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM recoltes WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Récolte non trouvée',
+          code: 'RECOLTE_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM recoltes WHERE id = $1 RETURNING *', 
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Récolte non trouvée' });
+      
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'recolte', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Récolte supprimée', recolte: result.rows[0] });
+      
+      res.json({ 
+        message: 'Récolte supprimée',
+        code: 'RECOLTE_DELETED',
+        recolte: result.rows[0] 
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur suppression récolte:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression de la récolte',
+        code: 'DELETE_RECOLTE_ERROR',
+        details: err.message
+      });
     }
   });
 
