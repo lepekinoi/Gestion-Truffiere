@@ -7,8 +7,7 @@ require('dotenv').config();
 // Vérification critique : JWT_SECRET doit être défini
 if (!process.env.JWT_SECRET) {
   console.error('❌ ERREUR CRITIQUE : JWT_SECRET manquant dans .env !');
-  console.error('⚠️  Générez un secret sécurisé avec : node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"
-');
+  console.error('⚠️  Générez un secret sécurisé avec : node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
   process.exit(1);
 }
 
