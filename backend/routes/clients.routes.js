@@ -1,5 +1,6 @@
 // backend/routes/clients.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -12,8 +13,11 @@ module.exports = (pool, requireWriteAccess) => {
       );
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération clients:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des clients',
+        code: 'LIST_CLIENTS_ERROR'
+      });
     }
   });
 
@@ -47,8 +51,11 @@ module.exports = (pool, requireWriteAccess) => {
         }
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats client:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques',
+        code: 'CLIENT_STATS_ERROR'
+      });
     }
   });
 
@@ -66,8 +73,11 @@ module.exports = (pool, requireWriteAccess) => {
       `);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats par type:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques par type',
+        code: 'CLIENTS_STATS_BY_TYPE_ERROR'
+      });
     }
   });
 
@@ -88,23 +98,35 @@ module.exports = (pool, requireWriteAccess) => {
         RETURNING *`,
         [
           type || 'Particulier', 
-          nom, 
-          prenom, 
-          raison_sociale, 
-          email, 
-          telephone, 
-          adresse, 
-          code_postal, 
-          ville, 
+          emptyToNull(nom), 
+          emptyToNull(prenom), 
+          emptyToNull(raison_sociale), 
+          emptyToNull(email), 
+          emptyToNull(telephone), 
+          emptyToNull(adresse), 
+          emptyToNull(code_postal), 
+          emptyToNull(ville), 
           pays || 'France', 
-          siret, 
-          notes
+          emptyToNull(siret), 
+          emptyToNull(notes)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newClient = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'client', newClient.id, null, newClient);
+      }
+
+      res.status(201).json(newClient);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      console.error('Erreur création client:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création du client',
+        code: 'CREATE_CLIENT_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -117,6 +139,19 @@ module.exports = (pool, requireWriteAccess) => {
         adresse, code_postal, ville, pays, siret, notes 
       } = req.body;
       
+      // Récupérer anciennes valeurs pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM clients WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Client non trouvé',
+          code: 'CLIENT_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         `UPDATE clients SET 
           type = $1, nom = $2, prenom = $3, raison_sociale = $4, email = $5,
@@ -125,18 +160,37 @@ module.exports = (pool, requireWriteAccess) => {
         WHERE id = $13 
         RETURNING *`,
         [
-          type, nom, prenom, raison_sociale, email, telephone, 
-          adresse, code_postal, ville, pays, siret, notes, id
+          type, 
+          emptyToNull(nom), 
+          emptyToNull(prenom), 
+          emptyToNull(raison_sociale), 
+          emptyToNull(email), 
+          emptyToNull(telephone), 
+          emptyToNull(adresse), 
+          emptyToNull(code_postal), 
+          emptyToNull(ville), 
+          emptyToNull(pays), 
+          emptyToNull(siret), 
+          emptyToNull(notes), 
+          id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client non trouvé' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'client', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour client:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour du client',
+        code: 'UPDATE_CLIENT_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -144,17 +198,41 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données pour audit trail
+      const oldDataResult = await pool.query(
+        'SELECT * FROM clients WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Client non trouvé',
+          code: 'CLIENT_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         'DELETE FROM clients WHERE id = $1 RETURNING *', 
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client non trouvé' });
+      
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'client', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Client supprimé' });
+      
+      res.json({ 
+        message: 'Client supprimé',
+        code: 'CLIENT_DELETED'
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur suppression client:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression du client',
+        code: 'DELETE_CLIENT_ERROR',
+        details: err.message
+      });
     }
   });
 
