@@ -1,5 +1,6 @@
 // backend/routes/amendements-ref.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -26,7 +27,10 @@ module.exports = (pool, requireWriteAccess) => {
       res.json(result.rows);
     } catch (err) {
       console.error('Erreur récupération amendements:', err);
-      res.status(500).json({ error: 'Erreur lors de la récupération' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des amendements',
+        code: 'LIST_AMENDEMENTS_ERROR'
+      });
     }
   });
 
@@ -45,14 +49,31 @@ module.exports = (pool, requireWriteAccess) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING *`,
         [
-          nom, type_amendement, composition, dose_recommandee_ha, 
-          utilisable_bio || false, effet_principal, precautions
+          nom, 
+          type_amendement, 
+          emptyToNull(composition), 
+          emptyToNull(dose_recommandee_ha), 
+          utilisable_bio || false, 
+          emptyToNull(effet_principal), 
+          emptyToNull(precautions)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newAmendement = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'amendement_ref', newAmendement.id, null, newAmendement);
+      }
+
+      res.status(201).json(newAmendement);
     } catch (err) {
       console.error('Erreur création amendement:', err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de l\'amendement',
+        code: 'CREATE_AMENDEMENT_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -65,6 +86,19 @@ module.exports = (pool, requireWriteAccess) => {
         utilisable_bio, effet_principal, precautions, actif 
       } = req.body;
       
+      // Récupérer anciennes valeurs
+      const oldDataResult = await pool.query(
+        'SELECT * FROM amendements_ref WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Amendement non trouvé',
+          code: 'AMENDEMENT_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         `UPDATE amendements_ref SET 
          nom = $1, type_amendement = $2, composition = $3, 
@@ -73,18 +107,33 @@ module.exports = (pool, requireWriteAccess) => {
          WHERE id = $9 
          RETURNING *`,
         [
-          nom, type_amendement, composition, dose_recommandee_ha, 
-          utilisable_bio, effet_principal, precautions, actif !== false, id
+          nom, 
+          type_amendement, 
+          emptyToNull(composition), 
+          emptyToNull(dose_recommandee_ha), 
+          utilisable_bio, 
+          emptyToNull(effet_principal), 
+          emptyToNull(precautions), 
+          actif !== false, 
+          id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Amendement non trouvé' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'amendement_ref', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
       console.error('Erreur modification amendement:', err);
-      res.status(500).json({ error: 'Erreur lors de la modification' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la modification de l\'amendement',
+        code: 'UPDATE_AMENDEMENT_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -92,14 +141,41 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données
+      const oldDataResult = await pool.query(
+        'SELECT * FROM amendements_ref WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Amendement non trouvé',
+          code: 'AMENDEMENT_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       await pool.query(
         'UPDATE amendements_ref SET actif = false WHERE id = $1', 
         [id]
       );
-      res.json({ message: 'Amendement désactivé' });
+
+      // Audit trail (soft delete)
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'soft_delete', 'amendement_ref', parseInt(id), oldData, { ...oldData, actif: false });
+      }
+
+      res.json({ 
+        message: 'Amendement désactivé',
+        code: 'AMENDEMENT_DEACTIVATED'
+      });
     } catch (err) {
       console.error('Erreur désactivation amendement:', err);
-      res.status(500).json({ error: 'Erreur lors de la désactivation' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la désactivation de l\'amendement',
+        code: 'DEACTIVATE_AMENDEMENT_ERROR',
+        details: err.message
+      });
     }
   });
 
