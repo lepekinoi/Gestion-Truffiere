@@ -1,5 +1,6 @@
 // backend/routes/caveurs.routes.js
 const express = require('express');
+const { logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -10,8 +11,11 @@ module.exports = (pool, requireWriteAccess) => {
       const result = await pool.query('SELECT * FROM caveurs ORDER BY nom');
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la récupération des caveurs' });
+      console.error('Erreur récupération caveurs:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des caveurs',
+        code: 'LIST_CAVEURS_ERROR'
+      });
     }
   });
 
@@ -23,10 +27,22 @@ module.exports = (pool, requireWriteAccess) => {
         'INSERT INTO caveurs (nom) VALUES ($1) RETURNING *', 
         [nom]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newCaveur = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'caveur', newCaveur.id, null, newCaveur);
+      }
+
+      res.status(201).json(newCaveur);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la création du caveur' });
+      console.error('Erreur création caveur:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création du caveur',
+        code: 'CREATE_CAVEUR_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -35,17 +51,37 @@ module.exports = (pool, requireWriteAccess) => {
     try {
       const { id } = req.params;
       const { nom } = req.body;
+
+      // Récupérer anciennes valeurs
+      const oldDataResult = await pool.query('SELECT * FROM caveurs WHERE id = $1', [id]);
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Caveur non trouvé',
+          code: 'CAVEUR_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+
       const result = await pool.query(
         'UPDATE caveurs SET nom = $1 WHERE id = $2 RETURNING *', 
         [nom, id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Caveur non trouvé' });
+
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'caveur', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour caveur:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour du caveur',
+        code: 'UPDATE_CAVEUR_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -53,17 +89,38 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+
+      // Récupérer les données
+      const oldDataResult = await pool.query('SELECT * FROM caveurs WHERE id = $1', [id]);
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Caveur non trouvé',
+          code: 'CAVEUR_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+
       const result = await pool.query(
         'DELETE FROM caveurs WHERE id = $1 RETURNING *', 
         [id]
       );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Caveur non trouvé' });
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'delete', 'caveur', parseInt(id), oldData, null);
       }
-      res.json({ message: 'Caveur supprimé' });
+
+      res.json({ 
+        message: 'Caveur supprimé',
+        code: 'CAVEUR_DELETED'
+      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la suppression' });
+      console.error('Erreur suppression caveur:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la suppression du caveur',
+        code: 'DELETE_CAVEUR_ERROR',
+        details: err.message
+      });
     }
   });
 
