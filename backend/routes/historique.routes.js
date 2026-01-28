@@ -56,8 +56,11 @@ module.exports = (pool, requireWriteAccess, requireRole) => {
       const result = await pool.query(query, params);
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la récupération de l\'historique' });
+      console.error('Erreur récupération historique:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération de l\'historique',
+        code: 'LIST_HISTORIQUE_ERROR'
+      });
     }
   });
 
@@ -65,7 +68,10 @@ module.exports = (pool, requireWriteAccess, requireRole) => {
   router.delete('/purge', requireWriteAccess, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Accès admin requis' });
+        return res.status(403).json({ 
+          error: 'Accès admin requis pour purger l\'historique',
+          code: 'ADMIN_REQUIRED'
+        });
       }
       
       const { period, table_name, custom_date } = req.body;
@@ -96,12 +102,17 @@ module.exports = (pool, requireWriteAccess, requireRole) => {
       
       const result = await pool.query(deleteQuery, params);
       res.json({ 
-        message: 'Purge effectuée', 
+        message: 'Purge de l\'historique effectuée',
+        code: 'HISTORIQUE_PURGED',
         deleted_count: result.rows.length 
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur lors de la purge' });
+      console.error('Erreur purge historique:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la purge de l\'historique',
+        code: 'PURGE_HISTORIQUE_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -128,8 +139,11 @@ module.exports = (pool, requireWriteAccess, requireRole) => {
         oldest: oldestResult.rows[0].oldest
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur stats historique:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul des statistiques de l\'historique',
+        code: 'STATS_HISTORIQUE_ERROR'
+      });
     }
   });
 
