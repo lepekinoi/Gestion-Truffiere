@@ -13,9 +13,9 @@ const cors = require('cors');
 const corsOptions = {
   origin: function (origin, callback) {
     // Liste des origines autorisées
-    const allowedOrigins = [
-      process.env.FRONTEND_URL
-    ];
+    const allowedOrigins = process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+      : [process.env.FRONTEND_URL];
     
     // Permettre les requêtes sans origin (apps mobiles, Postman, etc.)
     if (!origin) return callback(null, true);
