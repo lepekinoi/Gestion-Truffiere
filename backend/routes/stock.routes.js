@@ -127,7 +127,11 @@ module.exports = (pool) => {
       });
     } catch (err) {
       console.error('Erreur calcul stock:', err);
-      res.status(500).json({ error: 'Erreur lors du calcul du stock' });
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul du stock',
+        code: 'STOCK_CALCULATION_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -142,7 +146,10 @@ module.exports = (pool) => {
       );
 
       if (recolte.rows.length === 0) {
-        return res.status(404).json({ error: 'Récolte non trouvée' });
+        return res.status(404).json({ 
+          error: 'Récolte non trouvée',
+          code: 'RECOLTE_NOT_FOUND'
+        });
       }
 
       const vendu = await pool.query(`
@@ -162,7 +169,11 @@ module.exports = (pool) => {
       });
     } catch (err) {
       console.error('Erreur stock récolte:', err);
-      res.status(500).json({ error: 'Erreur lors du calcul du stock de la récolte' });
+      res.status(500).json({ 
+        error: 'Erreur lors du calcul du stock de la récolte',
+        code: 'RECOLTE_STOCK_ERROR',
+        details: err.message
+      });
     }
   });
 
