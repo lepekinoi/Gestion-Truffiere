@@ -4,10 +4,7 @@
 // ============================================================
 
 const jwt = require('jsonwebtoken');
-
-// Configuration JWT (à mettre dans les variables d'environnement)
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGEZ_MOI_EN_PRODUCTION_minimum_64_caracteres_de_securite';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
  * Middleware d'authentification
@@ -96,6 +93,28 @@ const roleMiddleware = (...allowedRoles) => {
 
     next();
   };
+};
+
+/**
+ * Middleware de vérification des permissions d'écriture
+ * Bloque les utilisateurs en lecture seule (role: 'readonly')
+ */
+const requireWriteAccess = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      error: 'Authentification requise',
+      code: 'NO_USER'
+    });
+  }
+
+  if (req.user.role === 'readonly') {
+    return res.status(403).json({ 
+      error: 'Accès en lecture seule - Modification interdite',
+      code: 'READONLY_ACCESS'
+    });
+  }
+
+  next();
 };
 
 /**
@@ -189,19 +208,33 @@ const activeUserMiddleware = (pool) => {
   };
 };
 
+// ============================================================
+// RACCOURCIS & ALIAS
+// ============================================================
+
 // Raccourcis pour les rôles courants
 const adminOnly = roleMiddleware('admin');
 const userOrAdmin = roleMiddleware('user', 'admin');
 const allRoles = roleMiddleware('readonly', 'user', 'admin');
 
+// Alias pour compatibilité avec server.js actuel
+const requireRole = roleMiddleware;
+
 module.exports = {
+  // Middlewares principaux
   authMiddleware,
   roleMiddleware,
+  requireRole,              // Alias
+  requireWriteAccess,       // Nouveau
   optionalAuth,
   activeUserMiddleware,
+  
+  // Raccourcis
   adminOnly,
   userOrAdmin,
   allRoles,
+  
+  // Config (pour compatibilité)
   JWT_SECRET,
   JWT_EXPIRES_IN
 };
