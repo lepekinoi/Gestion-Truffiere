@@ -320,131 +320,76 @@ const CHAMPS_PAR_TYPE = {
         titre: 'Relevé',
         champs: [
           { name: 'dateReleve', label: 'Date du relevé', type: 'date' },
-          { name: 'captures', label: 'Nombre de captures', type: 'number', placeholder: 'Ex: 5' },
-          { name: 'actionSuite', label: 'Action décidée', type: 'textarea', placeholder: 'Traitement prévu, surveillance...' }
-        ]
-      }
-    ]
-  },
-  'Inoculation': {
-    icon: '💉',
-    sections: [
-      {
-        titre: 'Inoculation',
-        champs: [
-          { name: 'typeInoculum', label: 'Type d\'inoculum', type: 'select', options: ['', 'Spores', 'Mycélium', 'Terre mycorhizée', 'Solution sporale', 'Gel mycorhizien'] },
-          { name: 'especeTruffeInoculation', label: 'Espèce de truffe', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Tuber magnatum'] },
-          { name: 'quantiteInoculum', label: 'Quantité', type: 'text', placeholder: 'Ex: 50g de spores' },
-          { name: 'methodeInoculation', label: 'Méthode', type: 'select', options: ['', 'Injection racinaire', 'Arrosage solution sporale', 'Incorporation sol', 'Trempage racines'] },
-          { name: 'fournisseurInoculum', label: 'Fournisseur', type: 'text', placeholder: 'Ex: Robin, Agri-Truffe' }
+          { name: 'captures', label: 'Nombre de captures', type: 'number', placeholder: 'Ex: 15' }
         ]
       }
     ]
   }
 };
-// ========================================
-// COMPOSANT PRINCIPAL
-// ========================================
 
+// Sélecteur de parcelle avec affichage amélioré
+function ParcelleSelector({ parcelles, selectedId, onChange }) {
+  return (
+    <select 
+      value={selectedId || ''} 
+      onChange={(e) => onChange(e.target.value ? parseInt(e.target.value) : null)}
+      style={{
+        width: '100%',
+        padding: '0.5rem',
+        border: '1px solid #ddd',
+        borderRadius: '4px',
+        fontSize: '0.9rem'
+      }}
+    >
+      <option value="">-- Sélectionner une parcelle --</option>
+      {parcelles.map(p => (
+        <option key={p.id} value={p.id}>
+          {p.nom} ({p.surface_ha} ha)
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Composant principal
 function Interventions() {
-  // États de base
+  // États
   const [interventions, setInterventions] = useState([]);
   const [parcelles, setParcelles] = useState([]);
   const [arbres, setArbres] = useState([]);
-  const [typesIntervention, setTypesIntervention] = useState([]);
-  const [caveurs, setCaveurs] = useState([]);
-  const [produitsPhyto, setProduitsPhyto] = useState([]);
-  const [amendementsRef, setAmendementsRef] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Modals
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingIntervention, setEditingIntervention] = useState(null);
-
-  // Filtres
-  const [filterStatut, setFilterStatut] = useState('all');
-  const [filterType, setFilterType] = useState('all');
-  const [filterParcelle, setFilterParcelle] = useState('all');
-  const [filterPeriode, setFilterPeriode] = useState('all');
-  const [filterDateDebut, setFilterDateDebut] = useState('');
-  const [filterDateFin, setFilterDateFin] = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-
-  // 🆕 TRI
-  const [sortField, setSortField] = useState('date_prevue');
-  const [sortDirection, setSortDirection] = useState('desc');
-
-  // UI
-  const [showGraphique, setShowGraphique] = useState(true);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Filtres et options d'affichage
+  const [filterType, setFilterType] = useState('all');
+  const [filterDateDebut, setFilterDateDebut] = useState('');
+  const [filterDateFin, setFilterDateFin] = useState('');
+  const [filterParcelle, setFilterParcelle] = useState('all');
+  const [filterArbre, setFilterArbre] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  
   // Pagination
-  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_OPTIONS[2].value);
 
-  // Sélection multiple
-  const [selectedInterventions, setSelectedInterventions] = useState(new Set());
-  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
-  const [bulkEditData, setBulkEditData] = useState({ statut: '', date_realisee: '' });
-
-  // Modal de confirmation
-  const [confirmModal, setConfirmModal] = useState(null);
-
-  // Avertissement doublon
-  const [doublonWarning, setDoublonWarning] = useState(null);
-
-  // Personnel par défaut
-  const [personnelDefaut, setPersonnelDefaut] = useState('');
-
-  // Filtre de recherche pour les arbres
-  const [arbreSearchText, setArbreSearchText] = useState('');
-
-  // Afficher/masquer les champs avancés
-  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
-
-  // Formulaire principal
+  // Formulaire
   const [formData, setFormData] = useState({
-    type_intervention_id: '',
-    parcelle_id: '',
-    arbre_id: [],          // ← comme ça
-    date_prevue: new Date().toISOString().split('T')[0],
-    date_realisee: '',
-    statut: 'Planifié',
+    parcelle_id: null,
+    arbre_id: null,
+    type_intervention: '',
+    date_intervention: new Date().toISOString().split('T')[0],
     description: '',
-    notes: '',
-    cout: '',
-    dureeMinutes: '',
-    meteo: '',
-    personnel: '',
-    caveurId: ''
+    donnees_complementaires: {}
   });
 
-  // Détails spécifiques (nouvelle structure)
-  const [detailsData, setDetailsData] = useState({});
-
-  // Hook pour les paramètres de colonnes
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
-
-// ========================================
-  // OBTENIR LE NOM DU TYPE
-  // ========================================
-  const getTypeName = (typeId) => {
-    const type = typesIntervention.find(t => t.id === typeId);
-    return type ? type.nom : '-';
-  };
-
-  // Obtenir l'icône du type
-  const getTypeIcon = (typeName) => {
-    return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
-  };
-
-  // Charger les données au montage
-  useEffect(() => {
-    loadData();
-  }, []);
+  
+  useEffect(() => { loadData(); }, []);
 
   const showMessage = (text, type = 'success') => {
     setMessage({ text, type });
@@ -453,1834 +398,496 @@ function Interventions() {
 
   const loadData = async () => {
     try {
-      const [interventionsRes, parcellesRes, arbresRes, typesRes, caveursRes, produitsRes, amendementsRes] = await Promise.all([
+      const [interventionsRes, parcellesRes, arbresRes] = await Promise.all([
         axios.get(`${API_URL}/interventions`),
         axios.get(`${API_URL}/parcelles`),
-        axios.get(`${API_URL}/arbres`),
-        axios.get(`${API_URL}/types-intervention`),
-        axios.get(`${API_URL}/caveurs`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/produits-phyto`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/amendements-ref`).catch(() => ({ data: [] }))
+        axios.get(`${API_URL}/arbres`)
       ]);
-
       setInterventions(interventionsRes.data);
       setParcelles(parcellesRes.data);
       setArbres(arbresRes.data);
-      setTypesIntervention(typesRes.data);
-      setCaveurs(caveursRes.data);
-      setProduitsPhyto(produitsRes.data);
-      setAmendementsRef(amendementsRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('❌ Erreur lors du chargement:', error);
+      console.error('Erreur:', error);
+      showMessage('Erreur lors du chargement des données', 'error');
       setLoading(false);
     }
   };
 
-  // ========================================
-  // 🆕 FONCTION DE TRI
-  // ========================================
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  // ========================================
-  // FILTRAGE DES INTERVENTIONS
-  // ========================================
-  const filteredInterventions = useMemo(() => {
-    return interventions.filter(intervention => {
-      // Filtre par statut
-      if (filterStatut !== 'all' && intervention.statut !== filterStatut) return false;
-
-      // Filtre par type
-      if (filterType !== 'all' && intervention.type_intervention_id !== parseInt(filterType)) return false;
-
-      // Filtre par parcelle
-      if (filterParcelle !== 'all' && intervention.parcelle_id !== parseInt(filterParcelle)) return false;
-
-      // Filtre par période
-      if (filterPeriode !== 'all') {
-        const dateIntervention = new Date(intervention.date_prevue);
-        const now = new Date();
-
-        if (filterPeriode === 'today') {
-          if (dateIntervention.toDateString() !== now.toDateString()) return false;
-        } else if (filterPeriode === 'week') {
-          const weekStart = new Date(now);
-          weekStart.setDate(now.getDate() - now.getDay());
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 7);
-          if (dateIntervention < weekStart || dateIntervention >= weekEnd) return false;
-        } else if (filterPeriode === 'month') {
-          if (dateIntervention.getMonth() !== now.getMonth() || dateIntervention.getFullYear() !== now.getFullYear()) return false;
-        }
-      }
-
-      // Filtre par dates personnalisées
-      if (filterDateDebut) {
-        const dateDebut = new Date(filterDateDebut);
-        const dateIntervention = new Date(intervention.date_prevue);
-        if (dateIntervention < dateDebut) return false;
-      }
-
-      if (filterDateFin) {
-        const dateFin = new Date(filterDateFin);
-        const dateIntervention = new Date(intervention.date_prevue);
-        if (dateIntervention > dateFin) return false;
-      }
-
-      // Filtre par recherche textuelle
-      if (searchText) {
-        const search = searchText.toLowerCase();
-        const typeNom = typesIntervention.find(t => t.id === intervention.type_intervention_id)?.nom || '';
-        const parcelleNom = intervention.parcelleNom || '';
-        const description = intervention.description || '';
-        const notes = intervention.notes || '';
-
-        if (!typeNom.toLowerCase().includes(search) &&
-            !parcelleNom.toLowerCase().includes(search) &&
-            !description.toLowerCase().includes(search) &&
-            !notes.toLowerCase().includes(search)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [interventions, filterStatut, filterType, filterParcelle, filterPeriode, filterDateDebut, filterDateFin, searchText, typesIntervention]);
-
-  // 🆕 TRI DES INTERVENTIONS
-  const sortedInterventions = useMemo(() => {
-    const sorted = [...filteredInterventions];
-    
-    sorted.sort((a, b) => {
-      let aVal, bVal;
-
-      switch (sortField) {
-        case 'typenom':
-          aVal = getTypeName(a.type_intervention_id).toLowerCase();
-          bVal = getTypeName(b.type_intervention_id).toLowerCase();
-          break;
-        case 'parcelleNom':
-          aVal = (a.parcelleNom || a.parcelle_nom || '').toLowerCase();
-          bVal = (b.parcelleNom || b.parcelle_nom || '').toLowerCase();
-          break;
-        case 'date_prevue':
-          aVal = new Date(a.date_prevue || a.date_prevue || 0);
-          bVal = new Date(b.date_prevue || b.date_prevue || 0);
-          break;
-        case 'date_realisee':
-          aVal = new Date(a.date_realisee || a.date_realisee || 0);
-          bVal = new Date(b.date_realisee || b.date_realisee || 0);
-          break;
-        case 'statut':
-          aVal = (a.statut || '').toLowerCase();
-          bVal = (b.statut || '').toLowerCase();
-          break;
-        case 'cout':
-          aVal = parseFloat(a.cout) || 0;
-          bVal = parseFloat(b.cout) || 0;
-          break;
-        default:
-          aVal = a[sortField] || '';
-          bVal = b[sortField] || '';
-      }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return sorted;
-  }, [filteredInterventions, sortField, sortDirection]);
-
-  // Calculer le nombre de filtres actifs
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filterStatut !== 'all') count++;
-    if (filterType !== 'all') count++;
-    if (filterParcelle !== 'all') count++;
-    if (filterPeriode !== 'all') count++;
-    if (filterDateDebut) count++;
-    if (filterDateFin) count++;
-    if (searchText) count++;
-    return count;
-  }, [filterStatut, filterType, filterParcelle, filterPeriode, filterDateDebut, filterDateFin, searchText]);
-
-  // ========================================
-  // PAGINATION
-  // ========================================
-  const totalInterventions = sortedInterventions.length;
-  const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(totalInterventions / itemsPerPage);
-  const paginatedInterventions = itemsPerPage === 'all'
-    ? sortedInterventions
-    : sortedInterventions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const handleItemsPerPageChange = (value) => {
-    setItemsPerPage(value);
-    setCurrentPage(1);
-  };
-
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i);
-        pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-      } else {
-        pages.push(1);
-        pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push('...');
-        pages.push(totalPages);
-      }
-    }
-
-    return pages;
-  };
-
-  // Vérifier si tous les éléments de la page sont sélectionnés
-  const isAllPageSelected = paginatedInterventions.length > 0 && paginatedInterventions.every(i => selectedInterventions.has(i.id));
-  const isSomePageSelected = paginatedInterventions.some(i => selectedInterventions.has(i.id));
-
-  // ========================================
-  // SÉLECTION MULTIPLE - FONCTIONS
-  // ========================================
-  const handleSelectIntervention = (interventionId) => {
-    setSelectedInterventions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(interventionId)) {
-        newSet.delete(interventionId);
-      } else {
-        newSet.add(interventionId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAllPage = () => {
-    const pageIds = paginatedInterventions.map(i => i.id);
-    const allSelected = pageIds.every(id => selectedInterventions.has(id));
-
-    setSelectedInterventions(prev => {
-      const newSet = new Set(prev);
-      if (allSelected) {
-        pageIds.forEach(id => newSet.delete(id));
-      } else {
-        pageIds.forEach(id => newSet.add(id));
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAllFiltered = () => {
-    const allIds = sortedInterventions.map(i => i.id);
-    setSelectedInterventions(new Set(allIds));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedInterventions(new Set());
-  };
-
-  const openBulkEditModal = () => {
-    setBulkEditData({ statut: '', date_realisee: '' });
-    setShowBulkEditModal(true);
-  };
-
-  const handleBulkEditChange = (e) => {
-    const { name, value } = e.target;
-    setBulkEditData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleBulkEditSubmit = async () => {
-    if (selectedInterventions.size === 0) return;
-
-    setIsProcessing(true);
-    try {
-      const updates = {};
-      if (bulkEditData.statut) updates.statut = bulkEditData.statut;
-      if (bulkEditData.date_realisee) updates.date_realisee = bulkEditData.date_realisee;
-
-      if (Object.keys(updates).length === 0) {
-        showMessage('Aucune modification à appliquer', 'error');
-        setIsProcessing(false);
-        return;
-      }
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const interventionId of selectedInterventions) {
-        const intervention = interventions.find(i => i.id === interventionId);
-        if (intervention) {
-          try {
-            await axios.put(`${API_URL}/interventions/${interventionId}`, {
-              ...intervention,
-              ...updates
-            });
-            successCount++;
-          } catch (error) {
-            console.error(`❌ Erreur pour l'intervention ${interventionId}:`, error);
-            errorCount++;
-          }
-        }
-      }
-
-      if (errorCount === 0) {
-        showMessage(`${successCount} interventions modifiées avec succès ! ✅`, 'success');
-      } else {
-        showMessage(`${successCount} modifiées, ${errorCount} erreurs`, 'error');
-      }
-
-      loadData();
-      setShowBulkEditModal(false);
-      setSelectedInterventions(new Set());
-    } catch (error) {
-      console.error('❌ Erreur lors de la modification groupée:', error);
-      showMessage('Erreur lors de la modification groupée', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const askBulkDelete = () => {
-    setConfirmModal({
-      type: 'bulk-delete',
-      item: null,
-      title: 'Suppression groupée',
-      message: `Voulez-vous supprimer ${selectedInterventions.size} interventions ? Cette action est irréversible.`,
-      confirmText: 'Oui, supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-
-  const doBulkDelete = async () => {
-    setIsProcessing(true);
-    setConfirmModal(null);
-
-    try {
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const interventionId of selectedInterventions) {
-        try {
-          await axios.delete(`${API_URL}/interventions/${interventionId}`);
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Erreur pour l'intervention ${interventionId}:`, error);
-          errorCount++;
-        }
-      }
-
-      if (errorCount === 0) {
-        showMessage(`${successCount} interventions supprimées ! ✅`, 'success');
-      } else {
-        showMessage(`${successCount} supprimées, ${errorCount} erreurs`, 'error');
-      }
-
-      loadData();
-      setSelectedInterventions(new Set());
-    } catch (error) {
-      console.error('❌ Erreur lors de la suppression groupée:', error);
-      showMessage('Erreur lors de la suppression groupée', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const resetFilters = () => {
-    setFilterStatut('all');
-    setFilterType('all');
-    setFilterParcelle('all');
-    setFilterPeriode('all');
-    setFilterDateDebut('');
-    setFilterDateFin('');
-    setSearchText('');
-    setCurrentPage(1);
-  };
-
-  // ========================================
-  // STATISTIQUES
-  // ========================================
-  const stats = useMemo(() => {
-    return {
-      total: interventions.length,
-      planifiees: interventions.filter(i => i.statut === 'Planifié').length,
-      enCours: interventions.filter(i => i.statut === 'En cours').length,
-      terminees: interventions.filter(i => i.statut === 'Terminé').length,
-      annulees: interventions.filter(i => i.statut === 'Annulé').length,
-      coutTotal: interventions.reduce((sum, i) => sum + (parseFloat(i.cout) || 0), 0),
-      dureeTotale: interventions.reduce((sum, i) => sum + (parseInt(i.dureeMinutes) || 0), 0)
-    };
-  }, [interventions]);
-
-  // ========================================
-  // GRAPHIQUE D'ACTIVITÉ
-  // ========================================
-  const graphiqueData = useMemo(() => {
-    const data = [];
-    const now = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const mois = date.toLocaleDateString('fr-FR', { month: 'short' });
-      const annee = date.getFullYear();
-      const moisNum = date.getMonth();
-
-      const interventionsMois = interventions.filter(intervention => {
-        const dateInt = new Date(intervention.date_prevue || intervention.date_realisee);
-        return dateInt.getMonth() === moisNum && dateInt.getFullYear() === annee;
-      });
-
-      data.push({
-        mois,
-        annee,
-        total: interventionsMois.length,
-        terminees: interventionsMois.filter(i => i.statut === 'Terminé').length,
-        enCours: interventionsMois.filter(i => i.statut === 'En cours').length,
-        planifiees: interventionsMois.filter(i => i.statut === 'Planifié').length
-      });
-    }
-
-    return data;
-  }, [interventions]);
-
-  const maxInterventions = Math.max(...graphiqueData.map(d => d.total), 1);
-// ========================================
-// 🔧 CORRECTION BUG: FILTRER LES ARBRES
-// ========================================
-const arbresFiltered = useMemo(() => {
-  return arbres.filter(arbre => {
-    // 🔧 CORRECTION: Filtre par parcelle
-    if (formData.parcelle_id && formData.parcelle_id !== '') {
-      // Récupérer l'ID de parcelle de l'arbre (compatible snake_case et camelCase)
-      const arbreparcelle_id = arbre.parcelle_id || arbre.parcelle_id;
-      
-      const parcelle_id_Num = parseInt(formData.parcelle_id);
-      const arbreparcelle_id_Num = parseInt(arbreparcelle_id);
-      
-      // Si les conversions échouent (NaN), on n'affiche pas l'arbre
-      if (isNaN(parcelle_id_Num) || isNaN(arbreparcelle_id_Num)) {
-        return false;
-      }
-      
-      // Comparaison des IDs numériques
-      if (arbreparcelle_id_Num !== parcelle_id_Num) {
-        return false;
-      }
-    }
-    // Si parcelle_id  est vide → on affiche TOUS les arbres (cas "Toutes les parcelles")
-
-    // Filtre par texte de recherche
-    if (arbreSearchText) {
-      const search = arbreSearchText.toLowerCase();
-      const matchNumero = arbre.numero?.toLowerCase().includes(search);
-      const matchEspece = arbre.espece?.toLowerCase().includes(search);
-      const matchVariete = arbre.varieteTruffe?.toLowerCase().includes(search);
-      const matchEtat = arbre.etat?.toLowerCase().includes(search);
-
-      if (!matchNumero && !matchEspece && !matchVariete && !matchEtat) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}, [arbres, formData.parcelle_id, arbreSearchText]);
-
-
-  // ========================================
-  // CONFIGURATION DES COLONNES
-  // ========================================
-  const config = COLONNES_CONFIG.interventions;
-  const colonnesValides = colonnesAffichees.filter(col => config[col]);
-
-
-   // ========================================
-  // RENDU D'UNE CELLULE DU TABLEAU
-  // ========================================
-  const renderCell = (intervention, col) => {
-    if (col === 'typenom') {
-      const typeName = intervention.typenom || getTypeName(intervention.type_intervention_id);
-      const icon = getTypeIcon(typeName);
-      return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>{icon}</span>
-          <strong>{typeName}</strong>
-        </span>
-      );
-    }
-
-    if (col === 'statut') {
-      const statutStyles = {
-        'Planifié': { background: '#fff3cd', color: '#856404' },
-        'En cours': { background: '#cce5ff', color: '#004085' },
-        'Terminé': { background: '#d4edda', color: '#155724' },
-        'Annulé': { background: '#f8d7da', color: '#721c24' }
-      };
-      const style = statutStyles[intervention.statut] || statutStyles['Planifié'];
-
-      return (
-        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 500, ...style }}>
-          {intervention.statut}
-        </span>
-      );
-    }
-
-    if (col === 'date_prevue' || col === 'date_realisee') {
-      const date = intervention[col];
-      if (!date) return '-';
-      return new Date(date).toLocaleDateString('fr-FR');
-    }
-
-    if (col === 'cout') {
-      const cout = parseFloat(intervention.cout);
-      if (!cout || isNaN(cout)) return '-';
-      return `${cout.toFixed(2)} €`;
-    }
-
-    if (col === 'dureeminutes') {
-      const duree = parseInt(intervention.dureeMinutes);
-      if (!duree || isNaN(duree)) return '-';
-      const heures = Math.floor(duree / 60);
-      const minutes = duree % 60;
-      return `${heures}h${minutes > 0 ? minutes + 'min' : ''}`;
-    }
-
-    if (config[col]?.render) {
-      return config[col].render(intervention);
-    }
-
-    return intervention[col] || '-';
-  };
-
-  // ========================================
-  // GESTION DU FORMULAIRE
-  // ========================================
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-
-    // Réinitialiser la recherche d'arbres quand la parcelle change
-    if (name === 'parcelle_id') {
-      setArbreSearchText('');
-      setFormData(prev => ({ ...prev, arbre_id: [] }));
-    }
-
-    // Réinitialiser les détails quand le type change
-    if (name === 'type_intervention_id') {
-      setDetailsData({});
-      setShowAdvancedFields(false);
-    }
   };
 
-  const handleArbresChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+  const handleComplementChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
-      arbre_id: selectedOptions
+      donnees_complementaires: {
+        ...prev.donnees_complementaires,
+        [field]: value
+      }
     }));
   };
 
-  const handleDetailsChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setDetailsData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      // 🔧 NETTOYAGE: Convertir '' en null pour tous les champs numériques dans donnees_complementaires
+      const cleanedData = { ...formData };
+      
+      // Nettoyer les champs de base
+      if (cleanedData.parcelle_id === '') cleanedData.parcelle_id = null;
+      if (cleanedData.arbre_id === '') cleanedData.arbre_id = null;
+      
+      // Nettoyer les données complémentaires
+      const cleanedComplement = {};
+      Object.entries(formData.donnees_complementaires).forEach(([key, value]) => {
+        // Champs pH spécifiques
+        if (key === 'phSolAvant' || key === 'phSolApres') {
+          cleanedComplement[key] = (value === '' || value === null) ? null : parseFloat(value);
+        }
+        // Autres champs numériques
+        else if (typeof value === 'string' && value.trim() === '') {
+          cleanedComplement[key] = null;
+        } else {
+          cleanedComplement[key] = value;
+        }
+      });
+      
+      cleanedData.donnees_complementaires = cleanedComplement;
+      
+      if (editingIntervention) {
+        await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, cleanedData);
+        showMessage('Intervention mise à jour !', 'success');
+      } else {
+        await axios.post(`${API_URL}/interventions`, cleanedData);
+        showMessage('Intervention créée !', 'success');
+      }
+      
+      loadData();
+      closeModal();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage(error.response?.data?.details || 'Erreur lors de la sauvegarde', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEdit = (intervention) => {
+    setEditingIntervention(intervention);
+    setFormData({
+      parcelle_id: intervention.parcelle_id || null,
+      arbre_id: intervention.arbre_id || null,
+      type_intervention: intervention.type_intervention || '',
+      date_intervention: intervention.date_intervention ? intervention.date_intervention.split('T')[0] : '',
+      description: intervention.description || '',
+      donnees_complementaires: intervention.donnees_complementaires || {}
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Supprimer cette intervention ?')) return;
+    try {
+      await axios.delete(`${API_URL}/interventions/${id}`);
+      showMessage('Intervention supprimée !', 'success');
+      loadData();
+    } catch (error) {
+      showMessage('Erreur lors de la suppression', 'error');
+    }
   };
 
   const openNewModal = () => {
     setEditingIntervention(null);
     setFormData({
-      type_intervention_id: '',
-      parcelle_id: '',
-      arbre_id: [],
-      date_prevue: new Date().toISOString().split('T')[0],
-      date_realisee: '',
-      statut: 'Planifié',
+      parcelle_id: null,
+      arbre_id: null,
+      type_intervention: '',
+      date_intervention: new Date().toISOString().split('T')[0],
       description: '',
-      notes: '',
-      cout: '',
-      dureeMinutes: '',
-      meteo: '',
-      personnel: personnelDefaut,
-      caveurId: ''
+      donnees_complementaires: {}
     });
-    setDetailsData({});
-    setArbreSearchText('');
-    setShowAdvancedFields(false);
-    setDoublonWarning(null);
-    setShowModal(true);
-  };
-
-	const handleEdit = async (intervention) => {
-	  setEditingIntervention(intervention);
-	  setFormData({
-		type_intervention_id: intervention.type_intervention_id || intervention.typeInterventionId,
-		parcelle_id: intervention.parcelle_id || intervention.parcelleId,
-		// ✅ CORRECTION : Convertir arbre_id en array
-		arbre_id: intervention.arbre_id ? (Array.isArray(intervention.arbre_id) ? intervention.arbre_id : [intervention.arbre_id]): [],
-		date_prevue: intervention.date_prevue?.split('T')[0] || intervention.date_prevue?.split('T')[0],
-		date_realisee: intervention.date_realisee?.split('T')[0] || intervention.dateRealisee?.split('T')[0] || '',
-		statut: intervention.statut || 'Planifié',
-		description: intervention.description || '',
-		notes: intervention.notes || '',
-		cout: intervention.cout || '',
-		dureeMinutes: intervention.dureeMinutes || intervention.duree_minutes || '',
-		meteo: intervention.meteo || '',
-		personnel: intervention.personnel || '',
-		caveurId: intervention.caveurId || intervention.caveur_id || ''
-	  });
-
-    // Charger les détails depuis la nouvelle API
-    try {
-      const detailsRes = await axios.get(`${API_URL}/interventions/${intervention.id}/details`);
-      setDetailsData(detailsRes.data || {});
-      setShowAdvancedFields(Object.keys(detailsRes.data || {}).length > 0);
-    } catch (error) {
-      console.error('⚠️ Erreur chargement détails:', error);
-      setDetailsData({});
-      setShowAdvancedFields(false);
-    }
-
-    setArbreSearchText('');
-    setDoublonWarning(null);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingIntervention(null);
-    setDoublonWarning(null);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsProcessing(true);
-  
-  try {
-    // Si plusieurs arbres sélectionnés, créer une intervention par arbre
-    const arbresSelectionnes = formData.arbre_id && formData.arbre_id.length > 0 
-      ? formData.arbre_id
-      : [null]; // Si aucun arbre, créer une intervention sans arbre
-    
-    let interventionsCreees = 0;
-    let savedIntervention = null;
-    
-    for (const arbre_id of arbresSelectionnes) {
-		const dataToSend = {
-		  // ⚠️ UTILISER snake_case pour correspondre au backend
-		  type_intervention_id: formData.type_intervention_id ? parseInt(formData.type_intervention_id) : null,
-		  parcelle_id: formData.parcelle_id ? parseInt(formData.parcelle_id) : null,
-		  date_prevue: formData.date_prevue,
-		  date_realisee: formData.date_realisee || null,
-		  dureeminutes: formData.dureeMinutes ? parseInt(formData.dureeMinutes) : null,
-		  personnel: formData.personnel || '',
-		  description: formData.description || '',
-		  cout: formData.cout ? parseFloat(formData.cout) : null,
-		  statut: formData.statut || 'Planifié',
-		  meteo: formData.meteo || '',
-		  notes: formData.notes || ''
-		};
-
-		// ✅ Ajouter arbre_id SEULEMENT si un arbre est sélectionné
-		if (arbre_id !== null) {
-		  dataToSend.arbre_id = arbre_id;
-		}
-      
-      console.log(`📤 Envoi intervention ${interventionsCreees + 1}/${arbresSelectionnes.length}:`, dataToSend);
-      
-      if (editingIntervention) {
-        // En mode édition, on modifie l'intervention existante
-        const res = await axios.put(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions/${editingIntervention.id}`, dataToSend);
-        savedIntervention = res.data;
-        interventionsCreees = 1;
-        break; // En édition, on ne traite qu'une seule intervention
-      } else {
-        // En mode création, créer une intervention par arbre
-        const res = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions`, dataToSend);
-        savedIntervention = res.data;
-        interventionsCreees++;
-      }
-    }
-    
-    // Message de succès
-    if (editingIntervention) {
-      showMessage('✅ Intervention mise à jour avec succès !', 'success');
-    } else {
-      showMessage(`✅ ${interventionsCreees} intervention(s) créée(s) avec succès !`, 'success');
-    }
-    
-    // Sauvegarder les détails si présents (uniquement pour la dernière intervention créée)
-    if (savedIntervention && Object.keys(detailsData).length > 0) {
-      try {
-        await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/interventions/${savedIntervention.id}/details`, detailsData);
-      } catch (detailError) {
-        console.error('Erreur sauvegarde détails:', detailError);
-        showMessage('⚠️ Intervention sauvegardée, mais erreur sur les détails', 'warning');
-      }
-    }
-    
-    loadData();
-    closeModal();
-    
-  } catch (error) {
-    console.error('❌ Erreur lors de la sauvegarde:', error);
-    
-    // Message d'erreur plus détaillé
-    if (error.response) {
-      const errorMsg = error.response.data?.message || error.response.data?.error || 'Erreur serveur';
-      showMessage(`❌ ${errorMsg}`, 'error');
-      console.error('Détails erreur serveur:', error.response.data);
-    } else {
-      showMessage('❌ Erreur lors de la sauvegarde de l\'intervention', 'error');
-    }
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-
-
-
-  const askDelete = (intervention) => {
-    setConfirmModal({
-      type: 'delete',
-      item: intervention,
-      title: 'Supprimer l\'intervention',
-      message: 'Voulez-vous vraiment supprimer cette intervention ? Cette action est irréversible.',
-      confirmText: 'Oui, supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-
-  const doDelete = async (intervention) => {
-    setIsProcessing(true);
-    setConfirmModal(null);
-
-    try {
-      await axios.delete(`${API_URL}/interventions/${intervention.id}`);
-      showMessage('Intervention supprimée ✅', 'success');
-      loadData();
-    } catch (error) {
-      console.error('❌ Erreur lors de la suppression:', error);
-      showMessage('Erreur lors de la suppression ❌', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!confirmModal) return;
-
-    switch (confirmModal.type) {
-      case 'delete':
-        doDelete(confirmModal.item);
-        break;
-      case 'bulk-delete':
-        doBulkDelete();
-        break;
-      default:
-        setConfirmModal(null);
-    }
-  };
-
-  // Export PDF
-  const handleExportPDF = () => {
-    exportInterventionsPDF(sortedInterventions, null, colonnesExport);
-  };
-
-  // Import CSV
   const handleImportCSV = async (validData) => {
     try {
       for (const intervention of validData) {
         await axios.post(`${API_URL}/interventions`, intervention);
       }
       loadData();
-      showMessage(`${validData.length} interventions importées avec succès ! ✅`, 'success');
+      showMessage(`${validData.length} intervention(s) importée(s) !`, 'success');
     } catch (error) {
-      console.error('❌ Erreur lors de l\'import:', error);
-      throw new Error('Erreur lors de l\'import des interventions');
+      throw new Error('Erreur lors de l\'import');
     }
   };
 
-  // Sélection rapide de produit phyto
-  const handleSelectProduitPhyto = (produit) => {
-    setDetailsData(prev => ({
-      ...prev,
-      nomCommercial: produit.nomCommercial,
-      matiereActive: produit.matiereActive,
-      numeroAmm: produit.numeroAmm,
-      fabricant: produit.fabricant,
-      categorieTraitement: produit.categorie,
-      delaiAvantRecolteJours: produit.darJours
-    }));
+  const handleExportPDF = () => {
+    exportInterventionsPDF(interventions, colonnesExport);
   };
 
-  // Sélection rapide d'amendement
-  const handleSelectAmendement = (amendement) => {
-    setDetailsData(prev => ({
-      ...prev,
-      typeAmendement: amendement.typeAmendement,
-      nomProduitAmendement: amendement.nom,
-      compositionNpk: amendement.npk,
-      compositionCao: amendement.cao,
-      certificationBio: amendement.utilisableBio
-    }));
+  // Filtrage
+  const interventionsFiltrees = useMemo(() => {
+    return interventions.filter(inter => {
+      if (filterType !== 'all' && inter.type_intervention !== filterType) return false;
+      if (filterParcelle !== 'all' && inter.parcelle_id !== parseInt(filterParcelle)) return false;
+      if (filterArbre !== 'all' && inter.arbre_id !== parseInt(filterArbre)) return false;
+      if (filterDateDebut && inter.date_intervention < filterDateDebut) return false;
+      if (filterDateFin && inter.date_intervention > filterDateFin) return false;
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        if (!inter.description?.toLowerCase().includes(search) && 
+            !inter.type_intervention?.toLowerCase().includes(search)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [interventions, filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
+
+  // Pagination
+  const totalPages = Math.ceil(interventionsFiltrees.length / itemsPerPage);
+  const interventionsPaginees = interventionsFiltrees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const resetFilters = () => {
+    setFilterType('all');
+    setFilterParcelle('all');
+    setFilterArbre('all');
+    setFilterDateDebut('');
+    setFilterDateFin('');
+    setSearchTerm('');
+    setCurrentPage(1);
   };
 
-  // Obtenir la configuration des champs pour le type sélectionné
-  const getFieldsConfig = () => {
-    const typeName = getTypeName(parseInt(formData.type_intervention_id));
-    return CHAMPS_PAR_TYPE[typeName] || null;
-  };
+  const activeFiltersCount = [filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
+    .filter(f => f && f !== 'all').length;
 
-  const getSelectedTypeName = () => {
-    return getTypeName(parseInt(formData.type_intervention_id));
-  };
-
-  // Rendu d'un champ du formulaire détaillé
-  const renderField = (champ) => {
-    const value = detailsData[champ.name] || '';
-
-    if (champ.type === 'select') {
-      return (
-        <select
-          name={champ.name}
-          value={Array.isArray(formData.arbre_id) ? formData.arbre_id : []}  // ✅ Protection supplémentaire
-          onChange={handleDetailsChange}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-        >
-          {champ.options.map((option, idx) => (
-            <option key={idx} value={option}>{option || 'Sélectionner...'}</option>
-          ))}
-        </select>
-      );
-    }
-
-    if (champ.type === 'textarea') {
-      return (
-        <textarea
-          name={champ.name}
-          value={value}
-          onChange={handleDetailsChange}
-          placeholder={champ.placeholder}
-          rows={3}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-        />
-      );
-    }
-
-    if (champ.type === 'checkbox') {
-      return (
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            name={champ.name}
-            checked={value || false}
-            onChange={handleDetailsChange}
-          />
-          <span>Oui</span>
-        </label>
-      );
-    }
+  // Rendu du formulaire selon le type d'intervention
+  const renderFormFields = () => {
+    const type = formData.type_intervention;
+    const config = CHAMPS_PAR_TYPE[type];
+    
+    if (!config) return null;
 
     return (
-      <input
-        type={champ.type}
-        name={champ.name}
-        value={value}
-        onChange={handleDetailsChange}
-        placeholder={champ.placeholder}
-        step={champ.step}
-        min={champ.min}
-        max={champ.max}
-        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-      />
+      <div style={{ marginTop: '1rem' }}>
+        <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '1.5rem' }}>{config.icon}</span>
+          Paramètres spécifiques
+        </h4>
+        
+        {config.sections.map((section, idx) => (
+          <div key={idx} style={{ marginBottom: '1.5rem' }}>
+            <h5 style={{ color: '#4caf50', marginBottom: '0.75rem', borderBottom: '1px solid #e0e0e0', paddingBottom: '0.25rem' }}>
+              {section.titre}
+            </h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {section.champs.map(champ => (
+                <div key={champ.name} style={{ marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>
+                    {champ.label}
+                    {champ.help && <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.25rem' }}>({champ.help})</span>}
+                  </label>
+                  
+                  {champ.type === 'select' ? (
+                    <select
+                      value={formData.donnees_complementaires[champ.name] || ''}
+                      onChange={(e) => handleComplementChange(champ.name, e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                    >
+                      {champ.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : champ.type === 'textarea' ? (
+                    <textarea
+                      value={formData.donnees_complementaires[champ.name] || ''}
+                      onChange={(e) => handleComplementChange(champ.name, e.target.value)}
+                      placeholder={champ.placeholder}
+                      rows="3"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
+                    />
+                  ) : champ.type === 'checkbox' ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.donnees_complementaires[champ.name] || false}
+                        onChange={(e) => handleComplementChange(champ.name, e.target.checked)}
+                      />
+                      <span>Oui</span>
+                    </label>
+                  ) : (
+                    <input
+                      type={champ.type || 'text'}
+                      value={formData.donnees_complementaires[champ.name] || ''}
+                      onChange={(e) => handleComplementChange(champ.name, e.target.value)}
+                      placeholder={champ.placeholder}
+                      step={champ.step}
+                      min={champ.min}
+                      max={champ.max}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     );
   };
 
-  // 🆕 RENDU INDICATEUR DE TRI
-  const renderSortIcon = (field) => {
-    if (sortField !== field) {
-      return <span style={{ opacity: 0.3, marginLeft: '0.25rem' }}>↕</span>;
-    }
-    return (
-      <span style={{ marginLeft: '0.25rem' }}>
-        {sortDirection === 'asc' ? '↑' : '↓'}
-      </span>
-    );
-  };
+  if (loading || loadingSettings) return <div className="loading">Chargement...</div>;
 
-  if (loading || loadingSettings) {
-    return <div className="loading">⏳ Chargement des interventions...</div>;
-  }
-
-  const fieldsConfig = getFieldsConfig();
+  const config = COLONNES_CONFIG.interventions;
+  const colonnesValides = colonnesAffichees.filter(col => config[col]);
 
   return (
     <div className="page-container">
-      {/* Modal de confirmation */}
-      {confirmModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', maxWidth: '420px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ marginBottom: '1rem', color: '#333' }}>{confirmModal.title}</h3>
-            <p style={{ marginBottom: '1.5rem', color: '#666', lineHeight: 1.5 }}>{confirmModal.message}</p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button className="btn btn-secondary" onClick={() => setConfirmModal(null)} style={{ padding: '0.75rem 1.5rem' }}>
-                Annuler
-              </button>
-              <button
-                className="btn"
-                onClick={handleConfirm}
-                disabled={isProcessing}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: confirmModal.confirmColor || '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isProcessing ? 'wait' : 'pointer',
-                  opacity: isProcessing ? 0.7 : 1
-                }}
-              >
-                {isProcessing ? 'En cours...' : confirmModal.confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Message de notification */}
       {message && (
         <div style={{
           position: 'fixed',
-          top: '1rem',
-          right: '1rem',
+          top: '20px',
+          right: '20px',
           padding: '1rem 1.5rem',
           borderRadius: '8px',
-          background: message.type === 'success' ? '#d4edda' : '#f8d7da',
-          color: message.type === 'success' ? '#155724' : '#721c24',
-          border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`,
-          zIndex: 9999,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
+          background: message.type === 'error' ? '#f44336' : '#4caf50',
+          color: 'white',
+          fontWeight: 'bold',
+          zIndex: 9999
         }}>
           {message.text}
         </div>
       )}
 
-      {/* Modal d'édition groupée */}
-      {showBulkEditModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', maxWidth: '500px', width: '90%' }}>
-            <h3 style={{ marginBottom: '1.5rem', color: '#333' }}>✏️ Modification groupée</h3>
-            
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Statut</label>
-              <select
-                name="statut"
-                value={bulkEditData.statut}
-                onChange={handleBulkEditChange}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="">-- Ne pas modifier --</option>
-                <option value="Planifié">Planifié</option>
-                <option value="En cours">En cours</option>
-                <option value="Terminé">Terminé</option>
-                <option value="Annulé">Annulé</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date réalisée</label>
-              <input
-                type="date"
-                name="date_realisee"
-                value={bulkEditData.date_realisee}
-                onChange={handleBulkEditChange}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowBulkEditModal(false)}
-                style={{ padding: '0.75rem 1.5rem' }}
-              >
-                Annuler
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleBulkEditSubmit}
-                disabled={isProcessing}
-                style={{ padding: '0.75rem 1.5rem' }}
-              >
-                {isProcessing ? 'En cours...' : 'Appliquer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal d'import CSV */}
-      {showImportModal && (
-        <CSVImportModal
-          onClose={() => setShowImportModal(false)}
-          onImport={handleImportCSV}
-          validateFunction={validateInterventionsCSV}
-          entityName="interventions"
-        />
-      )}
-
-      {/* Header */}
       <div className="page-header">
-        <h2>📋 Gestion des Interventions</h2>
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
-            📥 Importer CSV
-          </button>
-          <button className="btn btn-secondary" onClick={handleExportPDF}>
-            📄 Exporter PDF
-          </button>
-          <button className="btn btn-primary" onClick={openNewModal}>
-            ➕ Nouvelle intervention
-          </button>
+        <h2>🛠️ Gestion des interventions</h2>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>📤 Importer CSV</button>
+          <button className="btn btn-secondary" onClick={handleExportPDF} disabled={interventions.length === 0}>📄 Exporter PDF</button>
+          <button className="btn btn-primary" onClick={openNewModal}>➕ Nouvelle intervention</button>
         </div>
       </div>
 
-      {/* Statistiques */}
-      <div className="stats-grid">
-        <div className="card">
-          <div className="card-title">Total</div>
-          <div className="card-value">{stats.total}</div>
+      {interventions.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🛠️</div>
+          <p>Aucune intervention enregistrée</p>
+          <button className="btn btn-primary" onClick={openNewModal} style={{ marginTop: '1rem' }}>Créer ma première intervention</button>
         </div>
-        <div className="card" style={{ background: '#fff3cd' }}>
-          <div className="card-title">Planifiées</div>
-          <div className="card-value" style={{ color: '#856404' }}>{stats.planifiees}</div>
-        </div>
-        <div className="card" style={{ background: '#cce5ff' }}>
-          <div className="card-title">En cours</div>
-          <div className="card-value" style={{ color: '#004085' }}>{stats.enCours}</div>
-        </div>
-        <div className="card" style={{ background: '#d4edda' }}>
-          <div className="card-title">Terminées</div>
-          <div className="card-value" style={{ color: '#155724' }}>{stats.terminees}</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Coût total</div>
-          <div className="card-value">{stats.coutTotal.toFixed(0)} €</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Durée totale</div>
-          <div className="card-value">{Math.floor(stats.dureeTotale / 60)}h{stats.dureeTotale % 60 > 0 ? stats.dureeTotale % 60 + 'min' : ''}</div>
-        </div>
-      </div>
-
-      {/* Barre de sélection groupée */}
-      {selectedInterventions.size > 0 && (
-        <div style={{
-          background: '#e3f2fd',
-          padding: '1rem',
-          borderRadius: '12px',
-          marginBottom: '1rem',
-          border: '2px solid #1976d2',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
-              {selectedInterventions.size} intervention{selectedInterventions.size > 1 ? 's' : ''} sélectionnée{selectedInterventions.size > 1 ? 's' : ''}
-            </span>
+      ) : (
+        <>
+          {/* Filtres */}
+          <div style={{ marginBottom: '1rem' }}>
             <button
-              onClick={handleDeselectAll}
-              style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #1976d2', borderRadius: '6px', color: '#1976d2', cursor: 'pointer' }}
-            >
-              Tout désélectionner
-            </button>
-            {sortedInterventions.length > selectedInterventions.size && (
-              <button
-                onClick={handleSelectAllFiltered}
-                style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #1976d2', borderRadius: '6px', color: '#1976d2', cursor: 'pointer' }}
-              >
-                Sélectionner les {sortedInterventions.length} interventions filtrées
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={openBulkEditModal} className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
-              ✏️ Modifier la sélection
-            </button>
-            <button onClick={askBulkDelete} className="btn btn-danger" style={{ padding: '0.5rem 1rem' }}>
-              🗑️ Supprimer la sélection
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Graphique d'activité temporel */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e9ecef' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0, color: '#2c5f2d', fontSize: '1.1rem' }}>📊 Activité des 6 derniers mois</h3>
-          <button
-            onClick={() => setShowGraphique(!showGraphique)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#666' }}
-          >
-            {showGraphique ? '▼' : '▶'}
-          </button>
-        </div>
-
-        {showGraphique && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '180px', padding: '0.5rem 0' }}>
-              {graphiqueData.map((data, index) => (
-                <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: '100%', gap: '2px' }}>
-                    {data.terminees > 0 && (
-                      <div
-                        style={{
-                          height: `${(data.terminees / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #28a745 0%, #218838 100%)',
-                          borderRadius: '4px 4px 0 0',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.terminees} terminées`}
-                      />
-                    )}
-                    {data.enCours > 0 && (
-                      <div
-                        style={{
-                          height: `${(data.enCours / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #007bff 0%, #0056b3 100%)',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.enCours} en cours`}
-                      />
-                    )}
-                    {data.planifiees > 0 && (
-                      <div
-                        style={{
-                          height: `${(data.planifiees / maxInterventions) * 140}px`,
-                          background: 'linear-gradient(180deg, #ffc107 0%, #e0a800 100%)',
-                          borderRadius: '0 0 4px 4px',
-                          minHeight: '8px',
-                          transition: 'height 0.3s ease'
-                        }}
-                        title={`${data.planifiees} planifiées`}
-                      />
-                    )}
-                    {data.total === 0 && (
-                      <div style={{ height: '8px', background: '#e9ecef', borderRadius: '4px', width: '100%' }} />
-                    )}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.5rem', textAlign: 'center' }}>
-                    {data.mois}
-                  </div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#333' }}>
-                    {data.total}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Légende */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '12px', height: '12px', background: '#ffc107', borderRadius: '2px' }} />
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>Planifiées</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '12px', height: '12px', background: '#007bff', borderRadius: '2px' }} />
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>En cours</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '12px', height: '12px', background: '#28a745', borderRadius: '2px' }} />
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>Terminées</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Barre de recherche et filtres */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e9ecef' }}>
-        {/* Ligne principale : recherche + bouton filtres */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem' }}>🔍</span>
-            <input
-              type="text"
-              placeholder="Rechercher une intervention..."
-              value={searchText}
-              onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
-              style={{
-                width: '100%',
-                padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                fontSize: '0.95rem'
-              }}
-            />
-          </div>
-
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
-              background: showFilters ? '#2c5f2d' : 'white',
-              color: showFilters ? 'white' : '#333',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.95rem'
-            }}
-          >
-            🔧 Filtres
-            {activeFiltersCount > 0 && (
-              <span style={{
-                background: '#e74c3c',
-                color: 'white',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: 'bold'
-              }}>
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-
-          {activeFiltersCount > 0 && (
-            <button
-              onClick={resetFilters}
-              style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#ffebee',
-                color: '#c62828',
-                cursor: 'pointer',
-                fontSize: '0.95rem'
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                background: activeFiltersCount > 0 ? '#e3f2fd' : undefined,
+                borderColor: activeFiltersCount > 0 ? '#1976d2' : undefined
               }}
             >
-              🔄 Réinitialiser
+              🔍 Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+              <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
             </button>
-          )}
-        </div>
-
-        {/* Panneau de filtres */}
-        {showFilters && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '1rem',
-            marginTop: '1rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid #e9ecef'
-          }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Statut</label>
-              <select
-                value={filterStatut}
-                onChange={(e) => { setFilterStatut(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="all">Tous</option>
-                <option value="Planifié">Planifié</option>
-                <option value="En cours">En cours</option>
-                <option value="Terminé">Terminé</option>
-                <option value="Annulé">Annulé</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Type</label>
-              <select
-                value={filterType}
-                onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="all">Tous types</option>
-                {typesIntervention.map(type => (
-                  <option key={type.id} value={type.id}>{getTypeIcon(type.nom)} {type.nom}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Parcelle</label>
-              <select
-                value={filterParcelle}
-                onChange={(e) => { setFilterParcelle(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="all">Toutes</option>
-                {parcelles.map(p => (
-                  <option key={p.id} value={p.id}>{p.nom}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Période</label>
-              <select
-                value={filterPeriode}
-                onChange={(e) => { setFilterPeriode(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                <option value="all">Toutes</option>
-                <option value="today">Aujourd'hui</option>
-                <option value="week">Cette semaine</option>
-                <option value="month">Ce mois-ci</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Date début</label>
-              <input
-                type="date"
-                value={filterDateDebut}
-                onChange={(e) => { setFilterDateDebut(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#666' }}>Date fin</label>
-              <input
-                type="date"
-                value={filterDateFin}
-                onChange={(e) => { setFilterDateFin(e.target.value); setCurrentPage(1); }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 🆕 Tableau des interventions avec TRI */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e9ecef', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #e9ecef' }}>
-              <th style={{ padding: '0.75rem', textAlign: 'left', width: '40px' }}>
-                <input
-                  type="checkbox"
-                  checked={isAllPageSelected}
-                  ref={input => {
-                    if (input) input.indeterminate = !isAllPageSelected && isSomePageSelected;
-                  }}
-                  onChange={handleSelectAllPage}
-                  style={{ cursor: 'pointer' }}
-                />
-              </th>
-              <th 
-                style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('typenom')}
-              >
-                Type{renderSortIcon('typenom')}
-              </th>
-              <th 
-                style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('parcelleNom')}
-              >
-                Parcelle{renderSortIcon('parcelleNom')}
-              </th>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Arbres</th>
-			<th 
-			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
-			  onClick={() => handleSort('date_prevue')}
-			>
-			  Date prévue{renderSortIcon('date_prevue')}
-			</th>
-			<th 
-			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
-			  onClick={() => handleSort('date_realisee')}
-			>
-			  Date réalisée{renderSortIcon('date_realisee')}
-			</th>
-			<th 
-			  style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer' }}
-			  onClick={() => handleSort('statut')}
-			>
-			  Statut{renderSortIcon('statut')}
-			</th>
-
-
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Description</th>
-              <th 
-                style={{ padding: '0.75rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleSort('cout')}
-              >
-                Coût{renderSortIcon('cout')}
-              </th>
-              <th style={{ padding: '0.75rem', textAlign: 'center' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedInterventions.length === 0 ? (
-              <tr>
-                <td colSpan="10" style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
-                  Aucune intervention trouvée
-                </td>
-              </tr>
-            ) : (
-              paginatedInterventions.map(intervention => (
-                <tr key={intervention.id} style={{ borderBottom: '1px solid #e9ecef' }}>
-                  <td style={{ padding: '0.75rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedInterventions.has(intervention.id)}
-                      onChange={() => handleSelectIntervention(intervention.id)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'typenom')}</td>
-                  <td style={{ padding: '0.75rem' }}>{intervention.parcelleNom || intervention.parcelle_nom || '-'}</td>
-                  <td style={{ padding: '0.75rem' }}>
-					{(() => {
-					// Si arbre_id est un array (multi-sélection)
-					if (Array.isArray(intervention.arbre_id)) {
-					  if (intervention.arbre_id.length === 0) return '-';
-					  
-					  // Afficher les numéros des arbres
-					  const arbresNoms = intervention.arbre_id
-						.map(id => {
-						  const arbre = arbres.find(a => a.id === id);
-						  return arbre?.numero || `#${id}`;
-						})
-						.join(', ');
-					  
-					  return arbresNoms || '-';
-					}
-					
-					// Si arbre_id est un seul ID (nombre)
-					if (intervention.arbre_id) {
-					  const arbre = arbres.find(a => a.id === intervention.arbre_id);
-					  return arbre?.numero || `#${intervention.arbre_id}`;
-					}
-					
-					return '-';
-				  })()}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_prevue')}</td>
-				  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'date_realisee')}</td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'statut')}</td>
-                  <td style={{ padding: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {intervention.description || '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>{renderCell(intervention, 'cout')}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleEdit(intervention)}
-                      style={{ padding: '0.25rem 0.75rem', marginRight: '0.5rem', background: '#2c5f2d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Modifier"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => askDelete(intervention)}
-                      style={{ padding: '0.25rem 0.75rem', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {itemsPerPage !== 'all' && totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>Lignes par page:</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => handleItemsPerPageChange(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-              style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-            >
-              {PAGINATION_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-
-            <span style={{ fontSize: '0.9rem', color: '#666', marginLeft: '1rem' }}>
-              {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalInterventions)} sur {totalInterventions}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid #ddd',
-                background: currentPage === 1 ? '#f5f5f5' : 'white',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              ◄◄
-            </button>
-
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid #ddd',
-                background: currentPage === 1 ? '#f5f5f5' : 'white',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              ◄
-            </button>
-
-            {getPageNumbers().map((page, idx) => (
-              page === '...' ? (
-                <span key={`ellipsis-${idx}`} style={{ padding: '0.5rem 1rem', color: '#999' }}>...</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd',
-                    background: currentPage === page ? '#2c5f2d' : 'white',
-                    color: currentPage === page ? 'white' : '#333',
-                    cursor: 'pointer',
-                    fontWeight: currentPage === page ? 'bold' : 'normal'
-                  }}
-                >
-                  {page}
-                </button>
-              )
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid #ddd',
-                background: currentPage === totalPages ? '#f5f5f5' : 'white',
-                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-              }}
-            >
-              ►
-            </button>
-
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid #ddd',
-                background: currentPage === totalPages ? '#f5f5f5' : 'white',
-                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-              }}
-            >
-              ►►
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de création/édition */}
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, overflow: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: '12px', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto', margin: '2rem' }}>
-            <div style={{ position: 'sticky', top: 0, background: 'white', padding: '1.5rem', borderBottom: '1px solid #e9ecef', zIndex: 1 }}>
-              <h3 style={{ margin: 0, color: '#333' }}>
-                {editingIntervention ? '✏️ Modifier l\'intervention' : '➕ Nouvelle intervention'}
-              </h3>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ padding: '1.5rem' }}>
-                {/* Champs principaux */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+            
+            {showFilters && (
+              <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'white', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Type d'intervention *</label>
-                    <select
-                      name="type_intervention_id"
-                      value={formData.type_intervention_id}
-                      onChange={handleInputChange}
-                      required
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                    >
-                      <option value="">Sélectionner...</option>
-                      {typesIntervention.map(type => (
-                        <option key={type.id} value={type.id}>{getTypeIcon(type.nom)} {type.nom}</option>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Recherche</label>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Description, type..."
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Type</label>
+                    <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}>
+                      <option value="all">Tous</option>
+                      {Object.keys(CHAMPS_PAR_TYPE).map(type => (
+                        <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
                   </div>
-
+                  
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Parcelle</label>
-                    <select
-                      name="parcelle_id"
-                      value={formData.parcelle_id}
-                      onChange={handleInputChange}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                    >
-                      <option value="">Toutes les parcelles</option>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Parcelle</label>
+                    <select value={filterParcelle} onChange={(e) => setFilterParcelle(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}>
+                      <option value="all">Toutes</option>
                       {parcelles.map(p => (
                         <option key={p.id} value={p.id}>{p.nom}</option>
                       ))}
                     </select>
                   </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Du</label>
+                    <input
+                      type="date"
+                      value={filterDateDebut}
+                      onChange={(e) => setFilterDateDebut(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Au</label>
+                    <input
+                      type="date"
+                      value={filterDateFin}
+                      onChange={(e) => setFilterDateFin(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
                 </div>
-
-				{/* 🎯 SÉLECTION D'ARBRES - Multiple en création, Simple en édition */}
-				<div>
-				  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-					Arbre(s) concerné(s)
-					{editingIntervention && (
-					  <span style={{ fontSize: '0.85em', color: '#666', marginLeft: '0.5rem' }}>
-						(modification : 1 seul arbre)
-					  </span>
-					)}
-				  </label>
-
-				  {/* 🔍 Champ de recherche - Seulement en mode création */}
-				  {!editingIntervention && (
-					<input
-					  type="text"
-					  placeholder="🔍 Rechercher un arbre..."
-					  value={arbreSearchText}
-					  onChange={(e) => setArbreSearchText(e.target.value)}
-					  style={{
-						width: '100%',
-						padding: '0.5rem',
-						marginBottom: '0.5rem',
-						borderRadius: '4px',
-						border: '1px solid #ddd'
-					  }}
-					/>
-				  )}
-
-				  {editingIntervention ? (
-					/* ✅ MODE ÉDITION : SELECT SIMPLE (1 seul arbre) */
-					<select
-					  name="arbre_id"
-					  value={Array.isArray(formData.arbre_id) ? (formData.arbre_id[0] || '') : (formData.arbre_id || '')}
-					  onChange={(e) => {
-						const value = e.target.value;
-						setFormData(prev => ({
-						  ...prev,
-						  arbre_id: value ? [parseInt(value)] : []
-						}));
-					  }}
-					  style={{
-						width: '100%',
-						padding: '0.5rem',
-						borderRadius: '6px',
-						border: '1px solid #ddd'
-					  }}
-					>
-					  <option value="">-- Aucun arbre --</option>
-					  {arbresFiltered.map(arbre => (
-						<option key={arbre.id} value={arbre.id}>
-						  {arbre.numero} - {arbre.espece} ({arbre.etat})
-						</option>
-					  ))}
-					</select>
-				  ) : (
-					/* 🆕 MODE CRÉATION : SELECT MULTIPLE (plusieurs arbres) */
-					<select
-					  multiple
-					  name="arbre_id"
-					  value={Array.isArray(formData.arbre_id) ? formData.arbre_id : []}
-					  onChange={handleArbresChange}
-					  size={Math.min(8, arbresFiltered.length)}
-					  style={{
-						width: '100%',
-						padding: '0.5rem',
-						borderRadius: '6px',
-						border: '1px solid #ddd',
-						minHeight: '150px'
-					  }}
-					>
-					  {arbresFiltered.length === 0 ? (
-						<option disabled>Aucun arbre disponible pour cette parcelle</option>
-					  ) : (
-						arbresFiltered.map(arbre => (
-						  <option key={arbre.id} value={arbre.id}>
-							{arbre.numero} - {arbre.espece} ({arbre.etat})
-						  </option>
-						))
-					  )}
-					</select>
-				  )}
-
-				  <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
-					{editingIntervention ? (
-					  '💡 Vous pouvez sélectionner un seul arbre en modification'
-					) : (
-					  <>
-						💡 Maintenez <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (Mac) pour sélectionner plusieurs arbres
-						{formData.arbre_id && formData.arbre_id.length > 0 && (
-						  <div style={{ marginTop: '0.5rem', fontWeight: 'bold', color: '#28a745' }}>
-							✅ {formData.arbre_id.length} arbre(s) sélectionné(s)
-						  </div>
-						)}
-					  </>
-					)}
-				  </div>
-				</div>
-
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date prévue *</label>
-                    <input
-                      type="date"
-                      name="date_prevue"
-                      value={formData.date_prevue}
-                      onChange={handleInputChange}
-                      required
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Date réalisée</label>
-                    <input
-                      type="date"
-                      name="date_realisee"
-                      value={formData.date_realisee}
-                      onChange={handleInputChange}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Statut</label>
-                    <select
-                      name="statut"
-                      value={formData.statut}
-                      onChange={handleInputChange}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
+                
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                    {interventionsFiltrees.length} / {interventions.length} intervention(s)
+                  </span>
+                  {activeFiltersCount > 0 && (
+                    <button 
+                      onClick={resetFilters}
+                      style={{ padding: '0.5rem 1rem', background: '#ff5722', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
                     >
-                      <option value="Planifié">Planifié</option>
-                      <option value="En cours">En cours</option>
-                      <option value="Terminé">Terminé</option>
-                      <option value="Annulé">Annulé</option>
-                    </select>
-                  </div>
+                      ✕ Réinitialiser
+                    </button>
+                  )}
                 </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Description</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                  />
-                </div>
-
-                {/* Champs détaillés selon le type */}
-                {fieldsConfig && (
-                  <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
-                    <h4 style={{ marginTop: 0, color: '#2c5f2d' }}>
-                      {fieldsConfig.icon} Détails spécifiques - {getSelectedTypeName()}
-                    </h4>
-                    {fieldsConfig.sections.map((section, idx) => (
-                      <div key={idx} style={{ marginBottom: '1.5rem' }}>
-                        <h5 style={{ color: '#555', marginBottom: '1rem' }}>{section.titre}</h5>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                          {section.champs.map((champ, cidx) => (
-                            <div key={cidx}>
-                              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>
-                                {champ.label}
-                                {champ.help && <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '0.25rem' }}>ℹ️</span>}
-                              </label>
-                              {renderField(champ)}
-                              {champ.help && <small style={{ fontSize: '0.75rem', color: '#666' }}>{champ.help}</small>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
+            )}
+          </div>
 
-              <div style={{ position: 'sticky', bottom: 0, background: 'white', padding: '1.5rem', borderTop: '1px solid #e9ecef', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  style={{ padding: '0.75rem 1.5rem', borderRadius: '6px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#2c5f2d',
-                    color: 'white',
-                    cursor: isProcessing ? 'wait' : 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? 'Enregistrement...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
+          {/* Tableau */}
+          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <table>
+              <thead>
+                <tr>
+                  {colonnesValides.map(col => (
+                    <th key={col}>{config[col].label}</th>
+                  ))}
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interventionsPaginees.map(inter => (
+                  <tr key={inter.id}>
+                    {colonnesValides.map(col => (
+                      <td key={col}>{config[col].render(inter)}</td>
+                    ))}
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button className="btn btn-secondary" onClick={() => handleEdit(inter)} style={{ padding: '0.4rem 0.6rem' }}>✏️</button>
+                        <button className="btn btn-danger" onClick={() => handleDelete(inter.id)} style={{ padding: '0.4rem 0.6rem' }}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+              <div>
+                <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(parseInt(e.target.value)); setCurrentPage(1); }}>
+                  {PAGINATION_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>⏮️</button>
+                <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>◀️</button>
+                <span>Page {currentPage} / {totalPages}</span>
+                <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>▶️</button>
+                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>⏭️</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h3>{editingIntervention ? 'Modifier l\'intervention' : 'Nouvelle intervention'}</h3>
+              <button className="modal-close" onClick={closeModal}>✕</button>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Type d'intervention *</label>
+                  <select name="type_intervention" value={formData.type_intervention} onChange={handleInputChange} required>
+                    <option value="">-- Sélectionner --</option>
+                    {Object.keys(CHAMPS_PAR_TYPE).map(type => (
+                      <option key={type} value={type}>{CHAMPS_PAR_TYPE[type].icon} {type}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Date *</label>
+                  <input type="date" name="date_intervention" value={formData.date_intervention} onChange={handleInputChange} required />
+                </div>
+                
+                <div className="form-group">
+                  <label>Parcelle</label>
+                  <ParcelleSelector parcelles={parcelles} selectedId={formData.parcelle_id} onChange={(id) => setFormData(prev => ({ ...prev, parcelle_id: id }))} />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Description générale</label>
+                <textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" placeholder="Décrivez l'intervention..." />
+              </div>
+              
+              {renderFormFields()}
+              
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                  {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <CSVImportModal
+        show={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImportCSV}
+        validateFunction={validateInterventionsCSV}
+        type="interventions"
+        title="Importer des interventions depuis CSV"
+      />
     </div>
   );
 }
