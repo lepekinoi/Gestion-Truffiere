@@ -24,8 +24,11 @@ module.exports = (pool, requireWriteAccess) => {
       }
       res.json(result.rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération préférences:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des préférences',
+        code: 'GET_PREFERENCES_ERROR'
+      });
     }
   });
 
@@ -49,8 +52,11 @@ module.exports = (pool, requireWriteAccess) => {
       );
       res.json(result.rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur mise à jour préférences:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la mise à jour des préférences',
+        code: 'UPDATE_PREFERENCES_ERROR'
+      });
     }
   });
 
@@ -67,8 +73,11 @@ module.exports = (pool, requireWriteAccess) => {
       );
       res.json(result.rows[0] || { message: 'Préférences réinitialisées' });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur reset préférences:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la réinitialisation des préférences',
+        code: 'RESET_PREFERENCES_ERROR'
+      });
     }
   });
 
