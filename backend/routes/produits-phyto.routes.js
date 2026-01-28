@@ -1,5 +1,6 @@
 // backend/routes/produits-phyto.routes.js
 const express = require('express');
+const { emptyToNull, logAuditTrail } = require('../utils');
 
 module.exports = (pool, requireWriteAccess) => {
   const router = express.Router();
@@ -26,7 +27,10 @@ module.exports = (pool, requireWriteAccess) => {
       res.json(result.rows);
     } catch (err) {
       console.error('Erreur récupération produits phyto:', err);
-      res.status(500).json({ error: 'Erreur lors de la récupération' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des produits phytosanitaires',
+        code: 'LIST_PRODUITS_PHYTO_ERROR'
+      });
     }
   });
 
@@ -47,15 +51,35 @@ module.exports = (pool, requireWriteAccess) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
          RETURNING *`,
         [
-          nom_commercial, matiere_active, numero_amm, categorie, fabricant,
-          dose_recommandee_ha, dar_jours, znt_metres, utilisable_bio || false, 
-          phrase_risque, conseils_utilisation
+          nom_commercial, 
+          matiere_active, 
+          emptyToNull(numero_amm), 
+          categorie, 
+          emptyToNull(fabricant),
+          emptyToNull(dose_recommandee_ha), 
+          emptyToNull(dar_jours), 
+          emptyToNull(znt_metres), 
+          utilisable_bio || false, 
+          emptyToNull(phrase_risque), 
+          emptyToNull(conseils_utilisation)
         ]
       );
-      res.status(201).json(result.rows[0]);
+
+      const newProduit = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'create', 'produit_phyto', newProduit.id, null, newProduit);
+      }
+
+      res.status(201).json(newProduit);
     } catch (err) {
       console.error('Erreur création produit phyto:', err);
-      res.status(500).json({ error: 'Erreur lors de la création' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la création du produit phytosanitaire',
+        code: 'CREATE_PRODUIT_PHYTO_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -69,6 +93,19 @@ module.exports = (pool, requireWriteAccess) => {
         utilisable_bio, phrase_risque, conseils_utilisation, actif
       } = req.body;
       
+      // Récupérer anciennes valeurs
+      const oldDataResult = await pool.query(
+        'SELECT * FROM produits_phyto WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Produit phytosanitaire non trouvé',
+          code: 'PRODUIT_PHYTO_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       const result = await pool.query(
         `UPDATE produits_phyto SET 
          nom_commercial = $1, matiere_active = $2, numero_amm = $3, categorie = $4,
@@ -77,19 +114,37 @@ module.exports = (pool, requireWriteAccess) => {
          WHERE id = $13 
          RETURNING *`,
         [
-          nom_commercial, matiere_active, numero_amm, categorie, fabricant,
-          dose_recommandee_ha, dar_jours, znt_metres, utilisable_bio, phrase_risque, 
-          conseils_utilisation, actif !== false, id
+          nom_commercial, 
+          matiere_active, 
+          emptyToNull(numero_amm), 
+          categorie, 
+          emptyToNull(fabricant),
+          emptyToNull(dose_recommandee_ha), 
+          emptyToNull(dar_jours), 
+          emptyToNull(znt_metres), 
+          utilisable_bio, 
+          emptyToNull(phrase_risque), 
+          emptyToNull(conseils_utilisation), 
+          actif !== false, 
+          id
         ]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Produit non trouvé' });
+      const newData = result.rows[0];
+
+      // Audit trail
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'update', 'produit_phyto', parseInt(id), oldData, newData);
       }
-      res.json(result.rows[0]);
+
+      res.json(newData);
     } catch (err) {
       console.error('Erreur modification produit phyto:', err);
-      res.status(500).json({ error: 'Erreur lors de la modification' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la modification du produit phytosanitaire',
+        code: 'UPDATE_PRODUIT_PHYTO_ERROR',
+        details: err.message
+      });
     }
   });
 
@@ -97,14 +152,41 @@ module.exports = (pool, requireWriteAccess) => {
   router.delete('/:id', requireWriteAccess, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Récupérer les données
+      const oldDataResult = await pool.query(
+        'SELECT * FROM produits_phyto WHERE id = $1',
+        [id]
+      );
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Produit phytosanitaire non trouvé',
+          code: 'PRODUIT_PHYTO_NOT_FOUND'
+        });
+      }
+      const oldData = oldDataResult.rows[0];
+      
       await pool.query(
         'UPDATE produits_phyto SET actif = false WHERE id = $1', 
         [id]
       );
-      res.json({ message: 'Produit désactivé' });
+
+      // Audit trail (soft delete)
+      if (req.user && req.user.id) {
+        await logAuditTrail(pool, req.user.id, 'soft_delete', 'produit_phyto', parseInt(id), oldData, { ...oldData, actif: false });
+      }
+
+      res.json({ 
+        message: 'Produit phytosanitaire désactivé',
+        code: 'PRODUIT_PHYTO_DEACTIVATED'
+      });
     } catch (err) {
       console.error('Erreur désactivation produit phyto:', err);
-      res.status(500).json({ error: 'Erreur lors de la désactivation' });
+      res.status(500).json({ 
+        error: 'Erreur lors de la désactivation du produit phytosanitaire',
+        code: 'DEACTIVATE_PRODUIT_PHYTO_ERROR',
+        details: err.message
+      });
     }
   });
 
