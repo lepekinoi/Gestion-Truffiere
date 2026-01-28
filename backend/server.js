@@ -306,7 +306,7 @@ const especesRoutes = require('./routes/especes.routes');
 app.use('/api/especes', (req, res, next) => {
   req.pool = pool;
   next();
-}, especesRoutes);
+}, especesRoutes(pool)); // ✅ CORRIGÉ : Appel de la fonction avec pool
 
 // Types d'intervention
 const typesInterventionRoutes = require('./routes/types-intervention.routes');
