@@ -12,8 +12,11 @@ module.exports = (pool) => {
       );
       res.json(result.rows);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erreur' });
+      console.error('Erreur récupération types intervention:', err);
+      res.status(500).json({ 
+        error: 'Erreur lors de la récupération des types d\'intervention',
+        code: 'LIST_TYPES_INTERVENTION_ERROR'
+      });
     }
   });
 
