@@ -7,7 +7,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 
-const { authMiddleware, adminOnly, activeUserMiddleware } = require('../middleware/auth');
+// Middleware
+const { authMiddleware, adminOnly } = require('../middleware/auth');
 const {
   loginValidation,
   registerValidation,
@@ -17,12 +18,22 @@ const {
   forgotPasswordValidation,
   resetPasswordValidation
 } = require('../middleware/validation');
+
+// Utils centralisés
 const {
   generateAccessToken,
   generateRefreshToken,
   hashRefreshToken,
-  generatePasswordResetToken
-} = require('../utils/tokens');
+  generatePasswordResetToken,
+  rotateRefreshToken,
+  revokeAllUserTokens,
+  logLoginAttempt,
+  logSecurityEvent,
+  logAuditTrail,
+  emptyToNull
+} = require('../utils');
+
+// Config
 const { bcryptConfig, authLimiter, registerLimiter, passwordResetLimiter } = require('../config/security');
 
 /**
@@ -50,6 +61,11 @@ const createAuthRoutes = (pool) => {
 
       if (lockCheck.rows[0]?.is_locked) {
         await logLoginAttempt(pool, email, clientIp, userAgent, false, 'account_locked');
+        await logSecurityEvent(pool, null, 'account_locked', {
+          email,
+          ip: clientIp,
+          lockedUntil: lockCheck.rows[0].locked_until
+        });
         return res.status(423).json({
           error: 'Compte temporairement verrouillé',
           code: 'ACCOUNT_LOCKED',
@@ -77,6 +93,10 @@ const createAuthRoutes = (pool) => {
       // 3. Vérifier si le compte est actif
       if (!user.is_active) {
         await logLoginAttempt(pool, email, clientIp, userAgent, false, 'account_inactive');
+        await logSecurityEvent(pool, user.id, 'login_attempt_inactive_account', {
+          email,
+          ip: clientIp
+        });
         return res.status(403).json({
           error: 'Compte désactivé',
           code: 'ACCOUNT_DISABLED'
@@ -139,59 +159,57 @@ const createAuthRoutes = (pool) => {
   // ==================== REFRESH TOKEN ====================
   /**
    * POST /api/auth/refresh
-   * Rafraîchir le token d'accès
+   * Rafraîchir le token d'accès avec rotation automatique
    */
   router.post('/refresh', refreshTokenValidation, async (req, res) => {
     const { refreshToken } = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent') || 'Unknown';
 
     try {
-      const tokenHash = hashRefreshToken(refreshToken);
-
-      // Vérifier le refresh token
-      const tokenResult = await pool.query(
-        `SELECT rt.*, u.id as user_id, u.email, u.nom, u.prenom, u.role, u.is_active
-         FROM refresh_tokens rt
-         JOIN users u ON rt.user_id = u.id
-         WHERE rt.token_hash = $1 AND rt.revoked = false AND rt.expires_at > NOW()`,
-        [tokenHash]
+      // Utiliser la rotation automatique des tokens (sécurité++)
+      const result = await rotateRefreshToken(
+        pool,
+        refreshToken,
+        userAgent.substring(0, 255),
+        clientIp,
+        userAgent.substring(0, 255)
       );
 
-      if (tokenResult.rows.length === 0) {
+      // Générer un nouveau access token
+      const accessToken = generateAccessToken(result.user);
+
+      res.json({
+        accessToken,
+        refreshToken: result.token, // Nouveau refresh token
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
+      });
+
+    } catch (err) {
+      console.error('Erreur refresh:', err);
+      
+      // Gestion des erreurs spécifiques
+      if (err.message === 'TOKEN_REUSE_DETECTED') {
+        return res.status(401).json({
+          error: 'Réutilisation de token détectée - Toutes les sessions ont été révoquées',
+          code: 'TOKEN_REUSE_DETECTED'
+        });
+      }
+      
+      if (err.message === 'INVALID_TOKEN' || err.message === 'TOKEN_EXPIRED') {
         return res.status(401).json({
           error: 'Token de rafraîchissement invalide ou expiré',
           code: 'INVALID_REFRESH_TOKEN'
         });
       }
-
-      const tokenData = tokenResult.rows[0];
-
-      // Vérifier que l'utilisateur est toujours actif
-      if (!tokenData.is_active) {
-        await pool.query(
-          'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $1 WHERE id = $2',
-          ['account_disabled', tokenData.id]
-        );
+      
+      if (err.message === 'USER_INACTIVE') {
         return res.status(403).json({
           error: 'Compte désactivé',
           code: 'ACCOUNT_DISABLED'
         });
       }
 
-      // Générer un nouveau access token
-      const accessToken = generateAccessToken({
-        id: tokenData.user_id,
-        email: tokenData.email,
-        nom: tokenData.nom,
-        role: tokenData.role
-      });
-
-      res.json({
-        accessToken,
-        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
-      });
-
-    } catch (err) {
-      console.error('Erreur refresh:', err);
       res.status(500).json({
         error: 'Erreur lors du rafraîchissement',
         code: 'REFRESH_ERROR'
@@ -236,17 +254,11 @@ const createAuthRoutes = (pool) => {
    */
   router.post('/logout-all', authMiddleware, async (req, res) => {
     try {
-      const result = await pool.query(
-        `UPDATE refresh_tokens 
-         SET revoked = true, revoked_at = NOW(), revoked_reason = 'logout_all'
-         WHERE user_id = $1 AND revoked = false
-         RETURNING id`,
-        [req.user.id]
-      );
+      const count = await revokeAllUserTokens(pool, req.user.id, 'logout_all');
 
       res.json({
         message: 'Déconnexion de tous les appareils réussie',
-        sessionsRevoked: result.rows.length
+        sessionsRevoked: count
       });
 
     } catch (err) {
@@ -314,17 +326,22 @@ const createAuthRoutes = (pool) => {
       // Hasher le mot de passe
       const passwordHash = await bcrypt.hash(password, bcryptConfig.saltRounds);
 
-      // Créer l'utilisateur
+      // Créer l'utilisateur (utiliser emptyToNull pour prenom)
       const result = await pool.query(
         `INSERT INTO users (email, password_hash, nom, prenom, role, is_active, email_verified)
          VALUES ($1, $2, $3, $4, $5, true, true)
          RETURNING id, email, nom, prenom, role, is_active, created_at`,
-        [email, passwordHash, nom, prenom || null, role]
+        [email, passwordHash, nom, emptyToNull(prenom), role]
       );
+
+      const newUser = result.rows[0];
+
+      // Audit trail
+      await logAuditTrail(pool, req.user.id, 'create', 'user', newUser.id, null, newUser);
 
       res.status(201).json({
         message: 'Utilisateur créé avec succès',
-        user: result.rows[0]
+        user: newUser
       });
 
     } catch (err) {
@@ -402,6 +419,21 @@ const createAuthRoutes = (pool) => {
     const { email, nom, prenom, role, is_active } = req.body;
 
     try {
+      // Récupérer les anciennes valeurs pour l'audit
+      const oldDataResult = await pool.query(
+        'SELECT id, email, nom, prenom, role, is_active FROM users WHERE id = $1',
+        [id]
+      );
+
+      if (oldDataResult.rows.length === 0) {
+        return res.status(404).json({
+          error: 'Utilisateur non trouvé',
+          code: 'USER_NOT_FOUND'
+        });
+      }
+
+      const oldData = oldDataResult.rows[0];
+
       // Construire la requête dynamiquement
       const updates = [];
       const values = [];
@@ -430,7 +462,7 @@ const createAuthRoutes = (pool) => {
 
       if (prenom !== undefined) {
         updates.push(`prenom = $${paramIndex++}`);
-        values.push(prenom);
+        values.push(emptyToNull(prenom));
       }
 
       if (role !== undefined) {
@@ -444,11 +476,11 @@ const createAuthRoutes = (pool) => {
         
         // Si désactivation, révoquer tous les tokens
         if (!is_active) {
-          await pool.query(
-            `UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'account_disabled'
-             WHERE user_id = $1 AND revoked = false`,
-            [id]
-          );
+          await revokeAllUserTokens(pool, id, 'account_disabled');
+          await logSecurityEvent(pool, parseInt(id), 'account_disabled', {
+            disabledBy: req.user.id,
+            reason: 'admin_action'
+          });
         }
       }
 
@@ -467,16 +499,14 @@ const createAuthRoutes = (pool) => {
         values
       );
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          error: 'Utilisateur non trouvé',
-          code: 'USER_NOT_FOUND'
-        });
-      }
+      const newData = result.rows[0];
+
+      // Audit trail
+      await logAuditTrail(pool, req.user.id, 'update', 'user', parseInt(id), oldData, newData);
 
       res.json({
         message: 'Utilisateur mis à jour',
-        user: result.rows[0]
+        user: newData
       });
 
     } catch (err) {
@@ -505,17 +535,28 @@ const createAuthRoutes = (pool) => {
         });
       }
 
-      const result = await pool.query(
-        'DELETE FROM users WHERE id = $1 RETURNING id, email',
+      // Récupérer les données pour l'audit
+      const userData = await pool.query(
+        'SELECT id, email, nom, prenom, role FROM users WHERE id = $1',
         [id]
       );
 
-      if (result.rows.length === 0) {
+      if (userData.rows.length === 0) {
         return res.status(404).json({
           error: 'Utilisateur non trouvé',
           code: 'USER_NOT_FOUND'
         });
       }
+
+      const deletedUser = userData.rows[0];
+
+      const result = await pool.query(
+        'DELETE FROM users WHERE id = $1 RETURNING id, email',
+        [id]
+      );
+
+      // Audit trail
+      await logAuditTrail(pool, req.user.id, 'delete', 'user', parseInt(id), deletedUser, null);
 
       res.json({
         message: 'Utilisateur supprimé',
@@ -574,11 +615,12 @@ const createAuthRoutes = (pool) => {
       );
 
       // Révoquer tous les autres refresh tokens
-      await pool.query(
-        `UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'password_changed'
-         WHERE user_id = $1 AND revoked = false`,
-        [req.user.id]
-      );
+      await revokeAllUserTokens(pool, req.user.id, 'password_changed');
+
+      // Security event
+      await logSecurityEvent(pool, req.user.id, 'password_changed', {
+        changedBy: 'self'
+      });
 
       res.json({ message: 'Mot de passe modifié avec succès' });
 
@@ -625,11 +667,13 @@ const createAuthRoutes = (pool) => {
       }
 
       // Révoquer tous les refresh tokens
-      await pool.query(
-        `UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = 'admin_reset'
-         WHERE user_id = $1`,
-        [id]
-      );
+      await revokeAllUserTokens(pool, id, 'admin_reset');
+
+      // Security event
+      await logSecurityEvent(pool, parseInt(id), 'password_reset_by_admin', {
+        resetBy: req.user.id,
+        resetByEmail: req.user.email
+      });
 
       res.json({
         message: 'Mot de passe réinitialisé',
@@ -666,6 +710,12 @@ const createAuthRoutes = (pool) => {
           code: 'USER_NOT_FOUND'
         });
       }
+
+      // Security event
+      await logSecurityEvent(pool, parseInt(id), 'account_unlocked', {
+        unlockedBy: req.user.id,
+        unlockedByEmail: req.user.email
+      });
 
       res.json({
         message: 'Compte déverrouillé',
@@ -742,22 +792,5 @@ const createAuthRoutes = (pool) => {
 
   return router;
 };
-
-// ==================== HELPER FUNCTIONS ====================
-
-/**
- * Logger une tentative de connexion
- */
-async function logLoginAttempt(pool, email, ipAddress, userAgent, success, failureReason) {
-  try {
-    await pool.query(
-      `INSERT INTO login_attempts (email, ip_address, user_agent, success, failure_reason)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [email, ipAddress, userAgent?.substring(0, 500), success, failureReason]
-    );
-  } catch (err) {
-    console.error('Erreur log login attempt:', err);
-  }
-}
 
 module.exports = createAuthRoutes;
