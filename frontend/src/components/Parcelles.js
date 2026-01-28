@@ -308,7 +308,7 @@ const handleSubmit = async (e) => {
       nom: formData.nom.trim(),
       surface_ha: parseFloat(formData.surface_ha),
       type_sol: formData.type_sol && formData.type_sol.trim() !== '' ? formData.type_sol.trim() : null,
-      ph_sol: formData.ph_sol && formData.ph_sol !== '' ? parseFloat(formData.ph_sol) : null,  // ← FIX
+      ph_sol: formData.ph_sol && formData.ph_sol !== '' ? parseFloat(formData.ph_sol) : null,
       notes: formData.notes && formData.notes.trim() !== '' ? formData.notes.trim() : null,
       coordinates: formData.coordinates || null
     };
@@ -316,14 +316,15 @@ const handleSubmit = async (e) => {
     console.log('📤 Envoi:', dataToSend);
     
     if (editingParcelle) {
-      await axios.put(`${API_URL}/parcelles/${editingParcelle.id}`, dataToSend);
+      const response = await axios.put(`${API_URL}/parcelles/${editingParcelle.id}`, dataToSend);
+      setParcelles(prev => prev.map(p => p.id === editingParcelle.id ? response.data : p));
       showMessage('Parcelle mise à jour !', 'success');
     } else {
-      await axios.post(`${API_URL}/parcelles`, dataToSend);
+      const response = await axios.post(`${API_URL}/parcelles`, dataToSend);
+      setParcelles(prev => [...prev, response.data]);
       showMessage('Parcelle créée !', 'success');
     }
     
-    loadData();
     closeModal();
     
   } catch (error) {
