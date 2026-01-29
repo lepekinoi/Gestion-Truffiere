@@ -28,6 +28,7 @@ import {
 
 // Hooks personnalisés
 import { useClients } from '../hooks/useClients';
+import { useCommandes } from '../hooks/useCommandes';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -73,10 +74,10 @@ function Commercial() {
   const [statsParType, setStatsParType] = useState([]);
   
   // États commandes
-  const [commandes, setCommandes] = useState([]);
-  const [showCommandeModal, setShowCommandeModal] = useState(false);
-  const [editingCommande, setEditingCommande] = useState(null);
-  const [filterStatutCommande, setFilterStatutCommande] = useState('all');
+  // const [commandes, setCommandes] = useState([]);
+  // const [showCommandeModal, setShowCommandeModal] = useState(false);
+  // const [editingCommande, setEditingCommande] = useState(null);
+  // const [filterStatutCommande, setFilterStatutCommande] = useState('all');
   
   // États ventes
   const [ventes, setVentes] = useState([]);
@@ -121,12 +122,12 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   
   // PAGINATION
   // const [currentPageClients, setCurrentPageClients] = useState(1);
-  const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
+  // const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
   const [currentPageVentes, setCurrentPageVentes] = useState(1);
   const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
   
   // TRI
-  const [sortConfigCommandes, setSortConfigCommandes] = useState({ key: 'date_commande', direction: 'desc' });
+  // const [sortConfigCommandes, setSortConfigCommandes] = useState({ key: 'date_commande', direction: 'desc' });
   const [sortConfigVentes, setSortConfigVentes] = useState({ key: 'date_vente', direction: 'desc' });
   
   // ANALYTICS
@@ -141,18 +142,18 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
 
 
   
-  const [commandeFormData, setCommandeFormData] = useState({
-    client_id: '',
-    date_commande: new Date().toISOString().split('T')[0],
-    date_livraison_demandee: '',
-    poids_grammes: '',
-    calibre: '',
-    qualite: '',
-    maturite: '',
-    prix_unitaire_kg: '',
-    statut: 'En attente',
-    notes: ''
-  });
+  // const [commandeFormData, setCommandeFormData] = useState({
+    // client_id: '',
+    // date_commande: new Date().toISOString().split('T')[0],
+    // date_livraison_demandee: '',
+    // poids_grammes: '',
+    // calibre: '',
+    // qualite: '',
+    // maturite: '',
+    // prix_unitaire_kg: '',
+    // statut: 'En attente',
+    // notes: ''
+  // });
   
   const [venteFormData, setVenteFormData] = useState({
     client_id: '',
@@ -293,7 +294,42 @@ const {
   setConfirmModal, 
   setIsProcessing 
 });
+
+// ==================== HOOK COMMANDES ====================
+const {
+  // États
+  showCommandeModal,
+  editingCommande,
+  filterStatutCommande,
+  commandeFormData,
+  currentPageCommandes,
+  itemsPerPageCommandes,
+  sortConfigCommandes,
   
+  // Setters
+  setFilterStatutCommande,
+  setCurrentPageCommandes,
+  setCommandeFormData,
+  
+  // Fonctions
+  handleCommandeInputChange,
+  handleCommandeSubmit,
+  handleEditCommande,
+  askDeleteCommande,
+  doDeleteCommande,
+  openNewCommandeModal,
+  closeCommandeModal,
+  generateNumeroCommande,
+  montantCalculeCommande,
+  handleSortCommandes,
+  resetFilters: resetFiltersCommandes
+} = useCommandes({ 
+  showMessage, 
+  loadData, 
+  setConfirmModal, 
+  setIsProcessing,
+  commandes
+});  
   
   // ==================== ANALYTICS AVEC SAISON TRUFFE ====================
   
@@ -382,128 +418,6 @@ const {
     });
   };
   
-  // ==================== FONCTIONS CLIENTS ====================
-  
- 
-  
-  // ==================== FONCTIONS COMMANDES ====================
-  
-  const handleCommandeInputChange = (e) => {
-    const { name, value } = e.target;
-    setCommandeFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleCommandeSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const dataToSend = { ...commandeFormData };
-      
-      if (!dataToSend.client_id) {
-        dataToSend.client_id = null;
-      }
-      
-      if (editingCommande) {
-        await axios.put(`${API_URL}/commandes/${editingCommande.id}`, dataToSend);
-        showMessage('Commande mise à jour avec succès !', 'success');
-      } else {
-        if (!dataToSend.numero_commande) {
-          dataToSend.numero_commande = generateNumeroCommande();
-        }
-        const response = await axios.post(`${API_URL}/commandes`, dataToSend);
-        showMessage('Commande enregistrée avec succès !', 'success');
-      }
-      
-      loadData();
-      closeCommandeModal();
-    } catch (error) {
-      showMessage('Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleEditCommande = (commande) => {
-    setEditingCommande(commande);
-    setCommandeFormData({
-      client_id: commande.client_id || '',
-      date_commande: commande.date_commande ? commande.date_commande.split('T')[0] : '',
-      date_livraison_demandee: commande.date_livraison_demandee ? commande.date_livraison_demandee.split('T')[0] : '',
-      poids_grammes: commande.poids_grammes || '',
-      calibre: commande.calibre || '',
-      qualite: commande.qualite || '',
-      maturite: commande.maturite || '',
-      prix_unitaire_kg: commande.prix_unitaire_kg || '',
-      statut: commande.statut || 'En attente',
-      notes: commande.notes || ''
-    });
-    setShowCommandeModal(true);
-  };
-  
-  const askDeleteCommande = (commande) => {
-    setConfirmModal({
-      type: 'delete-commande',
-      item: commande,
-      title: 'Supprimer la commande',
-      message: `Êtes-vous sûr de vouloir supprimer la commande ${commande.numero_commande || commande.id} ?`,
-      confirmText: 'Oui, supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-  
-  const doDeleteCommande = async (commande) => {
-    setIsProcessing(true);
-    setConfirmModal(null);
-    try {
-      await axios.delete(`${API_URL}/commandes/${commande.id}`);
-      showMessage('Commande supprimée avec succès !', 'success');
-      loadData();
-    } catch (error) {
-      showMessage('Erreur lors de la suppression', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const openNewCommandeModal = () => {
-    setEditingCommande(null);
-    setCommandeFormData({
-      client_id: '',
-      date_commande: new Date().toISOString().split('T')[0],
-      date_livraison_demandee: '',
-      poids_grammes: '',
-      calibre: '',
-      qualite: '',
-      maturite: '',
-      prix_unitaire_kg: '',
-      statut: 'En attente',
-      notes: ''
-    });
-    setShowCommandeModal(true);
-  };
-  
-  const closeCommandeModal = () => {
-    setShowCommandeModal(false);
-    setEditingCommande(null);
-  };
-  
-  const generateNumeroCommande = () => {
-    const year = new Date().getFullYear();
-    const existingNumbers = commandes
-      .filter(c => c.numero_commande && c.numero_commande.startsWith(`CMD-${year}`))
-      .map(c => {
-        const match = c.numero_commande.match(/CMD-(\d{4})-(\d+)/);
-        return match ? parseInt(match[2]) : 0;
-      });
-    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-    return `CMD-${year}-${String(nextNumber).padStart(3, '0')}`;
-  };
-  
-  const montantCalculeCommande = () => {
-    const poids = parseFloat(commandeFormData.poids_grammes || 0);
-    const prixKg = parseFloat(commandeFormData.prix_unitaire_kg || 0);
-    return ((poids / 1000) * prixKg).toFixed(2);
-  };
   
   // ==================== FONCTIONS VENTES ====================
   
@@ -696,8 +610,7 @@ const {
     if (entity === 'clients') {
       handleSortClients(key);
     } else if (entity === 'commandes') {
-      config = sortConfigCommandes;
-      setConfig = setSortConfigCommandes;
+      handleSortCommandes(key); 
     } else {
       config = sortConfigVentes;
       setConfig = setSortConfigVentes;
