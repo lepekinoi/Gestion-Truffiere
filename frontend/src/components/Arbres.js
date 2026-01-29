@@ -119,7 +119,7 @@ function Arbres() {
     search: '',
     parcelle: '',
     espece: '',
-    etat: '',
+    etat_sanitaire: '',
     variete_truffe: '',
     avecPosition: ''
   });
@@ -131,7 +131,7 @@ function Arbres() {
     espece: '',
     variete_truffe: '',
     date_plantation: '',
-    etat: 'Bon',
+    etat_sanitaire: 'Bon',
     circonference_cm: '',
     hauteur_m: '',
     latitude: '',
@@ -158,7 +158,7 @@ function Arbres() {
     espece: '',
     variete_truffe: '',
     date_plantation: '',
-    etat: '',
+    etat_sanitaire: '',
     circonference_cm: '',
     hauteur_m: ''
   });
@@ -195,7 +195,7 @@ function Arbres() {
   // Extraire les valeurs uniques pour les filtres
   const filterOptions = useMemo(() => {
     const especes = [...new Set(arbres.map(a => a.espece).filter(Boolean))].sort();
-    const etats = [...new Set(arbres.map(a => a.etat).filter(Boolean))].sort();
+    const etats = [...new Set(arbres.map(a => a.etat_sanitaire).filter(Boolean))].sort();
     const varietes = [...new Set(arbres.map(a => a.variete_truffe).filter(Boolean))].sort();
     return { especes, etats, varietes };
   }, [arbres]);
@@ -223,8 +223,8 @@ function Arbres() {
         return false;
       }
       
-      // Filtre par etat
-      if (filters.etat && arbre.etat !== filters.etat) {
+      // Filtre par etat_sanitaire
+      if (filters.etat_sanitaire && arbre.etat_sanitaire !== filters.etat_sanitaire) {
         return false;
       }
       
@@ -257,7 +257,7 @@ function Arbres() {
       search: '',
       parcelle: '',
       espece: '',
-      etat: '',
+      etat_sanitaire: '',
       variete_truffe: '',
       avecPosition: ''
     });
@@ -393,43 +393,54 @@ function Arbres() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    
-    try {
-      if (editingArbre) {
-        await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
-        showMessage('Arbre mis a jour avec succes !', 'success');
-      } else {
-        await axios.post(`${API_URL}/arbres`, formData);
-        showMessage('Arbre cree avec succes !', 'success');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsProcessing(true);
+  
+  try {
+    const dataToSend = { ...formData };
+    Object.keys(dataToSend).forEach(key => {
+      if (dataToSend[key] === '') {
+        if (['circonference_cm', 'hauteur_m', 'latitude', 'longitude'].includes(key)) {
+          dataToSend[key] = null;
+        }
       }
-      loadData();
-      closeModal();
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      showMessage('Erreur lors de la sauvegarde de l\'arbre', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleEdit = (arbre) => {
-    setEditingArbre(arbre);
-    setFormData({
-      parcelle_id: arbre.parcelle_id || '',
-      numero: arbre.numero || '',
-      espece: arbre.espece || '',
-      variete_truffe: arbre.variete_truffe || '',
-      date_plantation: arbre.date_plantation ? arbre.date_plantation.split('T')[0] : '',
-      etat: arbre.etat || 'Bon',
-      circonference_cm: arbre.circonference_cm || '',
-      hauteur_m: arbre.hauteur_m || '',
-      latitude: arbre.latitude || '',
-      longitude: arbre.longitude || '',
-      notes: arbre.notes || ''
     });
+    
+    if (editingArbre) {
+      await axios.put(`${API_URL}/arbres/${editingArbre.id}`, dataToSend);
+      showMessage('Arbre mis a jour avec succes !', 'success');
+    } else {
+      await axios.post(`${API_URL}/arbres`, dataToSend);
+      showMessage('Arbre cree avec succes !', 'success');
+    }
+    loadData();
+    closeModal();
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde:', error);
+    showMessage('Erreur lors de la sauvegarde de l\\'arbre', 'error');
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+
+const handleEdit = (arbre) => {
+  setEditingArbre(arbre);
+  setFormData({
+    parcelle_id: arbre.parcelle_id || '',
+    numero: arbre.numero || '',
+    espece: arbre.espece || '',
+    variete_truffe: arbre.variete_truffe || '',
+    date_plantation: arbre.date_plantation ? arbre.date_plantation.split('T')[0] : '',
+    etat_sanitaire: arbre.etat_sanitaire || 'Bon',
+    circonference_cm: arbre.circonference_cm || '',
+    hauteur_m: arbre.hauteur_m || '',
+    latitude: arbre.latitude || '',
+    longitude: arbre.longitude || '',
+    notes: arbre.notes || ''
+  });
+
     
     // Configurer la carte pour la parcelle de l'arbre
     if (arbre.parcelle_id) {
@@ -536,7 +547,7 @@ function Arbres() {
       espece: '',
       variete_truffe: '',
       date_plantation: '',
-      etat: '',
+      etat_sanitaire: '',
       circonference_cm: '',
       hauteur_m: ''
     });
@@ -560,7 +571,7 @@ function Arbres() {
       if (bulkEditData.espece) updates.espece = bulkEditData.espece;
       if (bulkEditData.variete_truffe) updates.variete_truffe = bulkEditData.variete_truffe;
       if (bulkEditData.date_plantation) updates.date_plantation = bulkEditData.date_plantation;
-      if (bulkEditData.etat) updates.etat = bulkEditData.etat;
+      if (bulkEditData.etat_sanitaire) updates.etat_sanitaire = bulkEditData.etat_sanitaire;
       if (bulkEditData.circonference_cm) updates.circonference_cm = bulkEditData.circonference_cm;
       if (bulkEditData.hauteur_m) updates.hauteur_m = bulkEditData.hauteur_m;
 
@@ -683,7 +694,7 @@ function Arbres() {
       espece: '',
       variete_truffe: '',
       date_plantation: '',
-      etat: 'Bon',
+      etat_sanitaire: 'Bon',
       circonference_cm: '',
       hauteur_m: '',
       latitude: '',
@@ -740,14 +751,14 @@ function Arbres() {
     exportArbresPDF(filteredArbres, null, colonnesExport);
   };
 
-  const getEtatBadgeStyle = (etat) => {
+  const getEtatBadgeStyle = (etat_sanitaire) => {
     const styles = {
       'Bon': { background: '#d4edda', color: '#155724' },
       'Moyen': { background: '#fff3cd', color: '#856404' },
       'Mauvais': { background: '#f8d7da', color: '#721c24' },
       'Mort': { background: '#e0e0e0', color: '#666' }
     };
-    return styles[etat] || styles['Bon'];
+    return styles[etat_sanitaire] || styles['Bon'];
   };
 
   // Configuration des colonnes pour l'affichage
@@ -756,16 +767,16 @@ function Arbres() {
 
   // Fonction de rendu personnalisee pour les cellules speciales
   const renderCell = (arbre, col) => {
-    if (col === 'etat') {
+    if (col === 'etat_sanitaire') {
       return (
         <span style={{
           padding: '0.25rem 0.75rem',
           borderRadius: '12px',
           fontSize: '0.85rem',
           fontWeight: '500',
-          ...getEtatBadgeStyle(arbre.etat)
+          ...getEtatBadgeStyle(arbre.etat_sanitaire)
         }}>
-          {arbre.etat}
+          {arbre.etat_sanitaire}
         </span>
       );
     }
@@ -1019,19 +1030,19 @@ function Arbres() {
         <div className="card">
           <div className="card-title">En bon etat</div>
           <div className="card-value" style={{ color: '#27ae60' }}>
-            {arbres.filter(a => a.etat === 'Bon').length}
+            {arbres.filter(a => a.etat_sanitaire === 'Bon').length}
           </div>
         </div>
         <div className="card">
           <div className="card-title">A surveiller</div>
           <div className="card-value" style={{ color: '#f39c12' }}>
-            {arbres.filter(a => a.etat === 'Moyen').length}
+            {arbres.filter(a => a.etat_sanitaire === 'Moyen').length}
           </div>
         </div>
         <div className="card">
           <div className="card-title">En difficulte</div>
           <div className="card-value" style={{ color: '#e74c3c' }}>
-            {arbres.filter(a => a.etat === 'Mauvais' || a.etat === 'Mort').length}
+            {arbres.filter(a => a.etat_sanitaire === 'Mauvais' || a.etat_sanitaire === 'Mort').length}
           </div>
         </div>
       </div>
@@ -1240,14 +1251,14 @@ function Arbres() {
                 Etat de sante
               </label>
               <select
-                value={filters.etat}
-                onChange={(e) => handleFilterChange('etat', e.target.value)}
+                value={filters.etat_sanitaire}
+                onChange={(e) => handleFilterChange('etat_sanitaire', e.target.value)}
                 style={{
                   width: '100%',
                   padding: '0.5rem',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
-                  background: filters.etat ? '#e8f5e9' : 'white'
+                  background: filters.etat_sanitaire ? '#e8f5e9' : 'white'
                 }}
               >
                 <option value="">Tous les etats</option>
@@ -1586,7 +1597,7 @@ function Arbres() {
 
                 <div className="form-group">
                   <label>Etat de sante *</label>
-                  <select name="etat" value={formData.etat} onChange={handleInputChange} required>
+                  <select name="etat_sanitaire" value={formData.etat_sanitaire} onChange={handleInputChange} required>
                     <option value="Bon">Bon</option>
                     <option value="Moyen">Moyen</option>
                     <option value="Mauvais">Mauvais</option>
@@ -1740,7 +1751,7 @@ function Arbres() {
 
               <div className="form-group">
                 <label>Etat de sante</label>
-                <select name="etat" value={bulkEditData.etat} onChange={handleBulkEditChange}>
+                <select name="etat_sanitaire" value={bulkEditData.etat_sanitaire} onChange={handleBulkEditChange}>
                   <option value="">-- Ne pas modifier --</option>
                   <option value="Bon">Bon</option>
                   <option value="Moyen">Moyen</option>
