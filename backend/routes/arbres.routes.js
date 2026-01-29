@@ -114,7 +114,7 @@ module.exports = (pool, requireWriteAccess) => {
         date_derniere_taille, latitude, longitude, notes, etat_sanitaire 
       } = req.body;
       
-      // Récupérer anciennes valeurs pour audit trail
+      // Récupérer anciennes valeurs pour audit trail ET pour préserver les coordonnées
       const oldDataResult = await pool.query(
         'SELECT * FROM arbres WHERE id = $1 AND deleted_at IS NULL',
         [id]
@@ -126,6 +126,15 @@ module.exports = (pool, requireWriteAccess) => {
         });
       }
       const oldData = oldDataResult.rows[0];
+      
+      // ✅ FIX : Si latitude/longitude ne sont pas fournis ou sont null/vides,
+      // utiliser les valeurs existantes
+      const finalLatitude = (latitude !== undefined && latitude !== null && latitude !== '') 
+        ? latitude 
+        : oldData.latitude;
+      const finalLongitude = (longitude !== undefined && longitude !== null && longitude !== '') 
+        ? longitude 
+        : oldData.longitude;
       
       const result = await pool.query(
         `UPDATE arbres SET 
@@ -146,8 +155,8 @@ module.exports = (pool, requireWriteAccess) => {
           emptyToNull(circonference_cm),
           emptyToNull(hauteur_m),
           emptyToNull(date_derniere_taille),
-          emptyToNull(latitude),
-          emptyToNull(longitude),
+          finalLatitude,   // ✅ Utilise la valeur existante si non fournie
+          finalLongitude,  // ✅ Utilise la valeur existante si non fournie
           emptyToNull(notes),
           emptyToNull(etat_sanitaire),
           id
