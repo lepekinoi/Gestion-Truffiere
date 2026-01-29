@@ -71,7 +71,7 @@ const FIELD_LABELS = {
   'espece': 'Espèce',
   'variete_truffe': 'Variété de truffe',
   'date_plantation': 'Date de plantation',
-  'etat': 'État',
+  'etat_sanitaire ': 'État sanitaire',
   'circonference_cm': 'Circonférence (cm)',
   'hauteur_m': 'Hauteur (m)',
   'date_derniere_taille': 'Dernière taille',
