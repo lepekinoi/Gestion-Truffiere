@@ -26,6 +26,8 @@ import {
   STATUT_COLORS_VENTES as STATUT_COLORS_VT 
 } from './Commercial/utils/constants';
 
+// Hooks personnalisés
+import { useClients } from '../hooks/useClients';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -68,14 +70,7 @@ function Commercial() {
   
   // États clients
   const [clients, setClients] = useState([]);
-  const [showClientModal, setShowClientModal] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
-  const [filterTypeClient, setFilterTypeClient] = useState('all');
-  const [searchTermClient, setSearchTermClient] = useState('');
   const [statsParType, setStatsParType] = useState([]);
-  const [selectedClientForTransactions, setSelectedClientForTransactions] = useState(null);
-  const [clientTransactions, setClientTransactions] = useState({ commandes: [], ventes: [] });
-  const [showTransactionsModal, setShowTransactionsModal] = useState(false);
   
   // États commandes
   const [commandes, setCommandes] = useState([]);
@@ -128,11 +123,9 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   const [currentPageClients, setCurrentPageClients] = useState(1);
   const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
   const [currentPageVentes, setCurrentPageVentes] = useState(1);
-  const [itemsPerPageClients, setItemsPerPageClients] = useState(50);
   const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
   
   // TRI
-  const [sortConfigClients, setSortConfigClients] = useState({ key: null, direction: 'asc' });
   const [sortConfigCommandes, setSortConfigCommandes] = useState({ key: 'date_commande', direction: 'desc' });
   const [sortConfigVentes, setSortConfigVentes] = useState({ key: 'date_vente', direction: 'desc' });
   
@@ -145,21 +138,46 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     topClients: []
   });
   
-  // Formulaires
-  const [clientFormData, setClientFormData] = useState({
-    type: 'Particulier',
-    nom: '',
-    prenom: '',
-    raison_sociale: '',
-    email: '',
-    telephone: '',
-    adresse: '',
-    code_postal: '',
-    ville: '',
-    pays: 'France',
-    siret: '',
-    notes: ''
-  });
+  // ✅ Hook Clients
+const {
+  // États
+  showClientModal,
+  editingClient,
+  filterTypeClient,
+  searchTermClient,
+  selectedClientForTransactions,
+  clientTransactions,
+  showTransactionsModal,
+  clientFormData,
+  currentPageClients,
+  itemsPerPageClients,
+  sortConfigClients,
+  
+  // Setters
+  setFilterTypeClient,
+  setSearchTermClient,
+  setCurrentPageClients,
+  setItemsPerPageClients,
+  setShowTransactionsModal,
+  
+  // Fonctions
+  handleClientFormChange,
+  handleClientSubmit,
+  handleEditClient,
+  askDeleteClient,
+  doDeleteClient,
+  openNewClientModal,
+  closeClientModal,
+  viewClientTransactions,
+  handleSortClients,
+  resetFilters
+} = useClients({ 
+  showMessage, 
+  loadData, 
+  setConfirmModal, 
+  setIsProcessing 
+});
+
   
   const [commandeFormData, setCommandeFormData] = useState({
     client_id: '',
@@ -363,119 +381,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   
   // ==================== FONCTIONS CLIENTS ====================
   
-  const handleClientFormChange = (e) => {
-    const { name, value } = e.target;
-    setClientFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleClientSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const dataToSend = { ...clientFormData };
-      
-      if (dataToSend.type === 'Particulier') {
-        dataToSend.raison_sociale = null;
-        dataToSend.siret = null;
-      } else {
-        dataToSend.prenom = null;
-      }
-      
-      if (editingClient) {
-        await axios.put(`${API_URL}/clients/${editingClient.id}`, dataToSend);
-        showMessage('Client mis à jour avec succès !', 'success');
-      } else {
-        await axios.post(`${API_URL}/clients`, dataToSend);
-        showMessage('Client créé avec succès !', 'success');
-      }
-      
-      loadData();
-      closeClientModal();
-    } catch (error) {
-      showMessage('Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleEditClient = (client) => {
-    setEditingClient(client);
-    setClientFormData({
-      type: client.type || 'Particulier',
-      nom: client.nom || '',
-      prenom: client.prenom || '',
-      raison_sociale: client.raison_sociale || '',
-      email: client.email || '',
-      telephone: client.telephone || '',
-      adresse: client.adresse || '',
-      code_postal: client.code_postal || '',
-      ville: client.ville || '',
-      pays: client.pays || 'France',
-      siret: client.siret || '',
-      notes: client.notes || ''
-    });
-    setShowClientModal(true);
-  };
-  
-  const askDeleteClient = (client) => {
-    const clientName = client.type === 'Particulier'
-      ? `${client.nom} ${client.prenom}`
-      : client.raison_sociale || client.nom;
-    setConfirmModal({
-      type: 'delete-client',
-      item: client,
-      title: 'Supprimer le client',
-      message: `Êtes-vous sûr de vouloir supprimer le client ${clientName} ? Cette action est irréversible.`,
-      confirmText: 'Oui, supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-  
-  const doDeleteClient = async (client) => {
-    setIsProcessing(true);
-    setConfirmModal(null);
-    try {
-      await axios.delete(`${API_URL}/clients/${client.id}`);
-      showMessage('Client supprimé avec succès !', 'success');
-      loadData();
-    } catch (error) {
-      showMessage('Erreur lors de la suppression', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const openNewClientModal = () => {
-    setEditingClient(null);
-    setClientFormData({
-      type: 'Particulier',
-      nom: '',
-      prenom: '',
-      raison_sociale: '',
-      email: '',
-      telephone: '',
-      adresse: '',
-      code_postal: '',
-      ville: '',
-      pays: 'France',
-      siret: '',
-      notes: ''
-    });
-    setShowClientModal(true);
-  };
-  
-  const closeClientModal = () => {
-    setShowClientModal(false);
-    setEditingClient(null);
-  };
-  
-  const viewClientTransactions = (client) => {
-    setSelectedClientForTransactions(client);
-    const clientCommandes = commandes.filter(c => c.client_id === client.id);
-    const clientVentes = ventes.filter(v => v.client_id === client.id);
-    setClientTransactions({ commandes: clientCommandes, ventes: clientVentes });
-    setShowTransactionsModal(true);
-  };
+ 
   
   // ==================== FONCTIONS COMMANDES ====================
   
@@ -770,7 +676,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     if (!confirmModal) return;
     
     if (confirmModal.type === 'delete-client') {
-      doDeleteClient(confirmModal.item);
+      doDeleteClient(confirmModal.item); 
     } else if (confirmModal.type === 'delete-commande') {
       doDeleteCommande(confirmModal.item);
     } else if (confirmModal.type === 'delete-vente') {
@@ -785,8 +691,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   const handleSort = (key, entity) => {
     let config, setConfig;
     if (entity === 'clients') {
-      config = sortConfigClients;
-      setConfig = setSortConfigClients;
+      handleSortClients(key);
     } else if (entity === 'commandes') {
       config = sortConfigCommandes;
       setConfig = setSortConfigCommandes;
