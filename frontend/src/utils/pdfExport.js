@@ -124,7 +124,7 @@ export const exportArbresPDF = async (arbres, parcelleFilter = null) => {
     a.espece,
     a.variete_truffe || '-',
     a.parcelle_nom || '-',
-    a.etat,
+    a.etat_sanitaire,
     a.date_plantation ? new Date(a.date_plantation).toLocaleDateString('fr-FR') : '-',
     a.circonference_cm ? `${a.circonference_cm} cm` : '-'
   ]);
@@ -141,10 +141,10 @@ export const exportArbresPDF = async (arbres, parcelleFilter = null) => {
 
   const finalY = doc.lastAutoTable.finalY + 10;
   const stats = {
-    Bon: filtered.filter((a) => a.etat === 'Bon').length,
-    Moyen: filtered.filter((a) => a.etat === 'Moyen').length,
-    Mauvais: filtered.filter((a) => a.etat === 'Mauvais').length,
-    Mort: filtered.filter((a) => a.etat === 'Mort').length
+    Bon: filtered.filter((a) => a.etat_sanitaire === 'Bon').length,
+    Moyen: filtered.filter((a) => a.etat_sanitaire === 'Moyen').length,
+    Mauvais: filtered.filter((a) => a.etat_sanitaire === 'Mauvais').length,
+    Mort: filtered.filter((a) => a.etat_sanitaire === 'Mort').length
   };
 
   doc.setFontSize(12);
@@ -154,9 +154,9 @@ export const exportArbresPDF = async (arbres, parcelleFilter = null) => {
   let y = finalY + 7;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  Object.entries(stats).forEach(([etat, count]) => {
+  Object.entries(stats).forEach(([etat_sanitaire, count]) => {
     if (count > 0) {
-      doc.text(`- ${etat} : ${count} arbre(s)`, 14, y);
+      doc.text(`- ${etat_sanitaire} : ${count} arbre(s)`, 14, y);
       y += 5;
     }
   });
