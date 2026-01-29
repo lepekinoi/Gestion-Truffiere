@@ -392,9 +392,9 @@ export const validateArbresCSV = (data, dependencies = {}) => {
       rowErrors.push('La longitude doit être entre -180 et 180');
     }
 
-    const etat = cleanString(row.etat) || 'Bon';
-    if (!ETATS_ARBRES.includes(etat)) {
-      rowErrors.push(`État "${etat}" non reconnu. Valeurs acceptées: ${ETATS_ARBRES.join(', ')}`);
+    const etat_sanitaire = cleanString(row.etat_sanitaire) || 'Bon';
+    if (!ETATS_ARBRES.includes(etat_sanitaire)) {
+      rowErrors.push(`État "${etat_sanitaire}" non reconnu. Valeurs acceptées: ${ETATS_ARBRES.join(', ')}`);
     }
 
     if (rowErrors.length > 0) {
@@ -408,7 +408,7 @@ export const validateArbresCSV = (data, dependencies = {}) => {
       espece: espece,
       variete_truffe: cleanString(row.variete_truffe) || null,
       date_plantation: datePlantation,
-      etat: etat,
+      etat_sanitaire: etat_sanitaire,
       circonference_cm: circonference,
       hauteur_m: hauteur,
       latitude: latitude,
@@ -1086,7 +1086,7 @@ const CSV_TEMPLATES = {
       'espece',
       'variete_truffe',
       'date_plantation',
-      'etat',
+      'etat_sanitaire',
       'circonference_cm',
       'hauteur_m',
       'latitude',
