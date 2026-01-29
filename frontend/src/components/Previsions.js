@@ -210,7 +210,7 @@ function Previsions() {
         ? arbres.filter(a => a.parcelle_id === parseInt(selectedParcelle))
         : arbres;
       
-      const arbresProductifs = arbresFiltered.filter(a => a.etat === 'Bon' || a.etat === 'Moyen').length;
+      const arbresProductifs = arbresFiltered.filter(a => a.etat_sanitaire  === 'Bon' || a.etat_sanitaire  === 'Moyen').length;
       const productionMoyenneParArbre = arbresProductifs > 0 
         ? productionMoyenne / arbresProductifs 
         : 0;
