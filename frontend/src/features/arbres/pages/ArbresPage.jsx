@@ -59,6 +59,8 @@ function ArbresPage({ highlightId }) {
     date_plantation: '',
     etat_sanitaire: '',
     rendement_estimé: '',
+    latitude: '',
+    longitude: '',
     notes: ''
   });
 
@@ -190,11 +192,21 @@ function ArbresPage({ highlightId }) {
     
     setIsProcessing(true);
     try {
+      // Nettoyer les données avant envoi
+      const dataToSend = { ...formData };
+      Object.keys(dataToSend).forEach(key => {
+        if (dataToSend[key] === '') {
+          if (['age_ans', 'rendement_estimé', 'latitude', 'longitude'].includes(key)) {
+            dataToSend[key] = null;
+          }
+        }
+      });
+      
       if (editingArbre) {
-        await axios.put(`${API_URL}/arbres/${editingArbre.id}`, formData);
+        await axios.put(`${API_URL}/arbres/${editingArbre.id}`, dataToSend);
         showMessage('Arbre mis à jour avec succès !', 'success');
       } else {
-        await axios.post(`${API_URL}/arbres`, formData);
+        await axios.post(`${API_URL}/arbres`, dataToSend);
         showMessage('Arbre enregistré avec succès !', 'success');
       }
       loadData();
@@ -219,6 +231,8 @@ function ArbresPage({ highlightId }) {
       date_plantation: arbre.date_plantation ? arbre.date_plantation.split('T')[0] : '',
       etat_sanitaire: arbre.etat_sanitaire || '',
       rendement_estimé: arbre.rendement_estimé || '',
+      latitude: arbre.latitude || '',
+      longitude: arbre.longitude || '',
       notes: arbre.notes || ''
     });
     setShowModal(true);
@@ -253,6 +267,8 @@ function ArbresPage({ highlightId }) {
       date_plantation: '',
       etat_sanitaire: '',
       rendement_estimé: '',
+      latitude: '',
+      longitude: '',
       notes: ''
     });
   };
@@ -269,6 +285,8 @@ function ArbresPage({ highlightId }) {
       date_plantation: '',
       etat_sanitaire: '',
       rendement_estimé: '',
+      latitude: '',
+      longitude: '',
       notes: ''
     });
     setShowModal(true);
@@ -910,16 +928,16 @@ function ArbresPage({ highlightId }) {
               </div>
 
               <div className="form-grid">
-			<div className="form-group">
-			  <label>Espèce</label>
-			  <EspeceSelector
-				value={formData.espece}
-				onChange={(value) => setFormData({...formData, espece: value})}
-				placeholder="Sélectionner une espèce..."
-				required={false}
-				showInfos={true}
-			  />
-			</div>
+				<div className="form-group">
+				  <label>Espèce</label>
+				  <EspeceSelector
+					value={formData.espece}
+					onChange={(value) => setFormData({...formData, espece: value})}
+					placeholder="Sélectionner une espèce..."
+					required={false}
+					showInfos={true}
+				  />
+				</div>
 
                 <div className="form-group">
                   <label>Variété de truffe</label>
