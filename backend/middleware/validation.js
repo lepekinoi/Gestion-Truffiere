@@ -34,7 +34,6 @@ const loginValidation = [
     .trim()
     .notEmpty().withMessage('Email requis')
     .isEmail().withMessage('Format email invalide')
-    .normalizeEmail()
     .isLength({ max: 255 }).withMessage('Email trop long (max 255 caractères)'),
   
   body('password')
@@ -52,7 +51,6 @@ const registerValidation = [
     .trim()
     .notEmpty().withMessage('Email requis')
     .isEmail().withMessage('Format email invalide')
-    .normalizeEmail()
     .isLength({ max: 255 }).withMessage('Email trop long (max 255 caractères)'),
   
   body('password')
@@ -90,7 +88,6 @@ const updateUserValidation = [
     .optional()
     .trim()
     .isEmail().withMessage('Format email invalide')
-    .normalizeEmail()
     .isLength({ max: 255 }).withMessage('Email trop long'),
   
   body('nom')
@@ -174,8 +171,7 @@ const forgotPasswordValidation = [
   body('email')
     .trim()
     .notEmpty().withMessage('Email requis')
-    .isEmail().withMessage('Format email invalide')
-    .normalizeEmail(),
+    .isEmail().withMessage('Format email invalide'),
   
   handleValidationErrors
 ];
