@@ -82,7 +82,7 @@ function Commercial() {
   const [ventes, setVentes] = useState([]);
   const [showVenteModal, setShowVenteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showClientImportModal, setShowClientImportModal] = useState(false);
+  // const [showClientImportModal, setShowClientImportModal] = useState(false);
   const [editingVente, setEditingVente] = useState(null);
   const [filterStatutVente, setFilterStatutVente] = useState('all');
   const [filterTypeVente, setFilterTypeVente] = useState('all');
@@ -120,7 +120,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   const [confirmModal, setConfirmModal] = useState(null);
   
   // PAGINATION
-  const [currentPageClients, setCurrentPageClients] = useState(1);
+  // const [currentPageClients, setCurrentPageClients] = useState(1);
   const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
   const [currentPageVentes, setCurrentPageVentes] = useState(1);
   const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
@@ -138,45 +138,7 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     topClients: []
   });
   
-  // ✅ Hook Clients
-const {
-  // États
-  showClientModal,
-  editingClient,
-  filterTypeClient,
-  searchTermClient,
-  selectedClientForTransactions,
-  clientTransactions,
-  showTransactionsModal,
-  clientFormData,
-  currentPageClients,
-  itemsPerPageClients,
-  sortConfigClients,
-  
-  // Setters
-  setFilterTypeClient,
-  setSearchTermClient,
-  setCurrentPageClients,
-  setItemsPerPageClients,
-  setShowTransactionsModal,
-  
-  // Fonctions
-  handleClientFormChange,
-  handleClientSubmit,
-  handleEditClient,
-  askDeleteClient,
-  doDeleteClient,
-  openNewClientModal,
-  closeClientModal,
-  viewClientTransactions,
-  handleSortClients,
-  resetFilters
-} = useClients({ 
-  showMessage, 
-  loadData, 
-  setConfirmModal, 
-  setIsProcessing 
-});
+
 
   
   const [commandeFormData, setCommandeFormData] = useState({
@@ -291,6 +253,47 @@ const {
       ? `${client.nom} ${client.prenom || ''}`
       : client.raison_sociale || client.nom;
   };
+  
+    // ✅ Hook Clients
+const {
+  // États
+  showClientModal,
+  editingClient,
+  filterTypeClient,
+  searchTermClient,
+  selectedClientForTransactions,
+  clientTransactions,
+  showTransactionsModal,
+  clientFormData,
+  currentPageClients,
+  itemsPerPageClients,
+  sortConfigClients,
+  
+  // Setters
+  setFilterTypeClient,
+  setSearchTermClient,
+  setCurrentPageClients,
+  setItemsPerPageClients,
+  setShowTransactionsModal,
+  
+  // Fonctions
+  handleClientFormChange,
+  handleClientSubmit,
+  handleEditClient,
+  askDeleteClient,
+  doDeleteClient,
+  openNewClientModal,
+  closeClientModal,
+  viewClientTransactions,
+  handleSortClients,
+  resetFilters
+} = useClients({ 
+  showMessage, 
+  loadData, 
+  setConfirmModal, 
+  setIsProcessing 
+});
+  
   
   // ==================== ANALYTICS AVEC SAISON TRUFFE ====================
   
