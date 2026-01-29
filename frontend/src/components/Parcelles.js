@@ -24,7 +24,7 @@ const PARCELLE_COLORS = [
 ];
 
 // Icônes pour les arbres
-const createArbreIcon = (etat) => {
+const createArbreIcon = (etat_sanitaire ) => {
   const colors = {
     'Bon': '#27ae60',
     'Moyen': '#f39c12',
@@ -35,7 +35,7 @@ const createArbreIcon = (etat) => {
   return L.divIcon({
     className: 'custom-arbre-icon',
     html: `<div style="
-      background-color: ${colors[etat] || '#27ae60'};
+      background-color: ${colors[etat_sanitaire ] || '#27ae60'};
       width: 18px;
       height: 18px;
       border-radius: 50%;
@@ -176,8 +176,8 @@ function Parcelles() {
           parEspece[espece] = { total: 0, etats: { Bon: 0, Moyen: 0, Mauvais: 0, Mort: 0 } };
         }
         parEspece[espece].total++;
-        if (a.etat && parEspece[espece].etats[a.etat] !== undefined) {
-          parEspece[espece].etats[a.etat]++;
+        if (a.etat_sanitaire  && parEspece[espece].etats[a.etat_sanitaire ] !== undefined) {
+          parEspece[espece].etats[a.etat_sanitaire ]++;
         }
       });
       stats[p.id] = {
@@ -1150,12 +1150,12 @@ const handleSubmit = async (e) => {
                   <Marker 
                     key={arbre.id} 
                     position={[parseFloat(arbre.latitude), parseFloat(arbre.longitude)]}
-                    icon={createArbreIcon(arbre.etat)}
+                    icon={createArbreIcon(arbre.etat_sanitaire )}
                   >
                     <Popup>
                       <div style={{ minWidth: '180px' }}>
                         <h4 style={{ margin: '0 0 0.5rem 0', color: '#2c5f2d' }}>{arbre.numero}</h4>
-                        <p style={{ margin: '0.2rem 0', fontSize: '0.9rem' }}>{arbre.espece} - {arbre.etat}</p>
+                        <p style={{ margin: '0.2rem 0', fontSize: '0.9rem' }}>{arbre.espece} - {arbre.etat_sanitaire }</p>
                         <p style={{ margin: '0.2rem 0', fontSize: '0.9rem' }}>Parcelle: {arbre.parcelle_nom || 'N/A'}</p>
                         {arbre.variete_truffe && <p style={{ margin: '0.2rem 0', fontSize: '0.85rem', color: '#666' }}>Truffe: {arbre.variete_truffe}</p>}
                       </div>
