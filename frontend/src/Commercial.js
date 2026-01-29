@@ -29,6 +29,7 @@ import {
 // Hooks personnalisés
 import { useClients } from '../hooks/useClients';
 import { useCommandes } from '../hooks/useCommandes';
+import { useVentes } from '../hooks/useVentes';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -79,12 +80,8 @@ function Commercial() {
   
   // États ventes
   const [ventes, setVentes] = useState([]);
-  const [showVenteModal, setShowVenteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  // const [showClientImportModal, setShowClientImportModal] = useState(false);
-  const [editingVente, setEditingVente] = useState(null);
-  const [filterStatutVente, setFilterStatutVente] = useState('all');
-  const [filterTypeVente, setFilterTypeVente] = useState('all');
+
   const [filterRecolte, setFilterRecolte] = useState({ type: 'all', value: '' });
 
 	// Modal Fournisseur
@@ -121,12 +118,12 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
   // PAGINATION
   // const [currentPageClients, setCurrentPageClients] = useState(1);
   // const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
-  const [currentPageVentes, setCurrentPageVentes] = useState(1);
-  const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
+  // const [currentPageVentes, setCurrentPageVentes] = useState(1);
+  // const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
   
   // TRI
   // const [sortConfigCommandes, setSortConfigCommandes] = useState({ key: 'date_commande', direction: 'desc' });
-  const [sortConfigVentes, setSortConfigVentes] = useState({ key: 'date_vente', direction: 'desc' });
+  // const [sortConfigVentes, setSortConfigVentes] = useState({ key: 'date_vente', direction: 'desc' });
   
   // ANALYTICS
   const [analyticsData, setAnalyticsData] = useState({
@@ -137,33 +134,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
     topClients: []
   });
   
-
-
-  
-  // const [commandeFormData, setCommandeFormData] = useState({
-    // client_id: '',
-    // date_commande: new Date().toISOString().split('T')[0],
-    // date_livraison_demandee: '',
-    // poids_grammes: '',
-    // calibre: '',
-    // qualite: '',
-    // maturite: '',
-    // prix_unitaire_kg: '',
-    // statut: 'En attente',
-    // notes: ''
-  // });
-  
-  const [venteFormData, setVenteFormData] = useState({
-    client_id: '',
-    recolte_id: '',
-    date_vente: new Date().toISOString().split('T')[0],
-    quantite_grammes: '',
-    prix_unitaire_kg: '',
-    mode_paiement: '',
-    statut: 'En attente',
-    numero_facture: '',
-    notes: ''
-  });
   
   const [newClientData, setNewClientData] = useState({
     type: 'Particulier',
@@ -327,7 +297,46 @@ const {
   setConfirmModal, 
   setIsProcessing,
   commandes
-});  
+});
+
+// ==================== HOOK VENTES ====================
+const {
+  // États
+  showVenteModal,
+  editingVente,
+  filterStatutVente,
+  filterTypeVente,
+  venteFormData,
+  currentPageVentes,
+  itemsPerPageVentes,
+  sortConfigVentes,
+  
+  // Setters
+  setFilterStatutVente,
+  setFilterTypeVente,
+  setCurrentPageVentes,
+  setItemsPerPageVentes,
+  setVenteFormData,
+  
+  // Fonctions
+  handleVenteInputChange,
+  handleVenteSubmit,
+  handleEditVente,
+  askDeleteVente,
+  doDeleteVente,
+  openNewVenteModal,
+  closeVenteModal,
+  generateNumeroFacture,
+  montantCalculeVente,
+  handleSortVentes,
+  resetFilters: resetFiltersVentes
+} = useVentes({ 
+  showMessage, 
+  loadData, 
+  setConfirmModal, 
+  setIsProcessing,
+  ventes
+});
   
   // ==================== ANALYTICS AVEC SAISON TRUFFE ====================
   
@@ -416,122 +425,6 @@ const {
     });
   };
   
-  
-  // ==================== FONCTIONS VENTES ====================
-  
-  const handleVenteInputChange = (e) => {
-    const { name, value } = e.target;
-    setVenteFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleVenteSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const dataToSend = { ...venteFormData };
-      
-      if (!dataToSend.recolte_id) {
-        dataToSend.recolte_id = null;
-      }
-      
-      if (editingVente) {
-        await axios.put(`${API_URL}/ventes/${editingVente.id}`, dataToSend);
-        showMessage('Vente mise à jour avec succès !', 'success');
-      } else {
-        await axios.post(`${API_URL}/ventes`, dataToSend);
-        showMessage('Vente enregistrée avec succès !', 'success');
-      }
-      
-      loadData();
-      closeVenteModal();
-    } catch (error) {
-      showMessage('Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleEditVente = (vente) => {
-    setEditingVente(vente);
-    setVenteFormData({
-      client_id: vente.client_id || '',
-      recolte_id: vente.recolte_id || '',
-      date_vente: vente.date_vente ? vente.date_vente.split('T')[0] : '',
-      quantite_grammes: vente.quantite_grammes || '',
-      prix_unitaire_kg: vente.prix_unitaire_kg || '',
-      mode_paiement: vente.mode_paiement || '',
-      statut: vente.statut || 'En attente',
-      numero_facture: vente.numero_facture || '',
-      notes: vente.notes || ''
-    });
-    setShowVenteModal(true);
-  };
-  
-  const askDeleteVente = (vente) => {
-    setConfirmModal({
-      type: 'delete-vente',
-      item: vente,
-      title: 'Supprimer la vente',
-      message: `Êtes-vous sûr de vouloir supprimer la vente ${vente.numero_facture || vente.id} ?`,
-      confirmText: 'Oui, supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-  
-  const doDeleteVente = async (vente) => {
-    setIsProcessing(true);
-    setConfirmModal(null);
-    try {
-      await axios.delete(`${API_URL}/ventes/${vente.id}`);
-      showMessage('Vente supprimée avec succès !', 'success');
-      loadData();
-    } catch (error) {
-      showMessage('Erreur lors de la suppression', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const openNewVenteModal = () => {
-    setEditingVente(null);
-    const today = new Date().toISOString().split('T')[0];
-    setVenteFormData({
-      client_id: '',
-      recolte_id: '',
-      date_vente: today,
-      quantite_grammes: '',
-      prix_unitaire_kg: '',
-      mode_paiement: '',
-      statut: 'En attente',
-      numero_facture: generateNumeroFacture(),
-      notes: ''
-    });
-    setShowVenteModal(true);
-  };
-  
-  const closeVenteModal = () => {
-    setShowVenteModal(false);
-    setEditingVente(null);
-  };
-  
-  const generateNumeroFacture = () => {
-    const year = new Date().getFullYear();
-    const existingNumbers = ventes
-      .filter(v => v.numero_facture && v.numero_facture.startsWith(`FACT-${year}`))
-      .map(v => {
-        const match = v.numero_facture.match(/FACT-(\d{4})-(\d+)/);
-        return match ? parseInt(match[2]) : 0;
-      });
-    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-    return `FACT-${year}-${String(nextNumber).padStart(3, '0')}`;
-  };
-  
-  const montantCalculeVente = () => {
-    const poids = parseFloat(venteFormData.quantite_grammes || 0);
-    const prixKg = parseFloat(venteFormData.prix_unitaire_kg || 0);
-    return ((poids / 1000) * prixKg).toFixed(2);
-  };
-  
   // ==================== FONCTIONS PARTAGÉES ====================
   
   const handleQuickClientInputChange = (e) => {
@@ -610,8 +503,7 @@ const {
     } else if (entity === 'commandes') {
       handleSortCommandes(key); 
     } else {
-      config = sortConfigVentes;
-      setConfig = setSortConfigVentes;
+      handleSortVentes(key);
     }
     
     setConfig({
@@ -643,17 +535,13 @@ const {
     });
   };
   
-  const paginateClients = (data, currentPage, itemsPerPage) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return data.slice(startIndex, endIndex);
-  };
+  // const paginatedClients = paginate(sortedClients, currentPageClients, itemsPerPageClients);
   
-  const paginateVentes = (data, currentPage, itemsPerPage) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return data.slice(startIndex, endIndex);
-  };
+  const paginate = (data, currentPage, itemsPerPage) => {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  return data.slice(startIndex, endIndex);
+};
   
   const getTotalPages = (dataLength, itemsPerPage) => {
     return Math.ceil(dataLength / itemsPerPage);
@@ -692,9 +580,9 @@ const PaginationControls = PaginationControlsComponent;
   const sortedCommandes = sortData(filteredCommandes, sortConfigCommandes);
   const sortedVentes = sortData(filteredVentes, sortConfigVentes);
   
-  const paginatedClients = paginateClients(sortedClients, currentPageClients, itemsPerPageClients);
-  const paginatedCommandes = paginateClients(sortedCommandes, currentPageCommandes, 50);
-  const paginatedVentes = paginateVentes(sortedVentes, currentPageVentes, itemsPerPageVentes);
+  const paginatedClients = paginate(sortedClients, currentPageClients, itemsPerPageClients);
+  const paginatedCommandes = paginate(sortedCommandes, currentPageCommandes, 50);
+  const paginatedVentes = paginate(sortedVentes, currentPageVentes, itemsPerPageVentes);
   
   // ==================== STATISTIQUES ====================
   
