@@ -855,9 +855,9 @@ function Interventions() {
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                     >
                       <option value="all">Tous</option>
-                      {Object.keys(CHAMPS_PAR_TYPE).map(type => (
-                        <option key={type} value={type}>
-                          {getTypeIcon(type)} {type}
+                      {typesIntervention.map(type => (
+                        <option key={type.id} value={type.nom}>
+                          {getTypeIcon(type.nom)} {type.nom}
                         </option>
                       ))}
                     </select>
