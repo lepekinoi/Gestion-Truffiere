@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // Configuration Météo Concept
 const METEO_CONFIG = {
   TOKEN: process.env.REACT_APP_METEO_CONCEPT_TOKEN || '',
   USE_METEO_CONCEPT: process.env.REACT_APP_USE_METEO_CONCEPT === 'true',
-  FALLBACK_API_KEY: 'bfa869b97ace2b1f8fd373765e64ed64'
+  FALLBACK_API_KEY: 'bfa869b97ace2b1f8fd373765e64ed64',
+  CACHE_DURATION: 2 * 60 * 60 * 1000, // 2 heures en millisecondes
+  REFRESH_INTERVAL: 2 * 60 * 60 * 1000 // Rafraîchir toutes les 2 heures
 };
 
 function WeatherWidget({ 
   inseeCode = '79170', // Lusseray
   location = "Lusseray,FR",
-  compact = true, // Mode compact pour sidebar
   showForecastByDefault = false,
-  showIndicators = false // Afficher indicateurs trufficulture
+  showIndicators = false, // Afficher indicateurs trufficulture
+  horizontal = true // NOUVEAU: mode horizontal par défaut pour sidebar
 }) {
   const [weather, setWeather] = useState(null);
   const [enrichedData, setEnrichedData] = useState(null);
@@ -22,16 +24,57 @@ function WeatherWidget({
   const [showForecast, setShowForecast] = useState(showForecastByDefault);
   const [usingMeteoConcept, setUsingMeteoConcept] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-  useEffect(() => {
-    loadWeather();
-    const interval = setInterval(loadWeather, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [inseeCode, location]);
+  // Clé de cache pour localStorage
+  const CACHE_KEY = `weather_cache_${inseeCode}_${location}`;
 
-  const loadWeather = async () => {
+  // Charger depuis le cache
+  const loadFromCache = useCallback(() => {
     try {
-      // Essayer Météo Concept d'abord
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const data = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Vérifier si le cache est encore valide
+        if (now - data.timestamp < METEO_CONFIG.CACHE_DURATION) {
+          setWeather(data.weather);
+          setEnrichedData(data.enrichedData);
+          setForecast(data.forecast);
+          setUsingMeteoConcept(data.usingMeteoConcept);
+          setAlerts(data.alerts);
+          setLastUpdate(new Date(data.timestamp));
+          setLoading(false);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn('Erreur lecture cache:', err);
+    }
+    return false;
+  }, [CACHE_KEY]);
+
+  // Sauvegarder dans le cache
+  const saveToCache = useCallback((data) => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        ...data,
+        timestamp: Date.now()
+      }));
+      setLastUpdate(new Date());
+    } catch (err) {
+      console.warn('Erreur écriture cache:', err);
+    }
+  }, [CACHE_KEY]);
+
+  const loadWeather = useCallback(async (forceRefresh = false) => {
+    // Essayer de charger depuis le cache si ce n'est pas un rafraîchissement forcé
+    if (!forceRefresh && loadFromCache()) {
+      return;
+    }
+
+    try {
       if (METEO_CONFIG.USE_METEO_CONCEPT && METEO_CONFIG.TOKEN) {
         await loadMeteoConcept();
       } else {
@@ -41,13 +84,44 @@ function WeatherWidget({
     } catch (err) {
       console.error('Erreur météo:', err);
       setError(err.message);
-      // Fallback vers OpenWeatherMap
       if (usingMeteoConcept) {
         await loadOpenWeatherMap();
       }
       setLoading(false);
     }
-  };
+  }, [loadFromCache, usingMeteoConcept]);
+
+  useEffect(() => {
+    loadWeather();
+    
+    // Rafraîchissement automatique toutes les 2 heures (au lieu de 30 min)
+    const interval = setInterval(() => {
+      // Ne rafraîchir que si la page est visible
+      if (!document.hidden) {
+        loadWeather(true);
+      }
+    }, METEO_CONFIG.REFRESH_INTERVAL);
+    
+    // Rafraîchir quand la page redevient visible (si cache expiré)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp >= METEO_CONFIG.CACHE_DURATION) {
+            loadWeather(true);
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadWeather, CACHE_KEY]);
 
   // ==================== MÉTÉO CONCEPT ====================
   const loadMeteoConcept = async () => {
@@ -83,10 +157,10 @@ function WeatherWidget({
     const etpCumul7d = next7Days.reduce((sum, d) => sum + d.etp_mm, 0);
     const bilanHydrique7d = rainCumul7d - etpCumul7d;
     
-    setWeather({
+    const weatherData = {
       temp: today.temp_max,
       temp_min: today.temp_min,
-      feels_like: today.temp_max - 2, // Estimation
+      feels_like: today.temp_max - 2,
       humidity: today.humidity,
       description: getWeatherDescription(today.weather_code),
       icon: today.weather_code,
@@ -94,9 +168,9 @@ function WeatherWidget({
       rain_mm: today.rain_mm,
       rain_probability: today.rain_probability,
       clouds: today.weather_code > 3 ? 75 : 25
-    });
+    };
     
-    setEnrichedData({
+    const enriched = {
       etp_today: today.etp_mm,
       frost_probability: today.frost_probability,
       sun_hours: today.sun_hours,
@@ -105,10 +179,50 @@ function WeatherWidget({
       bilanHydrique7d,
       dew_point: calculateDewPoint(today.temp_max, today.humidity),
       favorable: today.favorable
-    });
+    };
     
+    setWeather(weatherData);
+    setEnrichedData(enriched);
     setForecast(next7Days);
-    calculateAlerts(next7Days, { rainCumul7d, etpCumul7d, bilanHydrique7d });
+    
+    // Calcul des alertes
+    const newAlerts = [];
+    if (bilanHydrique7d < -20) {
+      newAlerts.push({
+        type: 'drought',
+        severity: 'warning',
+        icon: '🌵',
+        message: `Déficit: ${bilanHydrique7d.toFixed(1)}mm`
+      });
+    }
+    const frostDays = next7Days.filter(d => (d.frost_probability || 0) > 50);
+    if (frostDays.length > 0) {
+      newAlerts.push({
+        type: 'frost',
+        severity: 'danger',
+        icon: '❄️',
+        message: `Gel: ${frostDays.length}j`
+      });
+    }
+    const favorableDays = next7Days.filter(d => d.favorable);
+    if (favorableDays.length >= 3) {
+      newAlerts.push({
+        type: 'favorable',
+        severity: 'success',
+        icon: '✅',
+        message: `${favorableDays.length}j favorables`
+      });
+    }
+    setAlerts(newAlerts);
+    
+    // Sauvegarder dans le cache
+    saveToCache({
+      weather: weatherData,
+      enrichedData: enriched,
+      forecast: next7Days,
+      usingMeteoConcept: true,
+      alerts: newAlerts
+    });
   };
 
   // ==================== OPENWEATHERMAP (FALLBACK) ====================
@@ -123,7 +237,7 @@ function WeatherWidget({
 
     const weatherData = await weatherRes.json();
     
-    setWeather({
+    const currentWeather = {
       temp: Math.round(weatherData.main.temp),
       temp_min: Math.round(weatherData.main.temp_min),
       feels_like: Math.round(weatherData.main.feels_like),
@@ -133,7 +247,9 @@ function WeatherWidget({
       wind_speed: Math.round(weatherData.wind.speed * 3.6),
       clouds: weatherData.clouds.all,
       rain_mm: weatherData.rain?.['1h'] || 0
-    });
+    };
+    
+    setWeather(currentWeather);
 
     // Prévisions
     const forecastRes = await fetch(
@@ -167,6 +283,15 @@ function WeatherWidget({
       });
 
       setForecast(dailyForecast.slice(0, 5));
+      
+      // Sauvegarder dans le cache
+      saveToCache({
+        weather: currentWeather,
+        enrichedData: null,
+        forecast: dailyForecast.slice(0, 5),
+        usingMeteoConcept: false,
+        alerts: []
+      });
     }
   };
 
@@ -212,44 +337,6 @@ function WeatherWidget({
     if (code <= 15) return 'Neige';
     if (code <= 19) return 'Orage';
     return 'Brouillard';
-  };
-
-  const calculateAlerts = (forecast, aggregates) => {
-    const newAlerts = [];
-    
-    // Déficit hydrique
-    if (aggregates.bilanHydrique7d < -20) {
-      newAlerts.push({
-        type: 'drought',
-        severity: 'warning',
-        icon: '🌵',
-        message: `Déficit hydrique: ${aggregates.bilanHydrique7d.toFixed(1)}mm`
-      });
-    }
-    
-    // Risque gel
-    const frostDays = forecast.filter(d => (d.frost_probability || 0) > 50);
-    if (frostDays.length > 0) {
-      newAlerts.push({
-        type: 'frost',
-        severity: 'danger',
-        icon: '❄️',
-        message: `Risque gel: ${frostDays.length} jour(s)`
-      });
-    }
-    
-    // Conditions favorables
-    const favorableDays = forecast.filter(d => d.favorable);
-    if (favorableDays.length >= 3) {
-      newAlerts.push({
-        type: 'favorable',
-        severity: 'success',
-        icon: '✅',
-        message: `${favorableDays.length} jours favorables`
-      });
-    }
-    
-    setAlerts(newAlerts);
   };
 
   // ==================== HELPERS ====================
@@ -305,12 +392,23 @@ function WeatherWidget({
     return '#27ae60';
   };
 
+  const formatLastUpdate = () => {
+    if (!lastUpdate) return '';
+    const now = Date.now();
+    const diff = now - lastUpdate.getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'À l\'instant';
+    if (minutes < 60) return `Il y a ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    return `Il y a ${hours}h`;
+  };
+
   // ==================== RENDU ====================
   if (loading) {
     return (
-      <div style={styles.container}>
+      <div style={horizontal ? stylesH.container : styles.container}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🌤️</div>
+          <div style={{ fontSize: horizontal ? '1.5rem' : '2rem', marginBottom: '0.5rem' }}>🌤️</div>
           <div style={{ fontSize: '0.9rem' }}>Chargement météo...</div>
         </div>
       </div>
@@ -319,15 +417,114 @@ function WeatherWidget({
 
   if (error || !weather) {
     return (
-      <div style={styles.container}>
+      <div style={horizontal ? stylesH.container : styles.container}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚠️</div>
+          <div style={{ fontSize: horizontal ? '1.5rem' : '2rem', marginBottom: '0.5rem' }}>⚠️</div>
           <div style={{ fontSize: '0.9rem' }}>Météo indisponible</div>
         </div>
       </div>
     );
   }
 
+  // ==================== RENDU HORIZONTAL ====================
+  if (horizontal) {
+    return (
+      <div style={stylesH.container}>
+        {/* En-tête compact */}
+        <div style={stylesH.header}>
+          <div style={stylesH.headerLeft}>
+            <span style={stylesH.icon}>{getWeatherIcon(weather.icon)}</span>
+            <div>
+              <div style={stylesH.temp}>{weather.temp}°C</div>
+              <div style={stylesH.location}>{location.split(',')[0]}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => loadWeather(true)}
+            style={stylesH.refreshBtn}
+            title="Actualiser"
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'rotate(180deg)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(0deg)'}
+          >
+            🔄
+          </button>
+        </div>
+
+        {/* Infos principales en ligne */}
+        <div style={stylesH.mainInfo}>
+          <div style={stylesH.infoItem}>
+            <span>💧 {weather.humidity}%</span>
+          </div>
+          <div style={stylesH.infoItem}>
+            <span>💨 {weather.wind_speed} km/h</span>
+          </div>
+          <div style={stylesH.infoItem}>
+            <span>🌡️ {weather.feels_like}°C</span>
+          </div>
+        </div>
+
+        {/* Indicateurs trufficulture horizontaux */}
+        {showIndicators && enrichedData && usingMeteoConcept && (
+          <div style={stylesH.indicators}>
+            <div style={stylesH.indicator}>
+              <span style={stylesH.indicatorLabel}>Bilan 7j</span>
+              <span style={{
+                ...stylesH.indicatorValue,
+                color: enrichedData.bilanHydrique7d < -15 ? '#e74c3c' : '#27ae60'
+              }}>
+                {enrichedData.bilanHydrique7d.toFixed(1)}mm
+              </span>
+            </div>
+            <div style={stylesH.indicator}>
+              <span style={stylesH.indicatorLabel}>ETP</span>
+              <span style={stylesH.indicatorValue}>
+                {enrichedData.etp_today.toFixed(1)}mm
+              </span>
+            </div>
+            <div style={stylesH.indicator}>
+              <span style={stylesH.indicatorLabel}>Gel</span>
+              <span style={{
+                ...stylesH.indicatorValue,
+                color: enrichedData.frost_probability > 50 ? '#e74c3c' : '#27ae60'
+              }}>
+                {enrichedData.frost_probability}%
+              </span>
+            </div>
+            <div style={stylesH.indicator}>
+              <span style={stylesH.indicatorLabel}>État</span>
+              <span style={stylesH.indicatorValue}>
+                {enrichedData.favorable ? '✅' : '⚠️'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Alertes */}
+        {alerts.length > 0 && (
+          <div style={stylesH.alerts}>
+            {alerts.map((alert, idx) => (
+              <div key={idx} style={stylesH.alert}>
+                <span>{alert.icon}</span>
+                <span style={{ fontSize: '0.75rem' }}>{alert.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer avec dernière mise à jour */}
+        <div style={stylesH.footer}>
+          <span style={stylesH.updateTime}>
+            {formatLastUpdate()}
+          </span>
+          <span style={stylesH.source}>
+            {usingMeteoConcept ? '🛰️ Météo Concept' : '🌐 OWM'}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== RENDU VERTICAL (mode classique) ====================
   return (
     <div style={styles.container}>
       {/* Badge API source */}
@@ -517,6 +714,13 @@ function WeatherWidget({
         </div>
       </div>
 
+      {/* Dernière mise à jour */}
+      {lastUpdate && (
+        <div style={styles.updateFooter}>
+          {formatLastUpdate()}
+        </div>
+      )}
+
       <style>{`
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
@@ -527,7 +731,120 @@ function WeatherWidget({
   );
 }
 
-// ==================== STYLES ====================
+// ==================== STYLES HORIZONTAUX ====================
+const stylesH = {
+  container: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    padding: '1rem',
+    borderRadius: '12px',
+    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.2)',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.75rem'
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
+  },
+  icon: {
+    fontSize: '2.5rem'
+  },
+  temp: {
+    fontSize: '1.8rem',
+    fontWeight: 'bold',
+    lineHeight: 1
+  },
+  location: {
+    fontSize: '0.75rem',
+    opacity: 0.8,
+    marginTop: '0.15rem'
+  },
+  refreshBtn: {
+    background: 'rgba(255, 255, 255, 0.2)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '32px',
+    height: '32px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'transform 0.3s',
+  },
+  mainInfo: {
+    display: 'flex',
+    justifyContent: 'space-around',
+    marginBottom: '0.75rem',
+    padding: '0.5rem',
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px'
+  },
+  infoItem: {
+    fontSize: '0.85rem',
+    fontWeight: '500'
+  },
+  indicators: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '0.5rem',
+    marginBottom: '0.75rem'
+  },
+  indicator: {
+    flex: 1,
+    background: 'rgba(255, 255, 255, 0.15)',
+    padding: '0.5rem',
+    borderRadius: '8px',
+    textAlign: 'center'
+  },
+  indicatorLabel: {
+    display: 'block',
+    fontSize: '0.65rem',
+    opacity: 0.8,
+    marginBottom: '0.2rem'
+  },
+  indicatorValue: {
+    display: 'block',
+    fontSize: '0.9rem',
+    fontWeight: 'bold'
+  },
+  alerts: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    marginBottom: '0.75rem'
+  },
+  alert: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    padding: '0.35rem 0.6rem',
+    background: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: '12px',
+    fontSize: '0.75rem'
+  },
+  footer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.7rem',
+    opacity: 0.7,
+    paddingTop: '0.5rem',
+    borderTop: '1px solid rgba(255, 255, 255, 0.2)'
+  },
+  updateTime: {
+    fontStyle: 'italic'
+  },
+  source: {
+    fontWeight: '500'
+  }
+};
+
+// ==================== STYLES VERTICAUX ====================
 const styles = {
   container: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -741,6 +1058,15 @@ const styles = {
     opacity: 0.95,
     fontSize: '0.9rem',
     lineHeight: 1.4
+  },
+  updateFooter: {
+    marginTop: '1rem',
+    paddingTop: '0.75rem',
+    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+    textAlign: 'center',
+    fontSize: '0.75rem',
+    opacity: 0.7,
+    fontStyle: 'italic'
   }
 };
 
