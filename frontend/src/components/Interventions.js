@@ -327,9 +327,20 @@ const CHAMPS_PAR_TYPE = {
   }
 };
 
-// ✅ NOUVELLE FONCTION : Récupère l'icône d'un type d'intervention
+// ✅ Fonction pour récupérer l'icône d'un type d'intervention
 const getTypeIcon = (typeName) => {
   return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
+};
+
+// ✅ NOUVELLE FONCTION : Récupère l'icône d'un statut
+const getStatutIcon = (statut) => {
+  const statutIcons = {
+    'Prévu': '📅',
+    'En cours': '⏳',
+    'Terminé': '✅',
+    'Annulé': '❌'
+  };
+  return statutIcons[statut] || '📋';
 };
 
 // Sélecteur de parcelle avec affichage amélioré
@@ -379,7 +390,7 @@ function Interventions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
-  // ✅ NOUVEAU : États pour le tri
+  // États pour le tri
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
   
@@ -543,7 +554,7 @@ function Interventions() {
     exportInterventionsPDF(interventions, colonnesExport);
   };
 
-  // ✅ NOUVELLE FONCTION : Gestion du tri
+  // Gestion du tri
   const handleSort = (column) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -556,7 +567,7 @@ function Interventions() {
   // Filtrage
   const interventionsFiltrees = useMemo(() => {
     return interventions.filter(inter => {
-      if (filterType !== 'all' && inter.type_intervention !== filterType) return false;
+      if (filterType !== 'all' && inter.type_nom !== filterType) return false;
       if (filterParcelle !== 'all' && inter.parcelle_id !== parseInt(filterParcelle)) return false;
       if (filterArbre !== 'all' && inter.arbre_id !== parseInt(filterArbre)) return false;
       if (filterDateDebut && inter.date_prevue < filterDateDebut) return false;
@@ -564,7 +575,7 @@ function Interventions() {
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         if (!inter.description?.toLowerCase().includes(search) && 
-            !inter.type_intervention?.toLowerCase().includes(search)) {
+            !inter.type_nom?.toLowerCase().includes(search)) {
           return false;
         }
       }
@@ -572,7 +583,7 @@ function Interventions() {
     });
   }, [interventions, filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
 
-  // ✅ NOUVEAU : Tri des interventions filtrées
+  // Tri des interventions filtrées
   const interventionsTriees = useMemo(() => {
     if (!sortColumn) return interventionsFiltrees;
     
@@ -774,7 +785,6 @@ function Interventions() {
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                     >
                       <option value="all">Tous</option>
-                      {/* ✅ AMÉLIORATION : Ajout des icônes dans le filtre Type */}
                       {Object.keys(CHAMPS_PAR_TYPE).map(type => (
                         <option key={type} value={type}>
                           {getTypeIcon(type)} {type}
@@ -831,7 +841,7 @@ function Interventions() {
             )}
           </div>
 
-          {/* ✅ NOUVELLE : Pagination au-dessus du tableau avec emojis */}
+          {/* Pagination au-dessus du tableau */}
           {totalPages > 1 && (
             <div style={{ 
               display: 'flex', 
@@ -947,7 +957,6 @@ function Interventions() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
                         <span>{config[col].label}</span>
-                        {/* ✅ NOUVEAU : Indicateur de tri */}
                         {sortColumn === col && (
                           <span style={{ fontSize: '0.8rem' }}>
                             {sortDirection === 'asc' ? '🔼' : '🔽'}
@@ -963,13 +972,23 @@ function Interventions() {
                 {interventionsPaginees.map(inter => (
                   <tr key={inter.id}>
                     {colonnesValides.map(col => {
-                      // ✅ AMÉLIORATION : Affichage de l'icône dans la colonne Type
-                      if (col === 'type_intervention') {
+                      // ✅ CORRECTION + AMÉLIORATION : Affichage des emojis pour Type ET Statut
+                      if (col === 'type_nom') {
                         return (
                           <td key={col}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={{ fontSize: '1.2rem' }}>{getTypeIcon(inter.type_intervention)}</span>
-                              <span>{inter.type_intervention}</span>
+                              <span style={{ fontSize: '1.2rem' }}>{getTypeIcon(inter.type_nom)}</span>
+                              <span>{inter.type_nom}</span>
+                            </span>
+                          </td>
+                        );
+                      }
+                      if (col === 'statut') {
+                        return (
+                          <td key={col}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '1.2rem' }}>{getStatutIcon(inter.statut)}</span>
+                              <span>{inter.statut}</span>
                             </span>
                           </td>
                         );
@@ -1067,7 +1086,6 @@ function Interventions() {
                       .filter(a => a.parcelle_id === parseInt(formData.parcelle_id))
                       .map(arbre => (
                         <option key={arbre.id} value={arbre.id}>
-                          {/* ✅ CORRECTION : Utilisation de numero et espece au lieu de numero_arbre et essence */}
                           {arbre.numero} - {arbre.espece || 'N/A'}
                         </option>
                       ))
