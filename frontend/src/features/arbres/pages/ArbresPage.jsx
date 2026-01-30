@@ -1,6 +1,7 @@
 // ============================================================
 // ArbresPage.jsx - Gestion des arbres de la truffière
 // Inspired by RecoltesPage - Même logique de filtres/recherche/pagination
+// V7 avec tri et modification groupée
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -25,6 +26,7 @@ function ArbresPage({ highlightId }) {
   const [parcelles, setParcelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [editingArbre, setEditingArbre] = useState(null);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,6 +38,10 @@ function ArbresPage({ highlightId }) {
   const [showTrash, setShowTrash] = useState(false);
   const [trashedArbres, setTrashedArbres] = useState([]);
   const [trashLoading, setTrashLoading] = useState(false);
+  
+  // États de tri
+  const [sortField, setSortField] = useState('numero');
+  const [sortDirection, setSortDirection] = useState('asc');
   
   // États de filtrage (comme Recoltes)
   const [filters, setFilters] = useState({
@@ -61,6 +67,16 @@ function ArbresPage({ highlightId }) {
     rendement_estimé: '',
     latitude: '',
     longitude: '',
+    notes: ''
+  });
+
+  // États pour la modification groupée
+  const [bulkEditData, setBulkEditData] = useState({
+    parcelle_id: '',
+    espece: '',
+    variete_truffe: '',
+    etat_sanitaire: '',
+    porte_greffe: '',
     notes: ''
   });
 
@@ -165,6 +181,11 @@ function ArbresPage({ highlightId }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleBulkEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setBulkEditData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
     setCurrentPage(1);
@@ -181,6 +202,21 @@ function ArbresPage({ highlightId }) {
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v !== '');
+
+  // Fonction de tri
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortEmoji = (field) => {
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '⬆️' : '⬇️';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -217,6 +253,78 @@ function ArbresPage({ highlightId }) {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Gestion de la modification groupée
+  const handleBulkEdit = async (e) => {
+    e.preventDefault();
+    
+    // Vérifier qu'au moins un champ est renseigné
+    const hasChanges = Object.values(bulkEditData).some(v => v !== '');
+    if (!hasChanges) {
+      showMessage('Veuillez renseigner au moins un champ à modifier', 'error');
+      return;
+    }
+
+    const count = selectedArbres.size;
+    if (!window.confirm(`Êtes-vous sûr de vouloir modifier ${count} arbre(s) ?`)) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const ids = Array.from(selectedArbres);
+      
+      // Préparer les données à envoyer (seulement les champs non vides)
+      const updates = {};
+      Object.keys(bulkEditData).forEach(key => {
+        if (bulkEditData[key] !== '') {
+          updates[key] = bulkEditData[key];
+        }
+      });
+
+      // Mettre à jour chaque arbre sélectionné
+      await Promise.all(
+        ids.map(id => {
+          const arbre = arbres.find(a => a.id === id);
+          return axios.put(`${API_URL}/arbres/${id}`, { ...arbre, ...updates });
+        })
+      );
+
+      showMessage(`${count} arbre(s) modifié(s) avec succès !`, 'success');
+      setSelectedArbres(new Set());
+      loadData();
+      closeBulkEditModal();
+    } catch (error) {
+      console.error('Erreur lors de la modification groupée:', error);
+      showMessage('Erreur lors de la modification groupée', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openBulkEditModal = () => {
+    setBulkEditData({
+      parcelle_id: '',
+      espece: '',
+      variete_truffe: '',
+      etat_sanitaire: '',
+      porte_greffe: '',
+      notes: ''
+    });
+    setShowBulkEditModal(true);
+  };
+
+  const closeBulkEditModal = () => {
+    setShowBulkEditModal(false);
+    setBulkEditData({
+      parcelle_id: '',
+      espece: '',
+      variete_truffe: '',
+      etat_sanitaire: '',
+      porte_greffe: '',
+      notes: ''
+    });
   };
 
   const handleEdit = (arbre) => {
@@ -292,8 +400,8 @@ function ArbresPage({ highlightId }) {
     setShowModal(true);
   };
 
-  // Filtrage avancé (comme Recoltes)
-  const filteredArbres = arbres.filter(a => {
+  // Filtrage et tri
+  const filteredAndSortedArbres = arbres.filter(a => {
     // Filtre recherche textuelle
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
@@ -315,18 +423,60 @@ function ArbresPage({ highlightId }) {
     
     return true;
   }).sort((a, b) => {
-    const numA = parseInt(a.numero?.replace(/\D/g, '') || '0');
-    const numB = parseInt(b.numero?.replace(/\D/g, '') || '0');
-    return numA - numB;
+    let aVal, bVal;
+    
+    switch (sortField) {
+      case 'numero':
+        aVal = parseInt(a.numero?.replace(/\D/g, '') || '0');
+        bVal = parseInt(b.numero?.replace(/\D/g, '') || '0');
+        break;
+      case 'parcelle':
+        const aParc = parcelles.find(p => p.id === a.parcelle_id)?.nom || '';
+        const bParc = parcelles.find(p => p.id === b.parcelle_id)?.nom || '';
+        aVal = aParc.toLowerCase();
+        bVal = bParc.toLowerCase();
+        break;
+      case 'espece':
+        aVal = (a.espece || '').toLowerCase();
+        bVal = (b.espece || '').toLowerCase();
+        break;
+      case 'variete':
+        aVal = (a.variete_truffe || '').toLowerCase();
+        bVal = (b.variete_truffe || '').toLowerCase();
+        break;
+      case 'age':
+        aVal = a.age_ans || 0;
+        bVal = b.age_ans || 0;
+        break;
+      case 'etat':
+        const etats = { 'Excellent': 4, 'Bon': 3, 'Moyen': 2, 'Mauvais': 1 };
+        aVal = etats[a.etat_sanitaire] || 0;
+        bVal = etats[b.etat_sanitaire] || 0;
+        break;
+      case 'rendement':
+        aVal = parseFloat(a.rendement_estimé) || 0;
+        bVal = parseFloat(b.rendement_estimé) || 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (typeof aVal === 'string') {
+      return sortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    } else {
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+    }
   });
 
-  // Pagination (comme Recoltes)
-  const totalArbres = filteredArbres.length;
+  // Pagination
+  const totalArbres = filteredAndSortedArbres.length;
   const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(totalArbres / itemsPerPage);
   
   const paginatedArbres = itemsPerPage === 'all' 
-    ? filteredArbres 
-    : filteredArbres.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    ? filteredAndSortedArbres 
+    : filteredAndSortedArbres.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleItemsPerPageChange = (value) => {
     setItemsPerPage(value);
@@ -367,7 +517,7 @@ function ArbresPage({ highlightId }) {
 
   const stats = {
     total: arbres.length,
-    filtered: filteredArbres.length
+    filtered: filteredAndSortedArbres.length
   };
 
   // Sélection multiple
@@ -404,7 +554,7 @@ function ArbresPage({ highlightId }) {
   };
 
   const handleSelectAllFiltered = () => {
-    setSelectedArbres(new Set(filteredArbres.map(a => a.id)));
+    setSelectedArbres(new Set(filteredAndSortedArbres.map(a => a.id)));
   };
 
   const askBulkDelete = async () => {
@@ -427,6 +577,96 @@ function ArbresPage({ highlightId }) {
 
   const isAllPageSelected = paginatedArbres.length > 0 && paginatedArbres.every(a => selectedArbres.has(a.id));
   const isSomePageSelected = paginatedArbres.some(a => selectedArbres.has(a.id));
+
+  // Composant Pagination réutilisable
+  const PaginationControls = () => (
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      marginBottom: '1rem',
+      flexWrap: 'wrap',
+      gap: '1rem'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span style={{ fontWeight: '500', color: '#666' }}>Afficher :</span>
+        {PAGINATION_OPTIONS.map(option => (
+          <button
+            key={option.value}
+            onClick={() => handleItemsPerPageChange(option.value)}
+            style={{
+              padding: '0.4rem 0.8rem',
+              border: itemsPerPage === option.value ? '2px solid #2c5f2d' : '1px solid #ddd',
+              borderRadius: '6px',
+              background: itemsPerPage === option.value ? '#e8f5e9' : 'white',
+              color: itemsPerPage === option.value ? '#2c5f2d' : '#666',
+              fontWeight: itemsPerPage === option.value ? 'bold' : 'normal',
+              cursor: 'pointer'
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      
+      {itemsPerPage !== 'all' && totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '0.4rem 0.8rem',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              background: currentPage === 1 ? '#f5f5f5' : 'white',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              opacity: currentPage === 1 ? 0.5 : 1
+            }}
+          >
+            ◀️
+          </button>
+          
+          {getPageNumbers().map((page, idx) => (
+            <button
+              key={idx}
+              onClick={() => page !== '...' && setCurrentPage(page)}
+              disabled={page === '...'}
+              style={{
+                padding: '0.4rem 0.8rem',
+                border: currentPage === page ? '2px solid #2c5f2d' : '1px solid #ddd',
+                borderRadius: '6px',
+                background: currentPage === page ? '#2c5f2d' : 'white',
+                color: currentPage === page ? 'white' : '#666',
+                fontWeight: currentPage === page ? 'bold' : 'normal',
+                cursor: page === '...' ? 'default' : 'pointer'
+              }}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '0.4rem 0.8rem',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              background: currentPage === totalPages ? '#f5f5f5' : 'white',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              opacity: currentPage === totalPages ? 0.5 : 1
+            }}
+          >
+            ▶️
+          </button>
+          
+          <span style={{ color: '#666', marginLeft: '0.5rem' }}>
+            Page {currentPage} sur {totalPages}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return <div className="loading">Chargement des arbres...</div>;
@@ -637,8 +877,8 @@ function ArbresPage({ highlightId }) {
             fontSize: '0.9rem',
             color: '#666'
           }}>
-            <strong>{filteredArbres.length}</strong> arbre{filteredArbres.length > 1 ? 's' : ''} trouvé{filteredArbres.length > 1 ? 's' : ''}
-            {filteredArbres.length !== arbres.length && (
+            <strong>{filteredAndSortedArbres.length}</strong> arbre{filteredAndSortedArbres.length > 1 ? 's' : ''} trouvé{filteredAndSortedArbres.length > 1 ? 's' : ''}
+            {filteredAndSortedArbres.length !== arbres.length && (
               <span> sur {arbres.length} au total</span>
             )}
           </div>
@@ -659,7 +899,7 @@ function ArbresPage({ highlightId }) {
           flexWrap: 'wrap',
           gap: '1rem'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
               ✅ {selectedArbres.size} arbre(s) sélectionné(s)
             </span>
@@ -676,7 +916,7 @@ function ArbresPage({ highlightId }) {
             >
               Tout désélectionner
             </button>
-            {filteredArbres.length > selectedArbres.size && (
+            {filteredAndSortedArbres.length > selectedArbres.size && (
               <button
                 onClick={handleSelectAllFiltered}
                 style={{
@@ -688,17 +928,28 @@ function ArbresPage({ highlightId }) {
                   cursor: 'pointer'
                 }}
               >
-                Sélectionner les {filteredArbres.length} arbres filtrés
+                Sélectionner les {filteredAndSortedArbres.length} arbres filtrés
               </button>
             )}
           </div>
-          <button
-            onClick={askBulkDelete}
-            className="btn btn-danger"
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            🗑️ Supprimer la sélection
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {canWrite() && (
+              <button
+                onClick={openBulkEditModal}
+                className="btn btn-primary"
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                ✏️ Modifier la sélection
+              </button>
+            )}
+            <button
+              onClick={askBulkDelete}
+              className="btn btn-danger"
+              style={{ padding: '0.5rem 1rem' }}
+            >
+              🗑️ Supprimer la sélection
+            </button>
+          </div>
         </div>
       )}
 
@@ -716,98 +967,11 @@ function ArbresPage({ highlightId }) {
         )}
       </div>
 
-      {/* Pagination et affichage */}
-      {filteredArbres.length > 0 && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: '500', color: '#666' }}>Afficher :</span>
-            {PAGINATION_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                onClick={() => handleItemsPerPageChange(option.value)}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  border: itemsPerPage === option.value ? '2px solid #2c5f2d' : '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: itemsPerPage === option.value ? '#e8f5e9' : 'white',
-                  color: itemsPerPage === option.value ? '#2c5f2d' : '#666',
-                  fontWeight: itemsPerPage === option.value ? 'bold' : 'normal',
-                  cursor: 'pointer'
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          
-          {itemsPerPage !== 'all' && totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: currentPage === 1 ? '#f5f5f5' : 'white',
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  opacity: currentPage === 1 ? 0.5 : 1
-                }}
-              >
-                ◀️
-              </button>
-              
-              {getPageNumbers().map((page, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => page !== '...' && setCurrentPage(page)}
-                  disabled={page === '...'}
-                  style={{
-                    padding: '0.4rem 0.8rem',
-                    border: currentPage === page ? '2px solid #2c5f2d' : '1px solid #ddd',
-                    borderRadius: '6px',
-                    background: currentPage === page ? '#2c5f2d' : 'white',
-                    color: currentPage === page ? 'white' : '#666',
-                    fontWeight: currentPage === page ? 'bold' : 'normal',
-                    cursor: page === '...' ? 'default' : 'pointer'
-                  }}
-                >
-                  {page}
-                </button>
-              ))}
-              
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: currentPage === totalPages ? '#f5f5f5' : 'white',
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                  opacity: currentPage === totalPages ? 0.5 : 1
-                }}
-              >
-                ▶️
-              </button>
-              
-              <span style={{ color: '#666', marginLeft: '0.5rem' }}>
-                Page {currentPage} sur {totalPages}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Pagination au-dessus du tableau */}
+      {filteredAndSortedArbres.length > 0 && <PaginationControls />}
 
       {/* Tableau */}
-      {filteredArbres.length === 0 ? (
+      {filteredAndSortedArbres.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
           <p style={{ fontSize: '1.2rem' }}>Aucun arbre {hasActiveFilters ? 'correspondant aux filtres' : 'enregistré'}</p>
           <p>{hasActiveFilters ? 'Essayez de modifier vos critères de recherche' : 'Cliquez sur "Nouvel arbre" pour commencer'}</p>
@@ -825,13 +989,48 @@ function ArbresPage({ highlightId }) {
                   style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                 />
               </th>
-              <th>Numéro</th>
-              <th>Parcelle</th>
-              <th>Espèce</th>
-              <th>Variété</th>
-              <th style={{ textAlign: 'right' }}>Âge</th>
-              <th>État</th>
-              <th style={{ textAlign: 'right' }}>Rendement</th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('numero')}
+              >
+                Numéro {getSortEmoji('numero')}
+              </th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('parcelle')}
+              >
+                Parcelle {getSortEmoji('parcelle')}
+              </th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('espece')}
+              >
+                Espèce {getSortEmoji('espece')}
+              </th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('variete')}
+              >
+                Variété {getSortEmoji('variete')}
+              </th>
+              <th 
+                style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('age')}
+              >
+                Âge {getSortEmoji('age')}
+              </th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('etat')}
+              >
+                État {getSortEmoji('etat')}
+              </th>
+              <th 
+                style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('rendement')}
+              >
+                Rendement {getSortEmoji('rendement')}
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -902,6 +1101,13 @@ function ArbresPage({ highlightId }) {
         </table>
       )}
 
+      {/* Pagination en dessous du tableau (optionnelle) */}
+      {filteredAndSortedArbres.length > 0 && itemsPerPage !== 'all' && totalPages > 1 && (
+        <div style={{ marginTop: '1rem' }}>
+          <PaginationControls />
+        </div>
+      )}
+
       {/* Modal de création/édition */}
       {showModal && canWrite() && (
         <div className="modal-overlay" onClick={closeModal}>
@@ -928,16 +1134,16 @@ function ArbresPage({ highlightId }) {
               </div>
 
               <div className="form-grid">
-				<div className="form-group">
-				  <label>Espèce</label>
-				  <EspeceSelector
-					value={formData.espece}
-					onChange={(value) => setFormData({...formData, espece: value})}
-					placeholder="Sélectionner une espèce..."
-					required={false}
-					showInfos={true}
-				  />
-				</div>
+                <div className="form-group">
+                  <label>Espèce</label>
+                  <EspeceSelector
+                    value={formData.espece}
+                    onChange={(value) => setFormData({...formData, espece: value})}
+                    placeholder="Sélectionner une espèce..."
+                    required={false}
+                    showInfos={true}
+                  />
+                </div>
 
                 <div className="form-group">
                   <label>Variété de truffe</label>
@@ -989,6 +1195,111 @@ function ArbresPage({ highlightId }) {
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
                   {isProcessing ? 'En cours...' : (editingArbre ? 'Mettre à jour' : 'Enregistrer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modification groupée */}
+      {showBulkEditModal && canWrite() && (
+        <div className="modal-overlay" onClick={closeBulkEditModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>✏️ Modifier {selectedArbres.size} arbre(s)</h3>
+              <button className="modal-close" onClick={closeBulkEditModal}>✕</button>
+            </div>
+            
+            <div style={{ 
+              padding: '1rem', 
+              background: '#fff3cd', 
+              borderRadius: '8px', 
+              marginBottom: '1rem',
+              border: '1px solid #ffc107'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
+                ⚠️ <strong>Attention :</strong> Les champs renseignés ci-dessous seront appliqués à tous les arbres sélectionnés. 
+                Laissez vide les champs que vous ne souhaitez pas modifier.
+              </p>
+            </div>
+            
+            <form onSubmit={handleBulkEdit}>
+              <div className="form-group">
+                <label>Parcelle</label>
+                <select 
+                  name="parcelle_id" 
+                  value={bulkEditData.parcelle_id} 
+                  onChange={handleBulkEditInputChange}
+                >
+                  <option value="">Ne pas modifier</option>
+                  {parcelles.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Espèce</label>
+                <EspeceSelector
+                  value={bulkEditData.espece}
+                  onChange={(value) => setBulkEditData({...bulkEditData, espece: value})}
+                  placeholder="Ne pas modifier"
+                  required={false}
+                  showInfos={true}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Variété de truffe</label>
+                <input 
+                  type="text" 
+                  name="variete_truffe" 
+                  value={bulkEditData.variete_truffe} 
+                  onChange={handleBulkEditInputChange} 
+                  placeholder="Ne pas modifier" 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>État sanitaire</label>
+                <select 
+                  name="etat_sanitaire" 
+                  value={bulkEditData.etat_sanitaire} 
+                  onChange={handleBulkEditInputChange}
+                >
+                  <option value="">Ne pas modifier</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Bon">Bon</option>
+                  <option value="Moyen">Moyen</option>
+                  <option value="Mauvais">Mauvais</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Porte-greffe</label>
+                <input 
+                  type="text" 
+                  name="porte_greffe" 
+                  value={bulkEditData.porte_greffe} 
+                  onChange={handleBulkEditInputChange} 
+                  placeholder="Ne pas modifier" 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Notes (seront ajoutées aux notes existantes)</label>
+                <textarea 
+                  name="notes" 
+                  value={bulkEditData.notes} 
+                  onChange={handleBulkEditInputChange} 
+                  placeholder="Ne pas modifier" 
+                  rows="3" 
+                />
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeBulkEditModal}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                  {isProcessing ? 'Modification en cours...' : `Modifier ${selectedArbres.size} arbre(s)`}
                 </button>
               </div>
             </form>
