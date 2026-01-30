@@ -17,6 +17,71 @@ const PAGINATION_OPTIONS = [
 ];
 
 // ========================================
+// COMPOSANT TOOLTIP POUR LES LABELS
+// ========================================
+
+function FieldLabel({ label, tooltip }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <label style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '0.5rem',
+      marginBottom: '0.25rem', 
+      fontSize: '0.9rem', 
+      fontWeight: '500' 
+    }}>
+      <span>{label}</span>
+      {tooltip && (
+        <span
+          style={{
+            position: 'relative',
+            cursor: 'help',
+            fontSize: '1.2rem',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          💡
+          {showTooltip && (
+            <div style={{
+              position: 'absolute',
+              left: '25px',
+              top: '-10px',
+              background: '#333',
+              color: 'white',
+              padding: '0.75rem',
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              lineHeight: '1.4',
+              width: '280px',
+              zIndex: 1000,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              pointerEvents: 'none'
+            }}>
+              {tooltip}
+              <div style={{
+                position: 'absolute',
+                left: '-6px',
+                top: '15px',
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderRight: '6px solid #333'
+              }} />
+            </div>
+          )}
+        </span>
+      )}
+    </label>
+  );
+}
+
+// ========================================
 // CONFIGURATION DES CHAMPS PAR TYPE D'INTERVENTION
 // ========================================
 
@@ -244,7 +309,7 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Plant',
         champs: [
-          { name: 'especePlantee', label: 'Espèce', type: 'select', options: ['', 'Chêne vert', 'Chêne pubescent', 'Chêne pédonculé', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'] },
+          { name: 'especePlantee', label: 'Espèce', type: 'select', options: ['', 'Chêne vert', 'Chêne pubescent', 'Chêne pédoncule', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'] },
           { name: 'varietePlant', label: 'Variété / Clone', type: 'text', placeholder: 'Ex: Clone INRAE' },
           { name: 'typeMycorhization', label: 'Mycorhization', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Autre'] },
           { name: 'fournisseurPlant', label: 'Pépiniériste', type: 'text', placeholder: 'Ex: Robin Pépinières' },
@@ -406,6 +471,7 @@ function Interventions() {
     date_prevue: new Date().toISOString().split('T')[0],
     statut: 'Prévu', 
     description: '',
+    notes: '',
     donnees_complementaires: {}
   });
 
@@ -467,6 +533,7 @@ function Interventions() {
         date_prevue: formData.date_prevue,
         statut: formData.statut,
         description: formData.description,
+        notes: formData.notes,
         ...formData.donnees_complementaires
       };
       
@@ -503,6 +570,7 @@ function Interventions() {
       date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',
       statut: intervention.statut || 'Prévu', 
       description: intervention.description || '',
+      notes: intervention.notes || '',
       donnees_complementaires: intervention.donnees_complementaires || {}
     });
     setShowModal(true);
@@ -528,6 +596,7 @@ function Interventions() {
       date_prevue: new Date().toISOString().split('T')[0],
       statut: 'Prévu',
       description: '',
+      notes: '',
       donnees_complementaires: {}
     });
     setShowModal(true);
@@ -575,7 +644,8 @@ function Interventions() {
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         if (!inter.description?.toLowerCase().includes(search) && 
-            !inter.type_nom?.toLowerCase().includes(search)) {
+            !inter.type_nom?.toLowerCase().includes(search) &&
+            !inter.notes?.toLowerCase().includes(search)) {
           return false;
         }
       }
@@ -772,7 +842,7 @@ function Interventions() {
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Description, type..."
+                      placeholder="Description, type, notes..."
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                     />
                   </div>
@@ -1117,13 +1187,30 @@ function Interventions() {
               </div>
               
               <div className="form-group">
-                <label>Description générale</label>
+                <FieldLabel 
+                  label="Description générale"
+                  tooltip="Description objective de l'intervention : qu'est-ce qui est fait ? (ex: Traitement insecticide préventif, Taille de formation des jeunes arbres)"
+                />
                 <textarea 
                   name="description" 
                   value={formData.description} 
                   onChange={handleInputChange} 
                   rows="3" 
-                  placeholder="Décrivez l'intervention..." 
+                  placeholder="Décrivez l'objectif principal de l'intervention..." 
+                />
+              </div>
+              
+              <div className="form-group">
+                <FieldLabel 
+                  label="Notes"
+                  tooltip="Informations complémentaires, observations terrain et remarques contextuelles (ex: Conditions météo favorables, Application réussie, Zone humide à surveiller)"
+                />
+                <textarea 
+                  name="notes" 
+                  value={formData.notes} 
+                  onChange={handleInputChange} 
+                  rows="3" 
+                  placeholder="Observations, remarques, contexte particulier..." 
                 />
               </div>
               
