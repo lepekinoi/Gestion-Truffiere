@@ -355,6 +355,7 @@ function ParcelleSelector({ parcelles, selectedId, onChange }) {
 function Interventions() {
   // États
   const [interventions, setInterventions] = useState([]);
+  const [typesIntervention, setTypesIntervention] = useState([]);
   const [parcelles, setParcelles] = useState([]);
   const [arbres, setArbres] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -401,11 +402,13 @@ const [formData, setFormData] = useState({
       const [interventionsRes, parcellesRes, arbresRes] = await Promise.all([
         axios.get(`${API_URL}/interventions`),
         axios.get(`${API_URL}/parcelles`),
-        axios.get(`${API_URL}/arbres`)
+        axios.get(`${API_URL}/arbres`),
+		axios.get(`${API_URL}/types-intervention`)
       ]);
       setInterventions(interventionsRes.data);
       setParcelles(parcellesRes.data);
       setArbres(arbresRes.data);
+	  setTypesIntervention(typesRes.data);
       setLoading(false);
     } catch (error) {
       console.error('Erreur:', error);
@@ -503,7 +506,7 @@ const handleSubmit = async (e) => {
     setFormData({
       parcelle_id: null,
       arbre_id: null,
-      type_intervention: '',
+      type_intervention_id: null,
       date_prevue: new Date().toISOString().split('T')[0],
       description: '',
       donnees_complementaires: {}
@@ -571,14 +574,24 @@ const handleSubmit = async (e) => {
   const activeFiltersCount = [filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
     .filter(f => f && f !== 'all').length;
 
-  // Rendu du formulaire selon le type d'intervention
-  const renderFormFields = () => {
-    const type = formData.type_intervention;
-    const config = CHAMPS_PAR_TYPE[type];
-    
-    if (!config) return null;
+// Rendu du formulaire selon le type d'intervention
+const renderFormFields = () => {
+  // Trouver l'objet type correspondant à l'ID sélectionné
+  const typeObj = typesIntervention.find(t => t.id === parseInt(formData.type_intervention_id));
+  
+  // Si aucun type n'est trouvé, ne rien afficher
+  if (!typeObj) return null;
+  
+  // Récupérer le nom du type (ex: "Irrigation", "Traitement")
+  const typeName = typeObj.nom;
+  
+  // Récupérer la configuration des champs pour ce type
+  const config = CHAMPS_PAR_TYPE[typeName];
+  
+  // Si aucune config n'existe pour ce type, ne rien afficher
+  if (!config) return null;
 
-    return (
+  return (
       <div style={{ marginTop: '1rem' }}>
         <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '1.5rem' }}>{config.icon}</span>
@@ -837,20 +850,22 @@ const handleSubmit = async (e) => {
             
             <form onSubmit={handleSubmit}>
               <div className="form-grid">
-                <div className="form-group">
-                  <label>Type d'intervention *</label>
-                  <select 
-					  name="type_intervention_id"
-					  value={formData.type_intervention_id} 
-					  onChange={handleInputChange} 
-					  required
-					>
-                    <option value="">-- Sélectionner --</option>
-                    {Object.keys(CHAMPS_PAR_TYPE).map(type => (
-                      <option key={type} value={type}>{CHAMPS_PAR_TYPE[type].icon} {type}</option>
-                    ))}
-                  </select>
-                </div>
+				<div className="form-group">
+				  <label>Type d'intervention *</label>
+				  <select 
+					name="type_intervention_id"
+					value={formData.type_intervention_id || ''} 
+					onChange={handleInputChange} 
+					required
+				  >
+					<option value="">-- Sélectionner --</option>
+					{typesIntervention.map(type => (
+					  <option key={type.id} value={type.id}>
+						{CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
+					  </option>
+					))}
+				  </select>
+				</div>
                 
                 <div className="form-group">
                   <label>Date *</label>
