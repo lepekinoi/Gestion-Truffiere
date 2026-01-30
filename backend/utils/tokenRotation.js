@@ -153,17 +153,25 @@ async function rotateRefreshToken(pool, token, deviceInfo, ipAddress, userAgent)
   // **VÉRIFICATION DE LA FENÊTRE DE ROTATION**
   // Permet une tolérance pour les requêtes simultanées (ex: 2 onglets)
   const lastUsed = currentToken.last_used_at;
-  if (lastUsed) {
-    const timeSinceLastUse = (new Date() - new Date(lastUsed)) / 1000;
-    if (timeSinceLastUse < ROTATION_CONFIG.ROTATION_WINDOW_SECONDS) {
-      // Token utilisé récemment, permettre une réutilisation temporaire
-      console.warn('[⚠️] Token réutilisé dans la fenêtre de tolérance:', {
-        userId: currentToken.user_id,
-        timeSinceLastUse: timeSinceLastUse.toFixed(2) + 's',
-      });
-      // Ne pas révoquer, mais logger pour surveillance
-    }
-  }
+	if (lastUsed) {
+	  const timeSinceLastUse = (new Date() - new Date(lastUsed)) / 1000;
+	  if (timeSinceLastUse < ROTATION_CONFIG.ROTATION_WINDOW_SECONDS) {
+		// Au lieu de juste logger, PERMETTRE la réutilisation
+		console.warn('[⚠️] Token réutilisé dans fenêtre tolérance - AUTORISÉ');
+		
+		// Retourner le token actuel sans rotation
+		return {
+		  token: token, // Même token
+		  expiresAt: currentToken.expires_at,
+		  user: {
+			id: currentToken.user_id,
+			email: currentToken.email,
+			nom: currentToken.nom,
+			role: currentToken.role,
+		  },
+		};
+	  }
+	}
 
   // **ROTATION: Créer un nouveau token**
   const newToken = await createRotatedToken(
