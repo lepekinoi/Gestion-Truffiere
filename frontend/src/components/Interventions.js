@@ -378,14 +378,14 @@ function Interventions() {
   const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_OPTIONS[2].value);
 
   // Formulaire
-  const [formData, setFormData] = useState({
-    parcelle_id: null,
-    arbre_id: null,
-    type_intervention: '',
-    date_intervention: new Date().toISOString().split('T')[0],
-    description: '',
-    donnees_complementaires: {}
-  });
+const [formData, setFormData] = useState({
+  parcelle_id: null,
+  arbre_id: null,
+  type_intervention_id: null,  // ✅ Changé de type_intervention à type_intervention_id
+  date_prevue: new Date().toISOString().split('T')[0],  // ✅ Changé de date_intervention à date_prevue
+  description: '',
+  donnees_complementaires: {}
+});
 
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
   
@@ -432,64 +432,60 @@ function Interventions() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      // 🔧 NETTOYAGE: Convertir '' en null pour tous les champs numériques dans donnees_complementaires
-      const cleanedData = { ...formData };
-      
-      // Nettoyer les champs de base
-      if (cleanedData.parcelle_id === '') cleanedData.parcelle_id = null;
-      if (cleanedData.arbre_id === '') cleanedData.arbre_id = null;
-      
-      // Nettoyer les données complémentaires
-      const cleanedComplement = {};
-      Object.entries(formData.donnees_complementaires).forEach(([key, value]) => {
-        // Champs pH spécifiques
-        if (key === 'phSolAvant' || key === 'phSolApres') {
-          cleanedComplement[key] = (value === '' || value === null) ? null : parseFloat(value);
-        }
-        // Autres champs numériques
-        else if (typeof value === 'string' && value.trim() === '') {
-          cleanedComplement[key] = null;
-        } else {
-          cleanedComplement[key] = value;
-        }
-      });
-      
-      cleanedData.donnees_complementaires = cleanedComplement;
-      
-      if (editingIntervention) {
-        await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, cleanedData);
-        showMessage('Intervention mise à jour !', 'success');
-      } else {
-        await axios.post(`${API_URL}/interventions`, cleanedData);
-        showMessage('Intervention créée !', 'success');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsProcessing(true);
+  try {
+    // Aplatir donnees_complementaires pour correspondre au backend
+    const dataToSend = {
+      type_intervention_id: formData.type_intervention_id,
+      parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
+      arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
+      date_prevue: formData.date_prevue,
+      description: formData.description,
+      statut: 'Terminé',
+      ...formData.donnees_complementaires  // Aplatir les données complémentaires
+    };
+    
+    // Nettoyer les valeurs vides
+    Object.keys(dataToSend).forEach(key => {
+      if (dataToSend[key] === '' || dataToSend[key] === undefined) {
+        dataToSend[key] = null;
       }
-      
-      loadData();
-      closeModal();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage(error.response?.data?.details || 'Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleEdit = (intervention) => {
-    setEditingIntervention(intervention);
-    setFormData({
-      parcelle_id: intervention.parcelle_id || null,
-      arbre_id: intervention.arbre_id || null,
-      type_intervention: intervention.type_intervention || '',
-      date_intervention: intervention.date_intervention ? intervention.date_intervention.split('T')[0] : '',
-      description: intervention.description || '',
-      donnees_complementaires: intervention.donnees_complementaires || {}
     });
-    setShowModal(true);
-  };
+    
+    if (editingIntervention) {
+      await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
+      showMessage('Intervention mise à jour !', 'success');
+    } else {
+      await axios.post(`${API_URL}/interventions`, dataToSend);
+      showMessage('Intervention créée !', 'success');
+    }
+    
+    loadData();
+    closeModal();
+  } catch (error) {
+    console.error('Erreur:', error);
+    showMessage(error.response?.data?.details || 'Erreur lors de la sauvegarde', 'error');
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+
+	const handleEdit = (intervention) => {
+	  setEditingIntervention(intervention);
+	  setFormData({
+		parcelle_id: intervention.parcelle_id || null,
+		arbre_id: intervention.arbre_id || null,
+		type_intervention_id: intervention.type_intervention_id || null,  // ✅ Changé
+		date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',  // ✅ Changé
+		description: intervention.description || '',
+		donnees_complementaires: intervention.donnees_complementaires || {}
+	  });
+	  setShowModal(true);
+	};
+
 
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer cette intervention ?')) return;
@@ -508,7 +504,7 @@ function Interventions() {
       parcelle_id: null,
       arbre_id: null,
       type_intervention: '',
-      date_intervention: new Date().toISOString().split('T')[0],
+      date_prevue: new Date().toISOString().split('T')[0],
       description: '',
       donnees_complementaires: {}
     });
@@ -542,8 +538,8 @@ function Interventions() {
       if (filterType !== 'all' && inter.type_intervention !== filterType) return false;
       if (filterParcelle !== 'all' && inter.parcelle_id !== parseInt(filterParcelle)) return false;
       if (filterArbre !== 'all' && inter.arbre_id !== parseInt(filterArbre)) return false;
-      if (filterDateDebut && inter.date_intervention < filterDateDebut) return false;
-      if (filterDateFin && inter.date_intervention > filterDateFin) return false;
+      if (filterDateDebut && inter.date_prevue < filterDateDebut) return false;
+      if (filterDateFin && inter.date_prevue > filterDateFin) return false;
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         if (!inter.description?.toLowerCase().includes(search) && 
@@ -843,7 +839,12 @@ function Interventions() {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Type d'intervention *</label>
-                  <select name="type_intervention" value={formData.type_intervention} onChange={handleInputChange} required>
+                  <select 
+					  name="type_intervention_id"  {/* ✅ Changé */}
+					  value={formData.type_intervention_id} 
+					  onChange={handleInputChange} 
+					  required
+					>
                     <option value="">-- Sélectionner --</option>
                     {Object.keys(CHAMPS_PAR_TYPE).map(type => (
                       <option key={type} value={type}>{CHAMPS_PAR_TYPE[type].icon} {type}</option>
@@ -853,7 +854,13 @@ function Interventions() {
                 
                 <div className="form-group">
                   <label>Date *</label>
-                  <input type="date" name="date_intervention" value={formData.date_intervention} onChange={handleInputChange} required />
+                  <input 
+					  type="date" 
+					  name="date_prevue"  {/* ✅ Changé */}
+					  value={formData.date_prevue} 
+					  onChange={handleInputChange} 
+					  required 
+					/>
                 </div>
                 
                 <div className="form-group">
