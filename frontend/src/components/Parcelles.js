@@ -1174,6 +1174,7 @@ const handleSubmit = async (e) => {
                 location="Lusseray,FR"
                 showForecastByDefault={false}
                 showIndicators={true}
+				horizontal={true}
               />
               
               {/* Options d'affichage */}
