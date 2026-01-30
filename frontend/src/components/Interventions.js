@@ -840,7 +840,7 @@ const handleSubmit = async (e) => {
                 <div className="form-group">
                   <label>Type d'intervention *</label>
                   <select 
-					  name="type_intervention_id"  {/* ✅ Changé */}
+					  name="type_intervention_id"
 					  value={formData.type_intervention_id} 
 					  onChange={handleInputChange} 
 					  required
@@ -856,7 +856,7 @@ const handleSubmit = async (e) => {
                   <label>Date *</label>
                   <input 
 					  type="date" 
-					  name="date_prevue"  {/* ✅ Changé */}
+					  name="date_prevue"
 					  value={formData.date_prevue} 
 					  onChange={handleInputChange} 
 					  required 
