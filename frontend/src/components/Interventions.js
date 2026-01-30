@@ -327,6 +327,11 @@ const CHAMPS_PAR_TYPE = {
   }
 };
 
+// ✅ NOUVELLE FONCTION : Récupère l'icône d'un type d'intervention
+const getTypeIcon = (typeName) => {
+  return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
+};
+
 // Sélecteur de parcelle avec affichage amélioré
 function ParcelleSelector({ parcelles, selectedId, onChange }) {
   return (
@@ -374,20 +379,24 @@ function Interventions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
+  // ✅ NOUVEAU : États pour le tri
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_OPTIONS[2].value);
 
   // Formulaire
-const [formData, setFormData] = useState({
-  parcelle_id: null,
-  arbre_id: null,
-  type_intervention_id: null,  // ✅ Changé de type_intervention à type_intervention_id
-  date_prevue: new Date().toISOString().split('T')[0],  // ✅ Changé de date_intervention à date_prevue
-  statut: 'Prévu', 
-  description: '',
-  donnees_complementaires: {}
-});
+  const [formData, setFormData] = useState({
+    parcelle_id: null,
+    arbre_id: null,
+    type_intervention_id: null,
+    date_prevue: new Date().toISOString().split('T')[0],
+    statut: 'Prévu', 
+    description: '',
+    donnees_complementaires: {}
+  });
 
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
   
@@ -398,25 +407,25 @@ const [formData, setFormData] = useState({
     setTimeout(() => setMessage(null), 4000);
   };
 
-const loadData = async () => {
-  try {
-    const [interventionsRes, parcellesRes, arbresRes, typesRes] = await Promise.all([
-      axios.get(`${API_URL}/interventions`),
-      axios.get(`${API_URL}/parcelles`),
-      axios.get(`${API_URL}/arbres`),
-      axios.get(`${API_URL}/types-intervention`)  // ✅ AJOUT de cette ligne
-    ]);
-    setInterventions(interventionsRes.data);
-    setParcelles(parcellesRes.data);
-    setArbres(arbresRes.data);
-    setTypesIntervention(typesRes.data);  // ✅ AJOUT de cette ligne
-    setLoading(false);
-  } catch (error) {
-    console.error('Erreur:', error);
-    showMessage('Erreur lors du chargement des données', 'error');
-    setLoading(false);
-  }
-};
+  const loadData = async () => {
+    try {
+      const [interventionsRes, parcellesRes, arbresRes, typesRes] = await Promise.all([
+        axios.get(`${API_URL}/interventions`),
+        axios.get(`${API_URL}/parcelles`),
+        axios.get(`${API_URL}/arbres`),
+        axios.get(`${API_URL}/types-intervention`)
+      ]);
+      setInterventions(interventionsRes.data);
+      setParcelles(parcellesRes.data);
+      setArbres(arbresRes.data);
+      setTypesIntervention(typesRes.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors du chargement des données', 'error');
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -436,62 +445,57 @@ const loadData = async () => {
     }));
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsProcessing(true);
-  try {
-    // Aplatir donnees_complementaires pour correspondre au backend
-    const dataToSend = {
-      type_intervention_id: formData.type_intervention_id,
-      parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
-      arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
-      date_prevue: formData.date_prevue,
-	  statut: formData.statut,
-      description: formData.description,
-      statut: 'Terminé',
-      ...formData.donnees_complementaires  // Aplatir les données complémentaires
-    };
-    
-    // Nettoyer les valeurs vides
-    Object.keys(dataToSend).forEach(key => {
-      if (dataToSend[key] === '' || dataToSend[key] === undefined) {
-        dataToSend[key] = null;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const dataToSend = {
+        type_intervention_id: formData.type_intervention_id,
+        parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
+        arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
+        date_prevue: formData.date_prevue,
+        statut: formData.statut,
+        description: formData.description,
+        ...formData.donnees_complementaires
+      };
+      
+      Object.keys(dataToSend).forEach(key => {
+        if (dataToSend[key] === '' || dataToSend[key] === undefined) {
+          dataToSend[key] = null;
+        }
+      });
+      
+      if (editingIntervention) {
+        await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
+        showMessage('Intervention mise à jour !', 'success');
+      } else {
+        await axios.post(`${API_URL}/interventions`, dataToSend);
+        showMessage('Intervention créée !', 'success');
       }
-    });
-    
-    if (editingIntervention) {
-      await axios.put(`${API_URL}/interventions/${editingIntervention.id}`, dataToSend);
-      showMessage('Intervention mise à jour !', 'success');
-    } else {
-      await axios.post(`${API_URL}/interventions`, dataToSend);
-      showMessage('Intervention créée !', 'success');
+      
+      loadData();
+      closeModal();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage(error.response?.data?.details || 'Erreur lors de la sauvegarde', 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    
-    loadData();
-    closeModal();
-  } catch (error) {
-    console.error('Erreur:', error);
-    showMessage(error.response?.data?.details || 'Erreur lors de la sauvegarde', 'error');
-  } finally {
-    setIsProcessing(false);
-  }
-};
+  };
 
-
-	const handleEdit = (intervention) => {
-	  setEditingIntervention(intervention);
-	  setFormData({
-		parcelle_id: intervention.parcelle_id || null,
-		arbre_id: intervention.arbre_id || null,
-		type_intervention_id: intervention.type_intervention_id || null,  // ✅ Changé
-		date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',  // ✅ Changé
-		statut: intervention.statut || 'Prévu', 
-		description: intervention.description || '',
-		donnees_complementaires: intervention.donnees_complementaires || {}
-	  });
-	  setShowModal(true);
-	};
-
+  const handleEdit = (intervention) => {
+    setEditingIntervention(intervention);
+    setFormData({
+      parcelle_id: intervention.parcelle_id || null,
+      arbre_id: intervention.arbre_id || null,
+      type_intervention_id: intervention.type_intervention_id || null,
+      date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',
+      statut: intervention.statut || 'Prévu', 
+      description: intervention.description || '',
+      donnees_complementaires: intervention.donnees_complementaires || {}
+    });
+    setShowModal(true);
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer cette intervention ?')) return;
@@ -511,6 +515,7 @@ const handleSubmit = async (e) => {
       arbre_id: null,
       type_intervention_id: null,
       date_prevue: new Date().toISOString().split('T')[0],
+      statut: 'Prévu',
       description: '',
       donnees_complementaires: {}
     });
@@ -538,6 +543,16 @@ const handleSubmit = async (e) => {
     exportInterventionsPDF(interventions, colonnesExport);
   };
 
+  // ✅ NOUVELLE FONCTION : Gestion du tri
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   // Filtrage
   const interventionsFiltrees = useMemo(() => {
     return interventions.filter(inter => {
@@ -557,12 +572,38 @@ const handleSubmit = async (e) => {
     });
   }, [interventions, filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
 
+  // ✅ NOUVEAU : Tri des interventions filtrées
+  const interventionsTriees = useMemo(() => {
+    if (!sortColumn) return interventionsFiltrees;
+    
+    return [...interventionsFiltrees].sort((a, b) => {
+      let aVal = a[sortColumn];
+      let bVal = b[sortColumn];
+      
+      // Gestion des valeurs nulles
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+      
+      // Comparaison selon le type
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+      
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [interventionsFiltrees, sortColumn, sortDirection]);
+
   // Pagination
-  const totalPages = Math.ceil(interventionsFiltrees.length / itemsPerPage);
-  const interventionsPaginees = interventionsFiltrees.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(interventionsTriees.length / itemsPerPage);
+  const interventionsPaginees = itemsPerPage === 'all' 
+    ? interventionsTriees 
+    : interventionsTriees.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      );
 
   const resetFilters = () => {
     setFilterType('all');
@@ -577,24 +618,16 @@ const handleSubmit = async (e) => {
   const activeFiltersCount = [filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
     .filter(f => f && f !== 'all').length;
 
-// Rendu du formulaire selon le type d'intervention
-const renderFormFields = () => {
-  // Trouver l'objet type correspondant à l'ID sélectionné
-  const typeObj = typesIntervention.find(t => t.id === parseInt(formData.type_intervention_id));
-  
-  // Si aucun type n'est trouvé, ne rien afficher
-  if (!typeObj) return null;
-  
-  // Récupérer le nom du type (ex: "Irrigation", "Traitement")
-  const typeName = typeObj.nom;
-  
-  // Récupérer la configuration des champs pour ce type
-  const config = CHAMPS_PAR_TYPE[typeName];
-  
-  // Si aucune config n'existe pour ce type, ne rien afficher
-  if (!config) return null;
+  // Rendu du formulaire selon le type d'intervention
+  const renderFormFields = () => {
+    const typeObj = typesIntervention.find(t => t.id === parseInt(formData.type_intervention_id));
+    if (!typeObj) return null;
+    
+    const typeName = typeObj.nom;
+    const config = CHAMPS_PAR_TYPE[typeName];
+    if (!config) return null;
 
-  return (
+    return (
       <div style={{ marginTop: '1rem' }}>
         <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '1.5rem' }}>{config.icon}</span>
@@ -735,10 +768,17 @@ const renderFormFields = () => {
                   
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Type</label>
-                    <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}>
+                    <select 
+                      value={filterType} 
+                      onChange={(e) => setFilterType(e.target.value)} 
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
                       <option value="all">Tous</option>
+                      {/* ✅ AMÉLIORATION : Ajout des icônes dans le filtre Type */}
                       {Object.keys(CHAMPS_PAR_TYPE).map(type => (
-                        <option key={type} value={type}>{type}</option>
+                        <option key={type} value={type}>
+                          {getTypeIcon(type)} {type}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -776,7 +816,7 @@ const renderFormFields = () => {
                 
                 <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', color: '#666' }}>
-                    {interventionsFiltrees.length} / {interventions.length} intervention(s)
+                    {interventionsTriees.length} / {interventions.length} intervention(s)
                   </span>
                   {activeFiltersCount > 0 && (
                     <button 
@@ -791,13 +831,130 @@ const renderFormFields = () => {
             )}
           </div>
 
+          {/* ✅ NOUVELLE : Pagination au-dessus du tableau avec emojis */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '0.75rem',
+              padding: '0.75rem 1rem',
+              background: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', color: '#666' }}>Afficher</span>
+                <select 
+                  value={itemsPerPage} 
+                  onChange={(e) => { 
+                    const value = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
+                    setItemsPerPage(value); 
+                    setCurrentPage(1); 
+                  }}
+                  style={{ padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.85rem' }}
+                >
+                  {PAGINATION_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.85rem', color: '#666' }}>lignes</span>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setCurrentPage(1)} 
+                  disabled={currentPage === 1}
+                  style={{ 
+                    padding: '0.4rem 0.6rem', 
+                    border: 'none', 
+                    background: currentPage === 1 ? '#f5f5f5' : '#4caf50',
+                    color: currentPage === 1 ? '#ccc' : 'white',
+                    borderRadius: '4px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem'
+                  }}
+                  title="Première page"
+                >
+                  ⏮️
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(currentPage - 1)} 
+                  disabled={currentPage === 1}
+                  style={{ 
+                    padding: '0.4rem 0.6rem', 
+                    border: 'none', 
+                    background: currentPage === 1 ? '#f5f5f5' : '#4caf50',
+                    color: currentPage === 1 ? '#ccc' : 'white',
+                    borderRadius: '4px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem'
+                  }}
+                  title="Page précédente"
+                >
+                  ◀️
+                </button>
+                <span style={{ fontSize: '0.9rem', fontWeight: '600', padding: '0 0.75rem' }}>
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button 
+                  onClick={() => setCurrentPage(currentPage + 1)} 
+                  disabled={currentPage === totalPages}
+                  style={{ 
+                    padding: '0.4rem 0.6rem', 
+                    border: 'none', 
+                    background: currentPage === totalPages ? '#f5f5f5' : '#4caf50',
+                    color: currentPage === totalPages ? '#ccc' : 'white',
+                    borderRadius: '4px',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem'
+                  }}
+                  title="Page suivante"
+                >
+                  ▶️
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(totalPages)} 
+                  disabled={currentPage === totalPages}
+                  style={{ 
+                    padding: '0.4rem 0.6rem', 
+                    border: 'none', 
+                    background: currentPage === totalPages ? '#f5f5f5' : '#4caf50',
+                    color: currentPage === totalPages ? '#ccc' : 'white',
+                    borderRadius: '4px',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem'
+                  }}
+                  title="Dernière page"
+                >
+                  ⏭️
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Tableau */}
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
             <table>
               <thead>
                 <tr>
                   {colonnesValides.map(col => (
-                    <th key={col}>{config[col].label}</th>
+                    <th 
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      style={{ cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      title={`Trier par ${config[col].label}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+                        <span>{config[col].label}</span>
+                        {/* ✅ NOUVEAU : Indicateur de tri */}
+                        {sortColumn === col && (
+                          <span style={{ fontSize: '0.8rem' }}>
+                            {sortDirection === 'asc' ? '🔼' : '🔽'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                   ))}
                   <th>Actions</th>
                 </tr>
@@ -805,9 +962,20 @@ const renderFormFields = () => {
               <tbody>
                 {interventionsPaginees.map(inter => (
                   <tr key={inter.id}>
-                    {colonnesValides.map(col => (
-                      <td key={col}>{config[col].render(inter)}</td>
-                    ))}
+                    {colonnesValides.map(col => {
+                      // ✅ AMÉLIORATION : Affichage de l'icône dans la colonne Type
+                      if (col === 'type_intervention') {
+                        return (
+                          <td key={col}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '1.2rem' }}>{getTypeIcon(inter.type_intervention)}</span>
+                              <span>{inter.type_intervention}</span>
+                            </span>
+                          </td>
+                        );
+                      }
+                      return <td key={col}>{config[col].render(inter)}</td>;
+                    })}
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
                         <button className="btn btn-secondary" onClick={() => handleEdit(inter)} style={{ padding: '0.4rem 0.6rem' }}>✏️</button>
@@ -819,26 +987,6 @@ const renderFormFields = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-              <div>
-                <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(parseInt(e.target.value)); setCurrentPage(1); }}>
-                  {PAGINATION_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>⏮️</button>
-                <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>◀️</button>
-                <span>Page {currentPage} / {totalPages}</span>
-                <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>▶️</button>
-                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>⏭️</button>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -852,126 +1000,124 @@ const renderFormFields = () => {
             </div>
             
             <form onSubmit={handleSubmit}>
-			  <div className="form-grid">
-				<div className="form-group">
-				  <label>Type d'intervention *</label>
-				  <select 
-					name="type_intervention_id"
-					value={formData.type_intervention_id || ''} 
-					onChange={handleInputChange} 
-					required
-				  >
-					<option value="">-- Sélectionner --</option>
-					{typesIntervention.map(type => (
-					  <option key={type.id} value={type.id}>
-						{CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
-					  </option>
-					))}
-				  </select>
-				</div>
-				
-				{/* ✅ CORRECTION 1 : Label plus explicite */}
-				<div className="form-group">
-				  <label>Date prévue *</label>
-				  <input 
-					type="date" 
-					name="date_prevue"
-					value={formData.date_prevue} 
-					onChange={handleInputChange} 
-					required 
-				  />
-				</div>
-				
-				<div className="form-group">
-				  <label>Parcelle</label>
-				  <ParcelleSelector 
-					parcelles={parcelles} 
-					selectedId={formData.parcelle_id} 
-					onChange={(id) => {
-					  setFormData(prev => ({ 
-						...prev, 
-						parcelle_id: id,
-						arbre_id: null  // Réinitialiser l'arbre si on change de parcelle
-					  }));
-					}} 
-				  />
-				</div>
-				
-				{/* ✅ CORRECTION 2 : Ajout du sélecteur d'arbre filtré par parcelle */}
-				<div className="form-group">
-				  <label>Arbre (optionnel)</label>
-				  <select
-					name="arbre_id"
-					value={formData.arbre_id || ''}
-					onChange={handleInputChange}
-					disabled={!formData.parcelle_id}
-					style={{
-					  width: '100%',
-					  padding: '0.5rem',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  fontSize: '0.9rem',
-					  backgroundColor: !formData.parcelle_id ? '#f5f5f5' : 'white'
-					}}
-				  >
-					<option value="">
-					  {formData.parcelle_id ? '-- Sélectionner un arbre --' : '⚠️ Sélectionner d\'abord une parcelle'}
-					</option>
-					{arbres
-					  .filter(a => a.parcelle_id === parseInt(formData.parcelle_id))
-					  .map(arbre => (
-						<option key={arbre.id} value={arbre.id}>
-						  {arbre.numero} - {arbre.espece || 'N/A'}
-						</option>
-					  ))
-					}
-				  </select>
-				</div>
-				
-				{/* ✅ CORRECTION 3 : Ajout du champ Statut */}
-				<div className="form-group">
-				  <label>Statut *</label>
-				  <select
-					name="statut"
-					value={formData.statut || 'Prévu'}
-					onChange={handleInputChange}
-					required
-					style={{
-					  width: '100%',
-					  padding: '0.5rem',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  fontSize: '0.9rem'
-					}}
-				  >
-					<option value="Prévu">📅 Prévu</option>
-					<option value="En cours">⏳ En cours</option>
-					<option value="Terminé">✅ Terminé</option>
-					<option value="Annulé">❌ Annulé</option>
-				  </select>
-				</div>
-			  </div>
-			  
-			  <div className="form-group">
-				<label>Description générale</label>
-				<textarea 
-				  name="description" 
-				  value={formData.description} 
-				  onChange={handleInputChange} 
-				  rows="3" 
-				  placeholder="Décrivez l'intervention..." 
-				/>
-			  </div>
-			  
-			  {renderFormFields()}
-			  
-			  <div className="modal-footer">
-				<button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
-				<button type="submit" className="btn btn-primary" disabled={isProcessing}>
-				  {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
-				</button>
-			  </div>
-			</form>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Type d'intervention *</label>
+                  <select 
+                    name="type_intervention_id"
+                    value={formData.type_intervention_id || ''} 
+                    onChange={handleInputChange} 
+                    required
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {typesIntervention.map(type => (
+                      <option key={type.id} value={type.id}>
+                        {CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Date prévue *</label>
+                  <input 
+                    type="date" 
+                    name="date_prevue"
+                    value={formData.date_prevue} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Parcelle</label>
+                  <ParcelleSelector 
+                    parcelles={parcelles} 
+                    selectedId={formData.parcelle_id} 
+                    onChange={(id) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        parcelle_id: id,
+                        arbre_id: null
+                      }));
+                    }} 
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Arbre (optionnel)</label>
+                  <select
+                    name="arbre_id"
+                    value={formData.arbre_id || ''}
+                    onChange={handleInputChange}
+                    disabled={!formData.parcelle_id}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem',
+                      backgroundColor: !formData.parcelle_id ? '#f5f5f5' : 'white'
+                    }}
+                  >
+                    <option value="">
+                      {formData.parcelle_id ? '-- Sélectionner un arbre --' : '⚠️ Sélectionner d\'abord une parcelle'}
+                    </option>
+                    {arbres
+                      .filter(a => a.parcelle_id === parseInt(formData.parcelle_id))
+                      .map(arbre => (
+                        <option key={arbre.id} value={arbre.id}>
+                          {/* ✅ CORRECTION : Utilisation de numero et espece au lieu de numero_arbre et essence */}
+                          {arbre.numero} - {arbre.espece || 'N/A'}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Statut *</label>
+                  <select
+                    name="statut"
+                    value={formData.statut || 'Prévu'}
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    <option value="Prévu">📅 Prévu</option>
+                    <option value="En cours">⏳ En cours</option>
+                    <option value="Terminé">✅ Terminé</option>
+                    <option value="Annulé">❌ Annulé</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Description générale</label>
+                <textarea 
+                  name="description" 
+                  value={formData.description} 
+                  onChange={handleInputChange} 
+                  rows="3" 
+                  placeholder="Décrivez l'intervention..." 
+                />
+              </div>
+              
+              {renderFormFields()}
+              
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                  {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
