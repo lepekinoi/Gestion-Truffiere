@@ -921,7 +921,7 @@ const renderFormFields = () => {
 					  .filter(a => a.parcelle_id === parseInt(formData.parcelle_id))
 					  .map(arbre => (
 						<option key={arbre.id} value={arbre.id}>
-						  {arbre.numero_arbre} - {arbre.essence || 'N/A'}
+						  {arbre.numero} - {arbre.espece || 'N/A'}
 						</option>
 					  ))
 					}
