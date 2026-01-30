@@ -384,6 +384,7 @@ const [formData, setFormData] = useState({
   arbre_id: null,
   type_intervention_id: null,  // ✅ Changé de type_intervention à type_intervention_id
   date_prevue: new Date().toISOString().split('T')[0],  // ✅ Changé de date_intervention à date_prevue
+  statut: 'Prévu', 
   description: '',
   donnees_complementaires: {}
 });
@@ -397,25 +398,25 @@ const [formData, setFormData] = useState({
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const loadData = async () => {
-    try {
-      const [interventionsRes, parcellesRes, arbresRes] = await Promise.all([
-        axios.get(`${API_URL}/interventions`),
-        axios.get(`${API_URL}/parcelles`),
-        axios.get(`${API_URL}/arbres`),
-		axios.get(`${API_URL}/types-intervention`)
-      ]);
-      setInterventions(interventionsRes.data);
-      setParcelles(parcellesRes.data);
-      setArbres(arbresRes.data);
-	  setTypesIntervention(typesRes.data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors du chargement des données', 'error');
-      setLoading(false);
-    }
-  };
+const loadData = async () => {
+  try {
+    const [interventionsRes, parcellesRes, arbresRes, typesRes] = await Promise.all([
+      axios.get(`${API_URL}/interventions`),
+      axios.get(`${API_URL}/parcelles`),
+      axios.get(`${API_URL}/arbres`),
+      axios.get(`${API_URL}/types-intervention`)  // ✅ AJOUT de cette ligne
+    ]);
+    setInterventions(interventionsRes.data);
+    setParcelles(parcellesRes.data);
+    setArbres(arbresRes.data);
+    setTypesIntervention(typesRes.data);  // ✅ AJOUT de cette ligne
+    setLoading(false);
+  } catch (error) {
+    console.error('Erreur:', error);
+    showMessage('Erreur lors du chargement des données', 'error');
+    setLoading(false);
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -445,6 +446,7 @@ const handleSubmit = async (e) => {
       parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
       arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
       date_prevue: formData.date_prevue,
+	  statut: formData.statut,
       description: formData.description,
       statut: 'Terminé',
       ...formData.donnees_complementaires  // Aplatir les données complémentaires
@@ -483,6 +485,7 @@ const handleSubmit = async (e) => {
 		arbre_id: intervention.arbre_id || null,
 		type_intervention_id: intervention.type_intervention_id || null,  // ✅ Changé
 		date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',  // ✅ Changé
+		statut: intervention.statut || 'Prévu', 
 		description: intervention.description || '',
 		donnees_complementaires: intervention.donnees_complementaires || {}
 	  });
@@ -849,7 +852,7 @@ const renderFormFields = () => {
             </div>
             
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
+			  <div className="form-grid">
 				<div className="form-group">
 				  <label>Type d'intervention *</label>
 				  <select 
@@ -866,38 +869,109 @@ const renderFormFields = () => {
 					))}
 				  </select>
 				</div>
-                
-                <div className="form-group">
-                  <label>Date *</label>
-                  <input 
-					  type="date" 
-					  name="date_prevue"
-					  value={formData.date_prevue} 
-					  onChange={handleInputChange} 
-					  required 
-					/>
-                </div>
-                
-                <div className="form-group">
-                  <label>Parcelle</label>
-                  <ParcelleSelector parcelles={parcelles} selectedId={formData.parcelle_id} onChange={(id) => setFormData(prev => ({ ...prev, parcelle_id: id }))} />
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label>Description générale</label>
-                <textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" placeholder="Décrivez l'intervention..." />
-              </div>
-              
-              {renderFormFields()}
-              
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
-                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                  {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
-                </button>
-              </div>
-            </form>
+				
+				{/* ✅ CORRECTION 1 : Label plus explicite */}
+				<div className="form-group">
+				  <label>Date prévue *</label>
+				  <input 
+					type="date" 
+					name="date_prevue"
+					value={formData.date_prevue} 
+					onChange={handleInputChange} 
+					required 
+				  />
+				</div>
+				
+				<div className="form-group">
+				  <label>Parcelle</label>
+				  <ParcelleSelector 
+					parcelles={parcelles} 
+					selectedId={formData.parcelle_id} 
+					onChange={(id) => {
+					  setFormData(prev => ({ 
+						...prev, 
+						parcelle_id: id,
+						arbre_id: null  // Réinitialiser l'arbre si on change de parcelle
+					  }));
+					}} 
+				  />
+				</div>
+				
+				{/* ✅ CORRECTION 2 : Ajout du sélecteur d'arbre filtré par parcelle */}
+				<div className="form-group">
+				  <label>Arbre (optionnel)</label>
+				  <select
+					name="arbre_id"
+					value={formData.arbre_id || ''}
+					onChange={handleInputChange}
+					disabled={!formData.parcelle_id}
+					style={{
+					  width: '100%',
+					  padding: '0.5rem',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  fontSize: '0.9rem',
+					  backgroundColor: !formData.parcelle_id ? '#f5f5f5' : 'white'
+					}}
+				  >
+					<option value="">
+					  {formData.parcelle_id ? '-- Sélectionner un arbre --' : '⚠️ Sélectionner d\'abord une parcelle'}
+					</option>
+					{arbres
+					  .filter(a => a.parcelle_id === parseInt(formData.parcelle_id))
+					  .map(arbre => (
+						<option key={arbre.id} value={arbre.id}>
+						  {arbre.numero_arbre} - {arbre.essence || 'N/A'}
+						</option>
+					  ))
+					}
+				  </select>
+				</div>
+				
+				{/* ✅ CORRECTION 3 : Ajout du champ Statut */}
+				<div className="form-group">
+				  <label>Statut *</label>
+				  <select
+					name="statut"
+					value={formData.statut || 'Prévu'}
+					onChange={handleInputChange}
+					required
+					style={{
+					  width: '100%',
+					  padding: '0.5rem',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  fontSize: '0.9rem'
+					}}
+				  >
+					<option value="Prévu">📅 Prévu</option>
+					<option value="En cours">⏳ En cours</option>
+					<option value="Terminé">✅ Terminé</option>
+					<option value="Annulé">❌ Annulé</option>
+				  </select>
+				</div>
+			  </div>
+			  
+			  <div className="form-group">
+				<label>Description générale</label>
+				<textarea 
+				  name="description" 
+				  value={formData.description} 
+				  onChange={handleInputChange} 
+				  rows="3" 
+				  placeholder="Décrivez l'intervention..." 
+				/>
+			  </div>
+			  
+			  {renderFormFields()}
+			  
+			  <div className="modal-footer">
+				<button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+				<button type="submit" className="btn btn-primary" disabled={isProcessing}>
+				  {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
+				</button>
+			  </div>
+			</form>
           </div>
         </div>
       )}
