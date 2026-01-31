@@ -457,7 +457,7 @@ const getTypeIcon = (typeName) => {
   return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
 };
 
-// ✅ Fonction : Récupère l'icône d'un statut
+// ✅ NOUVELLE FONCTION : Récupère l'icône d'un statut
 const getStatutIcon = (statut) => {
   const statutIcons = {
     'Prévu': '📅',
@@ -492,20 +492,6 @@ function ParcelleSelector({ parcelles, selectedId, onChange }) {
   );
 }
 
-// ========================================
-// ORDRE DES COLONNES PERSONNALISÉ
-// ========================================
-const ORDRE_COLONNES = [
-  'type_nom',       // Type
-  'parcelle_nom',   // Parcelles
-  'arbre_numero',   // Arbre
-  'statut',         // Statut
-  'date_prevue',    // Date prévue
-  'date_realisee',  // Date réalisée
-  'description',    // Description
-  'notes'           // Note
-];
-
 // Composant principal
 function Interventions() {
   // États
@@ -516,11 +502,9 @@ function Interventions() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [editingIntervention, setEditingIntervention] = useState(null);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedInterventions, setSelectedInterventions] = useState([]);
 
   // ✨ NOUVEAU : États pour la sélection groupée
   const [selectedInterventions, setSelectedInterventions] = useState([]);
@@ -554,15 +538,6 @@ function Interventions() {
     description: '',
     notes: '',
     donnees_complementaires: {}
-  });
-
-  // Formulaire de modification en masse
-  const [bulkEditData, setBulkEditData] = useState({
-    statut: '',
-    date_prevue: '',
-    date_realisee: '',
-    parcelle_id: '',
-    type_intervention_id: ''
   });
 
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
@@ -775,71 +750,6 @@ function Interventions() {
 
   const handleExportPDF = () => {
     exportInterventionsPDF(interventions, colonnesExport);
-  };
-
-  // Gestion de la sélection multiple
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedInterventions(interventionsPaginees.map(i => i.id));
-    } else {
-      setSelectedInterventions([]);
-    }
-  };
-
-  const handleSelectOne = (id) => {
-    setSelectedInterventions(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(i => i !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
-  };
-
-  // Ouverture du modal de modification en masse
-  const openBulkEditModal = () => {
-    setBulkEditData({
-      statut: '',
-      date_prevue: '',
-      date_realisee: '',
-      parcelle_id: '',
-      type_intervention_id: ''
-    });
-    setShowBulkEditModal(true);
-  };
-
-  // Soumission de la modification en masse
-  const handleBulkEdit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    
-    try {
-      const updateData = {};
-      
-      // Ajouter seulement les champs remplis
-      if (bulkEditData.statut) updateData.statut = bulkEditData.statut;
-      if (bulkEditData.date_prevue) updateData.date_prevue = bulkEditData.date_prevue;
-      if (bulkEditData.date_realisee) updateData.date_realisee = bulkEditData.date_realisee;
-      if (bulkEditData.parcelle_id) updateData.parcelle_id = parseInt(bulkEditData.parcelle_id);
-      if (bulkEditData.type_intervention_id) updateData.type_intervention_id = parseInt(bulkEditData.type_intervention_id);
-
-      // Mettre à jour toutes les interventions sélectionnées
-      await Promise.all(
-        selectedInterventions.map(id => 
-          axios.put(`${API_URL}/interventions/${id}`, updateData)
-        )
-      );
-
-      showMessage(`${selectedInterventions.length} intervention(s) modifiée(s) !`, 'success');
-      setShowBulkEditModal(false);
-      setSelectedInterventions([]);
-      loadData();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors de la modification en masse', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   // Gestion du tri
