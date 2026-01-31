@@ -505,6 +505,7 @@ function Interventions() {
   const [editingIntervention, setEditingIntervention] = useState(null);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [formError, setFormError] = useState(null); // ✨ NOUVEAU : Erreur de validation du formulaire
 
   // ✨ NOUVEAU : États pour la sélection groupée
   const [selectedInterventions, setSelectedInterventions] = useState([]);
@@ -513,7 +514,7 @@ function Interventions() {
 
   // Filtres et options d'affichage
   const [filterType, setFilterType] = useState('all');
-  const [filterStatut, setFilterStatut] = useState('all'); // ✨ NOUVEAU FILTRE STATUT
+  const [filterStatut, setFilterStatut] = useState('all');
   const [filterDateDebut, setFilterDateDebut] = useState('');
   const [filterDateFin, setFilterDateFin] = useState('');
   const [filterParcelle, setFilterParcelle] = useState('all');
@@ -535,7 +536,7 @@ function Interventions() {
     arbre_id: null,
     type_intervention_id: null,
     date_prevue: new Date().toISOString().split('T')[0],
-    date_realisee: null, // ✨ NOUVEAU : Date réalisée
+    date_realisee: null,
     statut: 'Prévu', 
     description: '',
     notes: '',
@@ -577,6 +578,8 @@ function Interventions() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+    // ✨ NOUVEAU : Réinitialiser l'erreur lors de la modification
+    if (formError) setFormError(null);
   };
 
   const handleComplementChange = (field, value) => {
@@ -589,8 +592,26 @@ function Interventions() {
     }));
   };
 
+  // ✨ NOUVEAU : Validation des dates
+  const validateDates = () => {
+    if (formData.date_realisee && formData.date_prevue) {
+      if (formData.date_realisee < formData.date_prevue) {
+        setFormError('❌ La date réalisée ne peut pas être antérieure à la date prévue.');
+        return false;
+      }
+    }
+    setFormError(null);
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // ✨ NOUVEAU : Validation des dates avant soumission
+    if (!validateDates()) {
+      return;
+    }
+    
     setIsProcessing(true);
     try {
       const dataToSend = {
@@ -598,7 +619,7 @@ function Interventions() {
         parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
         arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
         date_prevue: formData.date_prevue,
-        date_realisee: formData.date_realisee || null, // ✨ NOUVEAU : Inclure date réalisée
+        date_realisee: formData.date_realisee || null,
         statut: formData.statut,
         description: formData.description,
         notes: formData.notes,
@@ -629,14 +650,12 @@ function Interventions() {
     }
   };
 
-  // ✨ NOUVEAU : Gestion de la modification groupée
   const handleBulkEdit = async () => {
     if (selectedInterventions.length === 0) {
       showMessage('Aucune intervention sélectionnée', 'error');
       return;
     }
 
-    // Construire l'objet de mise à jour (seulement les champs renseignés)
     const updateData = {};
     if (bulkEditData.parcelle_id) updateData.parcelle_id = bulkEditData.parcelle_id;
     if (bulkEditData.type_intervention_id) updateData.type_intervention_id = bulkEditData.type_intervention_id;
@@ -654,7 +673,6 @@ function Interventions() {
     try {
       setIsProcessing(true);
       
-      // Mise à jour de chaque intervention sélectionnée
       for (const inter of interventions.filter(i => selectedInterventions.includes(i.id))) {
         await axios.put(`${API_URL}/interventions/${inter.id}`, {
           ...inter,
@@ -675,7 +693,6 @@ function Interventions() {
     }
   };
 
-  // ✨ NOUVEAU : Gestion de la sélection
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedInterventions(interventionsPaginees.map(i => i.id));
@@ -701,12 +718,13 @@ function Interventions() {
       arbre_id: intervention.arbre_id || null,
       type_intervention_id: intervention.type_intervention_id || null,
       date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',
-      date_realisee: intervention.date_realisee ? intervention.date_realisee.split('T')[0] : null, // ✨ NOUVEAU
+      date_realisee: intervention.date_realisee ? intervention.date_realisee.split('T')[0] : null,
       statut: intervention.statut || 'Prévu', 
       description: intervention.description || '',
       notes: intervention.notes || '',
       donnees_complementaires: intervention.donnees_complementaires || {}
     });
+    setFormError(null); // ✨ Réinitialiser les erreurs
     setShowModal(true);
   };
 
@@ -728,18 +746,20 @@ function Interventions() {
       arbre_id: null,
       type_intervention_id: null,
       date_prevue: new Date().toISOString().split('T')[0],
-      date_realisee: null, // ✨ NOUVEAU
+      date_realisee: null,
       statut: 'Prévu',
       description: '',
       notes: '',
       donnees_complementaires: {}
     });
+    setFormError(null); // ✨ Réinitialiser les erreurs
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingIntervention(null);
+    setFormError(null); // ✨ Réinitialiser les erreurs
   };
 
   const handleImportCSV = async (validData) => {
@@ -758,7 +778,6 @@ function Interventions() {
     exportInterventionsPDF(interventions, colonnesExport);
   };
 
-  // Gestion du tri
   const handleSort = (column) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -768,27 +787,17 @@ function Interventions() {
     }
   };
 
-  // 🎯 MODIFICATION : Filtrage avec date réalisée en priorité et filtre statut
   const interventionsFiltrees = useMemo(() => {
     return interventions.filter(inter => {
-      // Filtre type
       if (filterType !== 'all' && inter.type_nom !== filterType) return false;
-      
-      // ✨ NOUVEAU : Filtre statut
       if (filterStatut !== 'all' && inter.statut !== filterStatut) return false;
-      
-      // Filtre parcelle
       if (filterParcelle !== 'all' && inter.parcelle_id !== parseInt(filterParcelle)) return false;
-      
-      // Filtre arbre
       if (filterArbre !== 'all' && inter.arbre_id !== parseInt(filterArbre)) return false;
       
-      // 🎯 MODIFICATION : Utiliser date_realisee en priorité, sinon date_prevue
       const dateReference = inter.date_realisee || inter.date_prevue;
       if (filterDateDebut && dateReference < filterDateDebut) return false;
       if (filterDateFin && dateReference > filterDateFin) return false;
       
-      // Filtre recherche textuelle
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         if (!inter.description?.toLowerCase().includes(search) && 
@@ -801,7 +810,6 @@ function Interventions() {
     });
   }, [interventions, filterType, filterStatut, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
 
-  // Tri des interventions filtrées
   const interventionsTriees = useMemo(() => {
     if (!sortColumn) return interventionsFiltrees;
     
@@ -809,11 +817,9 @@ function Interventions() {
       let aVal = a[sortColumn];
       let bVal = b[sortColumn];
       
-      // Gestion des valeurs nulles
       if (aVal === null || aVal === undefined) return 1;
       if (bVal === null || bVal === undefined) return -1;
       
-      // Comparaison selon le type
       if (typeof aVal === 'string') {
         aVal = aVal.toLowerCase();
         bVal = bVal.toLowerCase();
@@ -825,7 +831,6 @@ function Interventions() {
     });
   }, [interventionsFiltrees, sortColumn, sortDirection]);
 
-  // Pagination
   const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(interventionsTriees.length / itemsPerPage);
   const interventionsPaginees = itemsPerPage === 'all' 
     ? interventionsTriees 
@@ -836,7 +841,7 @@ function Interventions() {
 
   const resetFilters = () => {
     setFilterType('all');
-    setFilterStatut('all'); // ✨ NOUVEAU
+    setFilterStatut('all');
     setFilterParcelle('all');
     setFilterArbre('all');
     setFilterDateDebut('');
@@ -848,7 +853,6 @@ function Interventions() {
   const activeFiltersCount = [filterType, filterStatut, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
     .filter(f => f && f !== 'all').length;
 
-  // Rendu du formulaire selon le type d'intervention
   const renderFormFields = () => {
     const typeObj = typesIntervention.find(t => t.id === parseInt(formData.type_intervention_id));
     if (!typeObj) return null;
@@ -929,7 +933,6 @@ function Interventions() {
 
   const config = COLONNES_CONFIG.interventions;
   
-  // ✅ ORDRE DES COLONNES RÉORGANISÉ : Type, Parcelles, Arbre, Statut, Date prévue, Date réalisée, Description, Note
   const colonnesOrdrées = [
     'type_nom',
     'parcelle_nom', 
@@ -978,7 +981,6 @@ function Interventions() {
         </div>
       ) : (
         <>
-          {/* Filtres */}
           <div style={{ marginBottom: '1rem' }}>
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -1025,7 +1027,6 @@ function Interventions() {
                     </select>
                   </div>
                   
-                  {/* ✨ NOUVEAU : Filtre statut */}
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Statut</label>
                     <select 
@@ -1095,7 +1096,6 @@ function Interventions() {
             )}
           </div>
 
-          {/* ✨ NOUVELLE BARRE DE SÉLECTION GROUPÉE */}
           {selectedInterventions.length > 0 && (
             <div style={{
               background: '#e3f2fd',
@@ -1129,7 +1129,6 @@ function Interventions() {
             </div>
           )}
 
-          {/* Pagination au-dessus du tableau */}
           {totalPages > 1 && (
             <div style={{ 
               display: 'flex', 
@@ -1231,12 +1230,10 @@ function Interventions() {
             </div>
           )}
 
-          {/* Tableau */}
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
             <table>
               <thead>
                 <tr>
-                  {/* ✨ NOUVELLE COLONNE : Sélection */}
                   <th style={{ width: '40px' }}>
                     <input
                       type="checkbox"
@@ -1270,13 +1267,11 @@ function Interventions() {
                   <tr 
                     key={inter.id}
                     style={{
-                      // 🎨 NOUVEAU : Style visuel pour les interventions terminées
                       background: inter.statut === 'Terminé' ? 'rgba(76, 175, 80, 0.08)' : 'transparent',
                       opacity: inter.statut === 'Terminé' ? 0.85 : 1,
                       color: inter.statut === 'Terminé' ? '#666' : 'inherit'
                     }}
                   >
-                    {/* ✨ NOUVELLE COLONNE : Checkbox de sélection */}
                     <td>
                       <input
                         type="checkbox"
@@ -1286,7 +1281,6 @@ function Interventions() {
                       />
                     </td>
                     {colonnesValides.map(col => {
-                      // ✅ Affichage des emojis pour Type ET Statut
                       if (col === 'type_nom') {
                         return (
                           <td key={col}>
@@ -1307,7 +1301,6 @@ function Interventions() {
                           </td>
                         );
                       }
-                      // ✅ Affichage tronqué pour Description et Notes avec tooltip
                       if (col === 'description' || col === 'notes') {
                         return (
                           <td key={col}>
@@ -1331,7 +1324,6 @@ function Interventions() {
         </>
       )}
 
-      {/* Modal de création/modification */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1341,14 +1333,40 @@ function Interventions() {
             </div>
             
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
+              {/* ✨ NOUVEAU : Affichage de l'erreur de validation */}
+              {formError && (
+                <div style={{
+                  background: '#ffebee',
+                  border: '1px solid #f44336',
+                  borderRadius: '6px',
+                  padding: '1rem',
+                  marginBottom: '1rem',
+                  color: '#c62828',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                  <span style={{ fontWeight: '500' }}>{formError}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                {/* ✨ LIGNE 1: Type intervention + Statut */}
                 <div className="form-group">
-                  <label>Type d'intervention *</label>
+                  <label>📋 Type d'intervention *</label>
                   <select 
                     name="type_intervention_id"
                     value={formData.type_intervention_id || ''} 
                     onChange={handleInputChange} 
                     required
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem'
+                    }}
                   >
                     <option value="">-- Sélectionner --</option>
                     {typesIntervention.map(type => (
@@ -1360,38 +1378,30 @@ function Interventions() {
                 </div>
                 
                 <div className="form-group">
-                  <label>Date prévue *</label>
-                  <input 
-                    type="date" 
-                    name="date_prevue"
-                    value={formData.date_prevue} 
-                    onChange={handleInputChange} 
-                    required 
-                  />
-                </div>
-                
-                {/* ✨ NOUVEAU : Champ Date réalisée */}
-                <div className="form-group">
-                  <label>
-                    Date réalisée
-                    <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.25rem' }}>(si terminée)</span>
-                  </label>
-                  <input 
-                    type="date" 
-                    name="date_realisee"
-                    value={formData.date_realisee || ''} 
+                  <label>🏷️ Statut *</label>
+                  <select
+                    name="statut"
+                    value={formData.statut || 'Prévu'}
                     onChange={handleInputChange}
+                    required
                     style={{
                       width: '100%',
                       padding: '0.5rem',
                       border: '1px solid #ddd',
-                      borderRadius: '4px'
+                      borderRadius: '4px',
+                      fontSize: '0.9rem'
                     }}
-                  />
+                  >
+                    <option value="Prévu">📅 Prévu</option>
+                    <option value="En cours">⏳ En cours</option>
+                    <option value="Terminé">✅ Terminé</option>
+                    <option value="Annulé">❌ Annulé</option>
+                  </select>
                 </div>
-                
+
+                {/* ✨ LIGNE 2: Parcelle + Arbre */}
                 <div className="form-group">
-                  <label>Parcelle</label>
+                  <label>🏞️ Parcelle</label>
                   <ParcelleSelector 
                     parcelles={parcelles} 
                     selectedId={formData.parcelle_id} 
@@ -1406,7 +1416,7 @@ function Interventions() {
                 </div>
                 
                 <div className="form-group">
-                  <label>Arbre (optionnel)</label>
+                  <label>🌳 Arbre (optionnel)</label>
                   <select
                     name="arbre_id"
                     value={formData.arbre_id || ''}
@@ -1434,33 +1444,56 @@ function Interventions() {
                     }
                   </select>
                 </div>
-                
+
+                {/* ✨ LIGNE 3: Date prévue + Date réalisée */}
                 <div className="form-group">
-                  <label>Statut *</label>
-                  <select
-                    name="statut"
-                    value={formData.statut || 'Prévu'}
-                    onChange={handleInputChange}
+                  <label>📅 Date prévue *</label>
+                  <input 
+                    type="date" 
+                    name="date_prevue"
+                    value={formData.date_prevue} 
+                    onChange={handleInputChange} 
                     required
                     style={{
                       width: '100%',
                       padding: '0.5rem',
                       border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '0.9rem'
+                      borderRadius: '4px'
                     }}
-                  >
-                    <option value="Prévu">📅 Prévu</option>
-                    <option value="En cours">⏳ En cours</option>
-                    <option value="Terminé">✅ Terminé</option>
-                    <option value="Annulé">❌ Annulé</option>
-                  </select>
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>
+                    ✅ Date réalisée
+                    <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '0.25rem' }}>(si terminée)</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    name="date_realisee"
+                    value={formData.date_realisee || ''} 
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      // Valider immédiatement après modification
+                      if (e.target.value && formData.date_prevue && e.target.value < formData.date_prevue) {
+                        setFormError('❌ La date réalisée ne peut pas être antérieure à la date prévue.');
+                      } else {
+                        setFormError(null);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: formError ? '2px solid #f44336' : '1px solid #ddd',
+                      borderRadius: '4px'
+                    }}
+                  />
                 </div>
               </div>
               
               <div className="form-group">
                 <FieldLabel 
-                  label="Description générale"
+                  label="📝 Description générale"
                   tooltip="Description objective de l'intervention : qu'est-ce qui est fait ? (ex: Traitement insecticide préventif, Taille de formation des jeunes arbres)"
                 />
                 <textarea 
@@ -1469,12 +1502,18 @@ function Interventions() {
                   onChange={handleInputChange} 
                   rows="3" 
                   placeholder="Décrivez l'objectif principal de l'intervention..." 
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px'
+                  }}
                 />
               </div>
               
               <div className="form-group">
                 <FieldLabel 
-                  label="Notes"
+                  label="💬 Notes"
                   tooltip="Informations complémentaires, observations terrain et remarques contextuelles (ex: Conditions météo favorables, Application réussie, Zone humide à surveiller)"
                 />
                 <textarea 
@@ -1483,6 +1522,12 @@ function Interventions() {
                   onChange={handleInputChange} 
                   rows="3" 
                   placeholder="Observations, remarques, contexte particulier..." 
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px'
+                  }}
                 />
               </div>
               
@@ -1490,7 +1535,7 @@ function Interventions() {
               
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
-                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing || formError}>
                   {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
                 </button>
               </div>
@@ -1499,7 +1544,6 @@ function Interventions() {
         </div>
       )}
 
-      {/* ✨ NOUVEAU : Modal de modification groupée */}
       {showBulkEditModal && (
         <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
@@ -1524,7 +1568,7 @@ function Interventions() {
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Type d'intervention</label>
+                  <label>📋 Type d'intervention</label>
                   <select 
                     value={bulkEditData.type_intervention_id || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, type_intervention_id: e.target.value ? parseInt(e.target.value) : null }))}
@@ -1540,7 +1584,7 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>Statut</label>
+                  <label>🏷️ Statut</label>
                   <select
                     value={bulkEditData.statut || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, statut: e.target.value }))}
@@ -1555,7 +1599,7 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>Parcelle</label>
+                  <label>🏞️ Parcelle</label>
                   <select
                     value={bulkEditData.parcelle_id || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, parcelle_id: e.target.value ? parseInt(e.target.value) : null }))}
@@ -1571,7 +1615,7 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>Date prévue</label>
+                  <label>📅 Date prévue</label>
                   <input
                     type="date"
                     value={bulkEditData.date_prevue || ''}
@@ -1580,9 +1624,8 @@ function Interventions() {
                   />
                 </div>
 
-                {/* ✨ NOUVEAU : Date réalisée dans modification groupée */}
                 <div className="form-group">
-                  <label>Date réalisée</label>
+                  <label>✅ Date réalisée</label>
                   <input
                     type="date"
                     value={bulkEditData.date_realisee || ''}
@@ -1593,7 +1636,7 @@ function Interventions() {
               </div>
 
               <div className="form-group">
-                <label>Description (sera ajoutée/remplacée)</label>
+                <label>📝 Description (sera ajoutée/remplacée)</label>
                 <textarea
                   value={bulkEditData.description || ''}
                   onChange={(e) => setBulkEditData(prev => ({ ...prev, description: e.target.value }))}
@@ -1604,7 +1647,7 @@ function Interventions() {
               </div>
 
               <div className="form-group">
-                <label>Notes (seront ajoutées/remplacées)</label>
+                <label>💬 Notes (seront ajoutées/remplacées)</label>
                 <textarea
                   value={bulkEditData.notes || ''}
                   onChange={(e) => setBulkEditData(prev => ({ ...prev, notes: e.target.value }))}
