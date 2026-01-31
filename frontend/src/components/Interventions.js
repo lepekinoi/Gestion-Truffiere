@@ -23,7 +23,7 @@ const MAX_TEXT_LENGTH = 50;
 // COMPOSANT TOOLTIP POUR LES LABELS
 // ========================================
 
-function FieldLabel({ label, tooltip }) {
+function FieldLabel({ label, tooltip, emoji }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -35,6 +35,7 @@ function FieldLabel({ label, tooltip }) {
       fontSize: '0.9rem', 
       fontWeight: '500' 
     }}>
+      {emoji && <span style={{ fontSize: '1.2rem' }}>{emoji}</span>}
       <span>{label}</span>
       {tooltip && (
         <span
@@ -152,20 +153,20 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: "Paramètres d'irrigation",
         champs: [
-          { name: 'volumeEauM3', label: 'Volume total (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 5.5' },
-          { name: 'volumeEauParArbreL', label: 'Volume par arbre (L)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
-          { name: 'methodeIrrigation', label: 'Méthode', type: 'select', options: ['', 'Goutte-à-goutte', 'Aspersion', 'Micro-aspersion', 'Gravitaire', 'Citerne', 'Tuyau manuel'] },
-          { name: 'sourceEau', label: 'Source d\'eau', type: 'select', options: ['', 'Réseau', 'Puits', 'Forage', 'Récupération eau de pluie', 'Citerne', 'Cours d\'eau', 'Bassin'] },
-          { name: 'debitLh', label: 'Débit (L/h)', type: 'number', step: 0.1, placeholder: 'Ex: 4' },
-          { name: 'pressionBar', label: 'Pression (bar)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
-          { name: 'frequenceIrrigation', label: 'Fréquence', type: 'select', options: ['', 'Ponctuel', 'Quotidien', 'Tous les 2 jours', 'Hebdomadaire', 'Bi-hebdomadaire', 'Mensuel'] }
+          { name: 'volumeEauM3', label: 'Volume total (m³)', emoji: '🚰', type: 'number', step: 0.1, placeholder: 'Ex: 5.5' },
+          { name: 'volumeEauParArbreL', label: 'Volume par arbre (L)', emoji: '💦', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
+          { name: 'methodeIrrigation', label: 'Méthode', emoji: '🔧', type: 'select', options: ['', 'Goutte-à-goutte', 'Aspersion', 'Micro-aspersion', 'Gravitaire', 'Citerne', 'Tuyau manuel'] },
+          { name: 'sourceEau', label: 'Source d\'eau', emoji: '🏞️', type: 'select', options: ['', 'Réseau', 'Puits', 'Forage', 'Récupération eau de pluie', 'Citerne', 'Cours d\'eau', 'Bassin'] },
+          { name: 'debitLh', label: 'Débit (L/h)', emoji: '⚡', type: 'number', step: 0.1, placeholder: 'Ex: 4' },
+          { name: 'pressionBar', label: 'Pression (bar)', emoji: '📊', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'frequenceIrrigation', label: 'Fréquence', emoji: '📅', type: 'select', options: ['', 'Ponctuel', 'Quotidien', 'Tous les 2 jours', 'Hebdomadaire', 'Bi-hebdomadaire', 'Mensuel'] }
         ]
       },
       {
         titre: 'Mesures du sol',
         champs: [
-          { name: 'humiditeSolAvant', label: 'Humidité sol avant (%)', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
-          { name: 'humiditeSolApres', label: 'Humidité sol après (%)', type: 'number', step: 0.1, placeholder: 'Ex: 45' }
+          { name: 'humiditeSolAvant', label: 'Humidité sol avant (%)', emoji: '🌡️', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
+          { name: 'humiditeSolApres', label: 'Humidité sol après (%)', emoji: '🌡️', type: 'number', step: 0.1, placeholder: 'Ex: 45' }
         ]
       }
     ]
@@ -176,32 +177,32 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Produit utilisé',
         champs: [
-          { name: 'categorieTraitement', label: 'Catégorie', type: 'select', options: ['', 'Fongicide', 'Insecticide', 'Herbicide', 'Acaricide', 'Répulsif', 'Stimulant', 'Autre'] },
-          { name: 'nomCommercial', label: 'Nom commercial', type: 'text', placeholder: 'Ex: Bouillie bordelaise' },
-          { name: 'matiereActive', label: 'Matières actives', type: 'text', placeholder: 'Ex: Sulfate de cuivre' },
-          { name: 'numeroAmm', label: 'N° AMM', type: 'text', placeholder: 'Ex: 9800123' },
-          { name: 'fabricant', label: 'Fabricant', type: 'text', placeholder: 'Ex: BASF' }
+          { name: 'categorieTraitement', label: 'Catégorie', emoji: '🏷️', type: 'select', options: ['', 'Fongicide', 'Insecticide', 'Herbicide', 'Acaricide', 'Répulsif', 'Stimulant', 'Autre'] },
+          { name: 'nomCommercial', label: 'Nom commercial', emoji: '📦', type: 'text', placeholder: 'Ex: Bouillie bordelaise' },
+          { name: 'matiereActive', label: 'Matières actives', emoji: '⚗️', type: 'text', placeholder: 'Ex: Sulfate de cuivre' },
+          { name: 'numeroAmm', label: 'N° AMM', emoji: '🔢', type: 'text', placeholder: 'Ex: 9800123' },
+          { name: 'fabricant', label: 'Fabricant', emoji: '🏭', type: 'text', placeholder: 'Ex: BASF' }
         ]
       },
       {
         titre: 'Dosage et application',
         champs: [
-          { name: 'doseProduitHa', label: 'Dose/ha (L ou kg)', type: 'number', step: 0.01, placeholder: 'Ex: 2.5' },
-          { name: 'doseProduitArbre', label: 'Dose/arbre (mL ou g)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
-          { name: 'concentration', label: 'Concentration', type: 'text', placeholder: 'Ex: 2% ou 50g/L' },
-          { name: 'volumeBouillieL', label: 'Volume bouillie (L)', type: 'number', step: 0.1, placeholder: 'Ex: 100' },
-          { name: 'surfaceTraiteeHa', label: 'Surface traitée (ha)', type: 'number', step: 0.01, placeholder: 'Ex: 0.5' },
-          { name: 'methodeApplication', label: 'Méthode d\'application', type: 'select', options: ['', 'Pulvérisateur dorsal', 'Pulvérisateur tracté', 'Atomiseur', 'Drone', 'Pinceau', 'Injection tronc', 'Arrosage'] }
+          { name: 'doseProduitHa', label: 'Dose/ha (L ou kg)', emoji: '⚖️', type: 'number', step: 0.01, placeholder: 'Ex: 2.5' },
+          { name: 'doseProduitArbre', label: 'Dose/arbre (mL ou g)', emoji: '💉', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
+          { name: 'concentration', label: 'Concentration', emoji: '🧬', type: 'text', placeholder: 'Ex: 2% ou 50g/L' },
+          { name: 'volumeBouillieL', label: 'Volume bouillie (L)', emoji: '🪣', type: 'number', step: 0.1, placeholder: 'Ex: 100' },
+          { name: 'surfaceTraiteeHa', label: 'Surface traitée (ha)', emoji: '📐', type: 'number', step: 0.01, placeholder: 'Ex: 0.5' },
+          { name: 'methodeApplication', label: 'Méthode d\'application', emoji: '🚿', type: 'select', options: ['', 'Pulvérisateur dorsal', 'Pulvérisateur tracté', 'Atomiseur', 'Drone', 'Pinceau', 'Injection tronc', 'Arrosage'] }
         ]
       },
       {
         titre: 'Cible et réglementation',
         champs: [
-          { name: 'cibleTraitement', label: 'Cible / Ravageur', type: 'text', placeholder: 'Ex: Mouche de la truffe, Pucerons' },
-          { name: 'delaiAvantRecolteJours', label: 'DAR (jours)', type: 'number', placeholder: 'Ex: 21', help: 'Délai Avant Récolte réglementaire' },
-          { name: 'zoneNonTraiteeM', label: 'ZNT (mètres)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
-          { name: 'equipementProtection', label: 'EPI utilisés', type: 'text', placeholder: 'Ex: Gants, masque, combinaison' },
-          { name: 'conditionsApplication', label: 'Conditions d\'application', type: 'textarea', placeholder: 'Température, vent, hygrométrie...' }
+          { name: 'cibleTraitement', label: 'Cible / Ravageur', emoji: '🐛', type: 'text', placeholder: 'Ex: Mouche de la truffe, Pucerons' },
+          { name: 'delaiAvantRecolteJours', label: 'DAR (jours)', emoji: '⏰', type: 'number', placeholder: 'Ex: 21', help: 'Délai Avant Récolte réglementaire' },
+          { name: 'zoneNonTraiteeM', label: 'ZNT (mètres)', emoji: '🚧', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'equipementProtection', label: 'EPI utilisés', emoji: '🦺', type: 'text', placeholder: 'Ex: Gants, masque, combinaison' },
+          { name: 'conditionsApplication', label: 'Conditions d\'application', emoji: '🌤️', type: 'textarea', placeholder: 'Température, vent, hygrométrie...' }
         ]
       }
     ]
@@ -212,38 +213,38 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Produit d\'amendement',
         champs: [
-          { name: 'typeAmendement', label: 'Type d\'amendement', type: 'select', options: ['', 'Calcaire broyé', 'Dolomie', 'Chaux vive', 'Chaux éteinte', 'Lithothamne', 'Compost', 'Fumier composté', 'BRF', 'Cendre de bois', 'Engrais vert', 'Autre'] },
-          { name: 'nomProduitAmendement', label: 'Nom du produit', type: 'text', placeholder: 'Ex: Calcaire broyé 0-4' },
-          { name: 'origineProduit', label: 'Fournisseur / Origine', type: 'text', placeholder: 'Ex: Carrière locale' },
-          { name: 'numeroLot', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' },
-          { name: 'certificationBio', label: 'Utilisable en bio', type: 'checkbox' }
+          { name: 'typeAmendement', label: 'Type d\'amendement', emoji: '🏷️', type: 'select', options: ['', 'Calcaire broyé', 'Dolomie', 'Chaux vive', 'Chaux éteinte', 'Lithothamne', 'Compost', 'Fumier composté', 'BRF', 'Cendre de bois', 'Engrais vert', 'Autre'] },
+          { name: 'nomProduitAmendement', label: 'Nom du produit', emoji: '📦', type: 'text', placeholder: 'Ex: Calcaire broyé 0-4' },
+          { name: 'origineProduit', label: 'Fournisseur / Origine', emoji: '🏭', type: 'text', placeholder: 'Ex: Carrière locale' },
+          { name: 'numeroLot', label: 'N° de lot', emoji: '🔢', type: 'text', placeholder: 'Pour traçabilité' },
+          { name: 'certificationBio', label: 'Utilisable en bio', emoji: '♻️', type: 'checkbox' }
         ]
       },
       {
         titre: 'Composition',
         champs: [
-          { name: 'compositionNpk', label: 'NPK', type: 'text', placeholder: 'Ex: 10-5-15' },
-          { name: 'compositionCao', label: 'CaO (%)', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
-          { name: 'compositionMgo', label: 'MgO (%)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
-          { name: 'compositionAutres', label: 'Autres éléments', type: 'textarea', placeholder: 'Oligoéléments, matière organique...' }
+          { name: 'compositionNpk', label: 'NPK', emoji: '🧪', type: 'text', placeholder: 'Ex: 10-5-15' },
+          { name: 'compositionCao', label: 'CaO (%)', emoji: '⚗️', type: 'number', step: 0.1, placeholder: 'Ex: 50' },
+          { name: 'compositionMgo', label: 'MgO (%)', emoji: '⚗️', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'compositionAutres', label: 'Autres éléments', emoji: '🧬', type: 'textarea', placeholder: 'Oligoéléments, matière organique...' }
         ]
       },
       {
         titre: 'Dosage et application',
         champs: [
-          { name: 'doseKgHa', label: 'Dose (kg/ha)', type: 'number', step: 1, placeholder: 'Ex: 1500' },
-          { name: 'doseKgArbre', label: 'Dose (kg/arbre)', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
-          { name: 'quantiteTotaleKg', label: 'Quantité totale (kg)', type: 'number', step: 1, placeholder: 'Ex: 500' },
-          { name: 'methodeEpandage', label: 'Méthode d\'épandage', type: 'select', options: ['', 'Manuel', 'Épandeur centrifuge', 'Épandeur hérisson', 'Enfouissement localisé'] },
-          { name: 'incorporation', label: 'Incorporé au sol', type: 'checkbox' },
-          { name: 'profondeurIncorporationCm', label: 'Profondeur incorporation (cm)', type: 'number', placeholder: 'Ex: 10' }
+          { name: 'doseKgHa', label: 'Dose (kg/ha)', emoji: '⚖️', type: 'number', step: 1, placeholder: 'Ex: 1500' },
+          { name: 'doseKgArbre', label: 'Dose (kg/arbre)', emoji: '⚖️', type: 'number', step: 0.1, placeholder: 'Ex: 5' },
+          { name: 'quantiteTotaleKg', label: 'Quantité totale (kg)', emoji: '📦', type: 'number', step: 1, placeholder: 'Ex: 500' },
+          { name: 'methodeEpandage', label: 'Méthode d\'épandage', emoji: '🚜', type: 'select', options: ['', 'Manuel', 'Épandeur centrifuge', 'Épandeur hérisson', 'Enfouissement localisé'] },
+          { name: 'incorporation', label: 'Incorporé au sol', emoji: '⬇️', type: 'checkbox' },
+          { name: 'profondeurIncorporationCm', label: 'Profondeur incorporation (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 10' }
         ]
       },
       {
         titre: 'Mesures pH',
         champs: [
-          { name: 'phSolAvant', label: 'pH sol avant', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Ex: 7.2' },
-          { name: 'phSolApres', label: 'pH sol après', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Mesure différée' }
+          { name: 'phSolAvant', label: 'pH sol avant', emoji: '🧪', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Ex: 7.2' },
+          { name: 'phSolApres', label: 'pH sol après', emoji: '🧪', type: 'number', step: 0.1, min: 0, max: 14, placeholder: 'Mesure différée' }
         ]
       }
     ]
@@ -254,29 +255,29 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Type de taille',
         champs: [
-          { name: 'typeTaille', label: 'Type de taille', type: 'select', options: ['', 'Formation', 'Entretien', 'Sanitaire', 'Éclaircie', 'Rabattage', 'Taille en vert'] },
-          { name: 'intensiteTaille', label: 'Intensité', type: 'select', options: ['', 'Légère (<20%)', 'Modérée (20-40%)', 'Forte (>40%)'] }
+          { name: 'typeTaille', label: 'Type de taille', emoji: '✂️', type: 'select', options: ['', 'Formation', 'Entretien', 'Sanitaire', 'Éclaircie', 'Rabattage', 'Taille en vert'] },
+          { name: 'intensiteTaille', label: 'Intensité', emoji: '💪', type: 'select', options: ['', 'Légère (<20%)', 'Modérée (20-40%)', 'Forte (>40%)'] }
         ]
       },
       {
         titre: 'Mesures',
         champs: [
-          { name: 'hauteurAvantCm', label: 'Hauteur avant (cm)', type: 'number', placeholder: 'Ex: 350' },
-          { name: 'hauteurApresCm', label: 'Hauteur après (cm)', type: 'number', placeholder: 'Ex: 280' },
-          { name: 'diametreCouronneAvantM', label: 'Ø couronne avant (m)', type: 'number', step: 0.1, placeholder: 'Ex: 4.5' },
-          { name: 'diametreCouronneApresM', label: 'Ø couronne après (m)', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
-          { name: 'branchesSupprimees', label: 'Branches supprimées', type: 'number', placeholder: 'Nombre' },
-          { name: 'diametreMaxCoupeCm', label: 'Plus gros Ø coupé (cm)', type: 'number', placeholder: 'Ex: 8' }
+          { name: 'hauteurAvantCm', label: 'Hauteur avant (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 350' },
+          { name: 'hauteurApresCm', label: 'Hauteur après (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 280' },
+          { name: 'diametreCouronneAvantM', label: 'Ø couronne avant (m)', emoji: '⭕', type: 'number', step: 0.1, placeholder: 'Ex: 4.5' },
+          { name: 'diametreCouronneApresM', label: 'Ø couronne après (m)', emoji: '⭕', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
+          { name: 'branchesSupprimees', label: 'Branches supprimées', emoji: '🌿', type: 'number', placeholder: 'Nombre' },
+          { name: 'diametreMaxCoupeCm', label: 'Plus gros Ø coupé (cm)', emoji: '📐', type: 'number', placeholder: 'Ex: 8' }
         ]
       },
       {
         titre: 'Résidus et outils',
         champs: [
-          { name: 'volumeResidusM3', label: 'Volume résidus (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
-          { name: 'destinationResidus', label: 'Destination résidus', type: 'select', options: ['', 'Broyage sur place', 'BRF', 'Brûlage', 'Export', 'Compostage'] },
-          { name: 'outilsTaille', label: 'Outils utilisés', type: 'text', placeholder: 'Ex: Sécateur, tronçonneuse' },
-          { name: 'desinfectionOutils', label: 'Outils désinfectés', type: 'checkbox' },
-          { name: 'produitDesinfection', label: 'Produit désinfection', type: 'text', placeholder: 'Ex: Alcool, eau de javel' }
+          { name: 'volumeResidusM3', label: 'Volume résidus (m³)', emoji: '🪵', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'destinationResidus', label: 'Destination résidus', emoji: '♻️', type: 'select', options: ['', 'Broyage sur place', 'BRF', 'Brûlage', 'Export', 'Compostage'] },
+          { name: 'outilsTaille', label: 'Outils utilisés', emoji: '🔧', type: 'text', placeholder: 'Ex: Sécateur, tronçonneuse' },
+          { name: 'desinfectionOutils', label: 'Outils désinfectés', emoji: '🧼', type: 'checkbox' },
+          { name: 'produitDesinfection', label: 'Produit désinfection', emoji: '🧴', type: 'text', placeholder: 'Ex: Alcool, eau de javel' }
         ]
       }
     ]
@@ -287,26 +288,26 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Type de travail',
         champs: [
-          { name: 'typeTravailSol', label: 'Type de travail', type: 'select', options: ['', 'Griffage', 'Binage', 'Décompactage', 'Désherbage mécanique', 'Scarification', 'Aération', 'Buttage'] },
-          { name: 'outilTravailSol', label: 'Outil utilisé', type: 'select', options: ['', 'Griffe manuelle', 'Binette', 'Motobineuse', 'Décompacteur', 'Cultivateur', 'Herse rotative', 'Disque'] },
-          { name: 'zoneTravaillee', label: 'Zone travaillée', type: 'select', options: ['', 'Inter-rang', 'Sous couronne', 'Brûlé uniquement', 'Rang complet', 'Parcelle entière'] }
+          { name: 'typeTravailSol', label: 'Type de travail', emoji: '🏷️', type: 'select', options: ['', 'Griffage', 'Binage', 'Décompactage', 'Désherbage mécanique', 'Scarification', 'Aération', 'Buttage'] },
+          { name: 'outilTravailSol', label: 'Outil utilisé', emoji: '🔧', type: 'select', options: ['', 'Griffe manuelle', 'Binette', 'Motobineuse', 'Décompacteur', 'Cultivateur', 'Herse rotative', 'Disque'] },
+          { name: 'zoneTravaillee', label: 'Zone travaillée', emoji: '📍', type: 'select', options: ['', 'Inter-rang', 'Sous couronne', 'Brûlé uniquement', 'Rang complet', 'Parcelle entière'] }
         ]
       },
       {
         titre: 'Paramètres',
         champs: [
-          { name: 'profondeurTravailCm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'largeurTravailM', label: 'Largeur (m)', type: 'number', step: 0.1, placeholder: 'Ex: 1.5' },
-          { name: 'distanceTroncM', label: 'Distance min du tronc (m)', type: 'number', step: 0.1, placeholder: 'Ex: 0.5' }
+          { name: 'profondeurTravailCm', label: 'Profondeur (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'largeurTravailM', label: 'Largeur (m)', emoji: '📐', type: 'number', step: 0.1, placeholder: 'Ex: 1.5' },
+          { name: 'distanceTroncM', label: 'Distance min du tronc (m)', emoji: '🎯', type: 'number', step: 0.1, placeholder: 'Ex: 0.5' }
         ]
       },
       {
         titre: 'État du sol',
         champs: [
-          { name: 'etatSolAvant', label: 'État du sol', type: 'select', options: ['', 'Sec', 'Frais', 'Humide', 'Détrempé'] },
-          { name: 'enherbementAvant', label: 'Enherbement avant', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
-          { name: 'enherbementApres', label: 'Enherbement après', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
-          { name: 'presenceCailloux', label: 'Sol caillouteux', type: 'checkbox' }
+          { name: 'etatSolAvant', label: 'État du sol', emoji: '🌍', type: 'select', options: ['', 'Sec', 'Frais', 'Humide', 'Détrempé'] },
+          { name: 'enherbementAvant', label: 'Enherbement avant', emoji: '🌿', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
+          { name: 'enherbementApres', label: 'Enherbement après', emoji: '🌱', type: 'select', options: ['', 'Nul', 'Faible', 'Moyen', 'Fort'] },
+          { name: 'presenceCailloux', label: 'Sol caillouteux', emoji: '🪨', type: 'checkbox' }
         ]
       }
     ]
@@ -317,33 +318,33 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Type d\'observation',
         champs: [
-          { name: 'typeObservation', label: 'Type', type: 'select', options: ['', 'Brûlé', 'Mycorhization', 'Santé arbre', 'Ravageurs', 'Maladie', 'Croissance', 'Général'] },
-          { name: 'niveauUrgence', label: 'Niveau d\'urgence', type: 'select', options: ['', 'Normal', 'À surveiller', 'Intervention rapide', 'Urgent'] }
+          { name: 'typeObservation', label: 'Type', emoji: '🏷️', type: 'select', options: ['', 'Brûlé', 'Mycorhization', 'Santé arbre', 'Ravageurs', 'Maladie', 'Croissance', 'Général'] },
+          { name: 'niveauUrgence', label: 'Niveau d\'urgence', emoji: '🚨', type: 'select', options: ['', 'Normal', 'À surveiller', 'Intervention rapide', 'Urgent'] }
         ]
       },
       {
         titre: 'État du brûlé',
         champs: [
-          { name: 'etatBrule', label: 'État du brûlé', type: 'select', options: ['', 'Absent', 'Naissant', 'Bien marqué', 'Étendu', 'En régression', 'Disparu'] },
-          { name: 'diametreBruleM', label: 'Diamètre brûlé (m)', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
-          { name: 'evolutionBrule', label: 'Évolution', type: 'select', options: ['', 'Extension', 'Stable', 'Régression'] },
-          { name: 'presenceAscomes', label: 'Présence ascocarpes', type: 'checkbox' },
-          { name: 'nombreAscomes', label: 'Nombre observé', type: 'number', placeholder: 'Si visible' }
+          { name: 'etatBrule', label: 'État du brûlé', emoji: '🔥', type: 'select', options: ['', 'Absent', 'Naissant', 'Bien marqué', 'Étendu', 'En régression', 'Disparu'] },
+          { name: 'diametreBruleM', label: 'Diamètre brûlé (m)', emoji: '⭕', type: 'number', step: 0.1, placeholder: 'Ex: 3.5' },
+          { name: 'evolutionBrule', label: 'Évolution', emoji: '📈', type: 'select', options: ['', 'Extension', 'Stable', 'Régression'] },
+          { name: 'presenceAscomes', label: 'Présence ascocarpes', emoji: '🍄', type: 'checkbox' },
+          { name: 'nombreAscomes', label: 'Nombre observé', emoji: '🔢', type: 'number', placeholder: 'Si visible' }
         ]
       },
       {
         titre: 'Mycorhization et santé',
         champs: [
-          { name: 'indiceMycorhization', label: 'Indice mycorhization', type: 'select', options: ['', 'Faible (0-30%)', 'Moyen (30-60%)', 'Fort (60-90%)', 'Excellent (>90%)'] },
-          { name: 'symptomesObserves', label: 'Symptômes observés', type: 'textarea', placeholder: 'Décrivez les symptômes...' },
-          { name: 'ravageursIdentifies', label: 'Ravageurs identifiés', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
-          { name: 'degatsConstates', label: 'Dégâts constatés', type: 'textarea', placeholder: 'Description des dégâts' }
+          { name: 'indiceMycorhization', label: 'Indice mycorhization', emoji: '🧬', type: 'select', options: ['', 'Faible (0-30%)', 'Moyen (30-60%)', 'Fort (60-90%)', 'Excellent (>90%)'] },
+          { name: 'symptomesObserves', label: 'Symptômes observés', emoji: '🩺', type: 'textarea', placeholder: 'Décrivez les symptômes...' },
+          { name: 'ravageursIdentifies', label: 'Ravageurs identifiés', emoji: '🐛', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
+          { name: 'degatsConstates', label: 'Dégâts constatés', emoji: '⚠️', type: 'textarea', placeholder: 'Description des dégâts' }
         ]
       },
       {
         titre: 'Préconisations',
         champs: [
-          { name: 'preconisations', label: 'Préconisations', type: 'textarea', placeholder: 'Actions recommandées...' }
+          { name: 'preconisations', label: 'Préconisations', emoji: '📋', type: 'textarea', placeholder: 'Actions recommandées...' }
         ]
       }
     ]
@@ -354,11 +355,11 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Paillage',
         champs: [
-          { name: 'typePaillage', label: 'Type de paillage', type: 'select', options: ['', 'BRF', 'Paille', 'Copeaux de bois', 'Écorces', 'Feuilles mortes', 'Miscanthus', 'Autre'] },
-          { name: 'epaisseurCm', label: 'Épaisseur (cm)', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'surfacePailleeM2', label: 'Surface paillée (m²)', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
-          { name: 'quantitePaillageM3', label: 'Quantité (m³)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
-          { name: 'originePaillage', label: 'Origine / Fournisseur', type: 'text', placeholder: 'Ex: Production propre' }
+          { name: 'typePaillage', label: 'Type de paillage', emoji: '🏷️', type: 'select', options: ['', 'BRF', 'Paille', 'Copeaux de bois', 'Écorces', 'Feuilles mortes', 'Miscanthus', 'Autre'] },
+          { name: 'epaisseurCm', label: 'Épaisseur (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'surfacePailleeM2', label: 'Surface paillée (m²)', emoji: '📐', type: 'number', step: 0.1, placeholder: 'Ex: 25' },
+          { name: 'quantitePaillageM3', label: 'Quantité (m³)', emoji: '📦', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'originePaillage', label: 'Origine / Fournisseur', emoji: '🏭', type: 'text', placeholder: 'Ex: Production propre' }
         ]
       }
     ]
@@ -369,30 +370,30 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Plant',
         champs: [
-          { name: 'especePlantee', label: 'Espèce', type: 'select', options: ['', 'Chêne vert', 'Chêne pubescent', 'Chêne pédoncule', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'] },
-          { name: 'varietePlant', label: 'Variété / Clone', type: 'text', placeholder: 'Ex: Clone INRAE' },
-          { name: 'typeMycorhization', label: 'Mycorhization', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Autre'] },
-          { name: 'fournisseurPlant', label: 'Pépiniériste', type: 'text', placeholder: 'Ex: Robin Pépinières' },
-          { name: 'certificationPlant', label: 'Certification', type: 'text', placeholder: 'Ex: INRAE certifié' },
-          { name: 'numeroLotPlant', label: 'N° de lot', type: 'text', placeholder: 'Pour traçabilité' }
+          { name: 'especePlantee', label: 'Espèce', emoji: '🌳', type: 'select', options: ['', 'Chêne vert', 'Chêne pubescent', 'Chêne pédoncule', 'Noisetier', 'Charme', 'Tilleul', 'Pin', 'Autre'] },
+          { name: 'varietePlant', label: 'Variété / Clone', emoji: '🧬', type: 'text', placeholder: 'Ex: Clone INRAE' },
+          { name: 'typeMycorhization', label: 'Mycorhization', emoji: '🍄', type: 'select', options: ['', 'Tuber melanosporum', 'Tuber aestivum', 'Tuber uncinatum', 'Tuber brumale', 'Autre'] },
+          { name: 'fournisseurPlant', label: 'Pépiniériste', emoji: '🏭', type: 'text', placeholder: 'Ex: Robin Pépinières' },
+          { name: 'certificationPlant', label: 'Certification', emoji: '✅', type: 'text', placeholder: 'Ex: INRAE certifié' },
+          { name: 'numeroLotPlant', label: 'N° de lot', emoji: '🔢', type: 'text', placeholder: 'Pour traçabilité' }
         ]
       },
       {
         titre: 'Caractéristiques du plant',
         champs: [
-          { name: 'taillePlantCm', label: 'Hauteur plant (cm)', type: 'number', placeholder: 'Ex: 50' },
-          { name: 'diametreColletMm', label: 'Ø collet (mm)', type: 'number', placeholder: 'Ex: 8' }
+          { name: 'taillePlantCm', label: 'Hauteur plant (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 50' },
+          { name: 'diametreColletMm', label: 'Ø collet (mm)', emoji: '⭕', type: 'number', placeholder: 'Ex: 8' }
         ]
       },
       {
         titre: 'Plantation',
         champs: [
-          { name: 'dimensionsTrouCm', label: 'Dimensions trou (cm)', type: 'text', placeholder: 'Ex: 50x50x50' },
-          { name: 'amendementPlantation', label: 'Amendement à la plantation', type: 'textarea', placeholder: 'Ex: 1kg calcaire + terreau mycorhizé' },
-          { name: 'arrosagePlantationL', label: 'Arrosage plantation (L)', type: 'number', placeholder: 'Ex: 20' },
-          { name: 'tuteur', label: 'Tuteur installé', type: 'checkbox' },
-          { name: 'protectionGibier', label: 'Protection gibier', type: 'checkbox' },
-          { name: 'typeProtection', label: 'Type de protection', type: 'text', placeholder: 'Ex: Filet, manchon' }
+          { name: 'dimensionsTrouCm', label: 'Dimensions trou (cm)', emoji: '⬛', type: 'text', placeholder: 'Ex: 50x50x50' },
+          { name: 'amendementPlantation', label: 'Amendement à la plantation', emoji: '🌱', type: 'textarea', placeholder: 'Ex: 1kg calcaire + terreau mycorhizé' },
+          { name: 'arrosagePlantationL', label: 'Arrosage plantation (L)', emoji: '💧', type: 'number', placeholder: 'Ex: 20' },
+          { name: 'tuteur', label: 'Tuteur installé', emoji: '🪵', type: 'checkbox' },
+          { name: 'protectionGibier', label: 'Protection gibier', emoji: '🦌', type: 'checkbox' },
+          { name: 'typeProtection', label: 'Type de protection', emoji: '🛡️', type: 'text', placeholder: 'Ex: Filet, manchon' }
         ]
       }
     ]
@@ -403,28 +404,28 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Prélèvement',
         champs: [
-          { name: 'profondeurPrelevementCm', label: 'Profondeur (cm)', type: 'number', placeholder: 'Ex: 30' },
-          { name: 'nombreEchantillons', label: 'Nombre d\'échantillons', type: 'number', placeholder: 'Ex: 5' },
-          { name: 'laboratoire', label: 'Laboratoire', type: 'text', placeholder: 'Ex: INRAE, Aurea' },
-          { name: 'referenceAnalyse', label: 'Référence analyse', type: 'text', placeholder: 'N° de dossier' }
+          { name: 'profondeurPrelevementCm', label: 'Profondeur (cm)', emoji: '📏', type: 'number', placeholder: 'Ex: 30' },
+          { name: 'nombreEchantillons', label: 'Nombre d\'échantillons', emoji: '🔢', type: 'number', placeholder: 'Ex: 5' },
+          { name: 'laboratoire', label: 'Laboratoire', emoji: '🏢', type: 'text', placeholder: 'Ex: INRAE, Aurea' },
+          { name: 'referenceAnalyse', label: 'Référence analyse', emoji: '📋', type: 'text', placeholder: 'N° de dossier' }
         ]
       },
       {
         titre: 'Résultats',
         champs: [
-          { name: 'resultatsPh', label: 'pH', type: 'number', step: 0.1, placeholder: 'Ex: 7.8' },
-          { name: 'resultatsCalcaireActif', label: 'Calcaire actif (%)', type: 'number', step: 0.1, placeholder: 'Ex: 12' },
-          { name: 'resultatsMatiereOrganique', label: 'Matière organique (%)', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
-          { name: 'resultatsAzote', label: 'Azote total (‰)', type: 'number', step: 0.01, placeholder: 'Ex: 1.2' },
-          { name: 'resultatsPhosphore', label: 'P2O5 (mg/kg)', type: 'number', placeholder: 'Ex: 85' },
-          { name: 'resultatsPotassium', label: 'K2O (mg/kg)', type: 'number', placeholder: 'Ex: 180' },
-          { name: 'resultatsCec', label: 'CEC (meq/100g)', type: 'number', step: 0.1, placeholder: 'Ex: 15' }
+          { name: 'resultatsPh', label: 'pH', emoji: '🧪', type: 'number', step: 0.1, placeholder: 'Ex: 7.8' },
+          { name: 'resultatsCalcaireActif', label: 'Calcaire actif (%)', emoji: '📊', type: 'number', step: 0.1, placeholder: 'Ex: 12' },
+          { name: 'resultatsMatiereOrganique', label: 'Matière organique (%)', emoji: '🌱', type: 'number', step: 0.1, placeholder: 'Ex: 2.5' },
+          { name: 'resultatsAzote', label: 'Azote total (‰)', emoji: '⚗️', type: 'number', step: 0.01, placeholder: 'Ex: 1.2' },
+          { name: 'resultatsPhosphore', label: 'P2O5 (mg/kg)', emoji: '⚗️', type: 'number', placeholder: 'Ex: 85' },
+          { name: 'resultatsPotassium', label: 'K2O (mg/kg)', emoji: '⚗️', type: 'number', placeholder: 'Ex: 180' },
+          { name: 'resultatsCec', label: 'CEC (meq/100g)', emoji: '📊', type: 'number', step: 0.1, placeholder: 'Ex: 15' }
         ]
       },
       {
         titre: 'Interprétation',
         champs: [
-          { name: 'interpretation', label: 'Interprétation et recommandations', type: 'textarea', placeholder: 'Conclusions de l\'analyse...' }
+          { name: 'interpretation', label: 'Interprétation et recommandations', emoji: '📝', type: 'textarea', placeholder: 'Conclusions de l\'analyse...' }
         ]
       }
     ]
@@ -435,17 +436,17 @@ const CHAMPS_PAR_TYPE = {
       {
         titre: 'Piégeage',
         champs: [
-          { name: 'typePiege', label: 'Type de piège', type: 'select', options: ['', 'Chromotopique jaune', 'Chromotopique bleu', 'Phéromone', 'Alimentaire', 'Mécanique rongeurs', 'Autre'] },
-          { name: 'ciblePiegeage', label: 'Cible', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
-          { name: 'nombrePieges', label: 'Nombre de pièges', type: 'number', placeholder: 'Ex: 10' },
-          { name: 'densitePiegesHa', label: 'Densité (pièges/ha)', type: 'number', placeholder: 'Ex: 20' }
+          { name: 'typePiege', label: 'Type de piège', emoji: '🪤', type: 'select', options: ['', 'Chromotopique jaune', 'Chromotopique bleu', 'Phéromone', 'Alimentaire', 'Mécanique rongeurs', 'Autre'] },
+          { name: 'ciblePiegeage', label: 'Cible', emoji: '🎯', type: 'text', placeholder: 'Ex: Mouche de la truffe' },
+          { name: 'nombrePieges', label: 'Nombre de pièges', emoji: '🔢', type: 'number', placeholder: 'Ex: 10' },
+          { name: 'densitePiegesHa', label: 'Densité (pièges/ha)', emoji: '📊', type: 'number', placeholder: 'Ex: 20' }
         ]
       },
       {
         titre: 'Relevé',
         champs: [
-          { name: 'dateReleve', label: 'Date du relevé', type: 'date' },
-          { name: 'captures', label: 'Nombre de captures', type: 'number', placeholder: 'Ex: 15' }
+          { name: 'dateReleve', label: 'Date du relevé', emoji: '📅', type: 'date' },
+          { name: 'captures', label: 'Nombre de captures', emoji: '🔢', type: 'number', placeholder: 'Ex: 15' }
         ]
       }
     ]
@@ -876,10 +877,11 @@ function Interventions() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
               {section.champs.map(champ => (
                 <div key={champ.name} style={{ marginBottom: '0.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>
-                    {champ.label}
-                    {champ.help && <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.25rem' }}>({champ.help})</span>}
-                  </label>
+                  <FieldLabel 
+                    label={champ.label}
+                    emoji={champ.emoji}
+                    tooltip={champ.help}
+                  />
                   
                   {champ.type === 'select' ? (
                     <select
@@ -1354,7 +1356,10 @@ function Interventions() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 {/* ✨ LIGNE 1: Type intervention + Statut */}
                 <div className="form-group">
-                  <label>📋 Type d'intervention *</label>
+                  <FieldLabel 
+                    label="Type d'intervention *"
+                    emoji="📋"
+                  />
                   <select 
                     name="type_intervention_id"
                     value={formData.type_intervention_id || ''} 
@@ -1378,7 +1383,10 @@ function Interventions() {
                 </div>
                 
                 <div className="form-group">
-                  <label>🏷️ Statut *</label>
+                  <FieldLabel 
+                    label="Statut *"
+                    emoji="🏷️"
+                  />
                   <select
                     name="statut"
                     value={formData.statut || 'Prévu'}
@@ -1401,7 +1409,10 @@ function Interventions() {
 
                 {/* ✨ LIGNE 2: Parcelle + Arbre */}
                 <div className="form-group">
-                  <label>🏞️ Parcelle</label>
+                  <FieldLabel 
+                    label="Parcelle"
+                    emoji="🏞️"
+                  />
                   <ParcelleSelector 
                     parcelles={parcelles} 
                     selectedId={formData.parcelle_id} 
@@ -1416,7 +1427,10 @@ function Interventions() {
                 </div>
                 
                 <div className="form-group">
-                  <label>🌳 Arbre (optionnel)</label>
+                  <FieldLabel 
+                    label="Arbre (optionnel)"
+                    emoji="🌳"
+                  />
                   <select
                     name="arbre_id"
                     value={formData.arbre_id || ''}
@@ -1447,7 +1461,10 @@ function Interventions() {
 
                 {/* ✨ LIGNE 3: Date prévue + Date réalisée */}
                 <div className="form-group">
-                  <label>📅 Date prévue *</label>
+                  <FieldLabel 
+                    label="Date prévue *"
+                    emoji="📅"
+                  />
                   <input 
                     type="date" 
                     name="date_prevue"
@@ -1464,10 +1481,10 @@ function Interventions() {
                 </div>
                 
                 <div className="form-group">
-                  <label>
-                    ✅ Date réalisée
-                    <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '0.25rem' }}>(si terminée)</span>
-                  </label>
+                  <FieldLabel 
+                    label="Date réalisée (si terminée)"
+                    emoji="✅"
+                  />
                   <input 
                     type="date" 
                     name="date_realisee"
@@ -1493,7 +1510,8 @@ function Interventions() {
               
               <div className="form-group">
                 <FieldLabel 
-                  label="📝 Description générale"
+                  label="Description générale"
+                  emoji="📝"
                   tooltip="Description objective de l'intervention : qu'est-ce qui est fait ? (ex: Traitement insecticide préventif, Taille de formation des jeunes arbres)"
                 />
                 <textarea 
@@ -1513,7 +1531,8 @@ function Interventions() {
               
               <div className="form-group">
                 <FieldLabel 
-                  label="💬 Notes"
+                  label="Notes"
+                  emoji="💬"
                   tooltip="Informations complémentaires, observations terrain et remarques contextuelles (ex: Conditions météo favorables, Application réussie, Zone humide à surveiller)"
                 />
                 <textarea 
@@ -1568,7 +1587,10 @@ function Interventions() {
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>📋 Type d'intervention</label>
+                  <FieldLabel 
+                    label="Type d'intervention"
+                    emoji="📋"
+                  />
                   <select 
                     value={bulkEditData.type_intervention_id || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, type_intervention_id: e.target.value ? parseInt(e.target.value) : null }))}
@@ -1584,7 +1606,10 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>🏷️ Statut</label>
+                  <FieldLabel 
+                    label="Statut"
+                    emoji="🏷️"
+                  />
                   <select
                     value={bulkEditData.statut || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, statut: e.target.value }))}
@@ -1599,7 +1624,10 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>🏞️ Parcelle</label>
+                  <FieldLabel 
+                    label="Parcelle"
+                    emoji="🏞️"
+                  />
                   <select
                     value={bulkEditData.parcelle_id || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, parcelle_id: e.target.value ? parseInt(e.target.value) : null }))}
@@ -1615,7 +1643,10 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>📅 Date prévue</label>
+                  <FieldLabel 
+                    label="Date prévue"
+                    emoji="📅"
+                  />
                   <input
                     type="date"
                     value={bulkEditData.date_prevue || ''}
@@ -1625,7 +1656,10 @@ function Interventions() {
                 </div>
 
                 <div className="form-group">
-                  <label>✅ Date réalisée</label>
+                  <FieldLabel 
+                    label="Date réalisée"
+                    emoji="✅"
+                  />
                   <input
                     type="date"
                     value={bulkEditData.date_realisee || ''}
@@ -1636,7 +1670,10 @@ function Interventions() {
               </div>
 
               <div className="form-group">
-                <label>📝 Description (sera ajoutée/remplacée)</label>
+                <FieldLabel 
+                  label="Description (sera ajoutée/remplacée)"
+                  emoji="📝"
+                />
                 <textarea
                   value={bulkEditData.description || ''}
                   onChange={(e) => setBulkEditData(prev => ({ ...prev, description: e.target.value }))}
@@ -1647,7 +1684,10 @@ function Interventions() {
               </div>
 
               <div className="form-group">
-                <label>💬 Notes (seront ajoutées/remplacées)</label>
+                <FieldLabel 
+                  label="Notes (seront ajoutées/remplacées)"
+                  emoji="💬"
+                />
                 <textarea
                   value={bulkEditData.notes || ''}
                   onChange={(e) => setBulkEditData(prev => ({ ...prev, notes: e.target.value }))}
