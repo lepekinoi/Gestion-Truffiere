@@ -82,6 +82,64 @@ function FieldLabel({ label, tooltip }) {
 }
 
 // ========================================
+// COMPOSANT TOOLTIP POUR TEXTE LONG
+// ========================================
+
+function TruncatedText({ text, maxLength = 50 }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  if (!text || text.length <= maxLength) {
+    return <span>{text || '-'}</span>;
+  }
+  
+  const truncated = text.substring(0, maxLength);
+  
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <span
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        style={{ cursor: 'help' }}
+      >
+        {truncated}... 📄
+      </span>
+      {showTooltip && (
+        <div style={{
+          position: 'absolute',
+          left: '0',
+          top: '100%',
+          marginTop: '5px',
+          background: '#333',
+          color: 'white',
+          padding: '0.75rem',
+          borderRadius: '6px',
+          fontSize: '0.85rem',
+          lineHeight: '1.4',
+          minWidth: '250px',
+          maxWidth: '400px',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          whiteSpace: 'pre-wrap',
+          wordWrap: 'break-word'
+        }}>
+          {text}
+          <div style={{
+            position: 'absolute',
+            left: '20px',
+            top: '-6px',
+            width: 0,
+            height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderBottom: '6px solid #333'
+          }} />
+        </div>
+      )}
+    </span>
+  );
+}
+
+// ========================================
 // CONFIGURATION DES CHAMPS PAR TYPE D'INTERVENTION
 // ========================================
 
@@ -397,7 +455,7 @@ const getTypeIcon = (typeName) => {
   return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
 };
 
-// ✅ NOUVELLE FONCTION : Récupère l'icône d'un statut
+// ✅ Fonction : Récupère l'icône d'un statut
 const getStatutIcon = (statut) => {
   const statutIcons = {
     'Prévu': '📅',
@@ -432,6 +490,20 @@ function ParcelleSelector({ parcelles, selectedId, onChange }) {
   );
 }
 
+// ========================================
+// ORDRE DES COLONNES PERSONNALISÉ
+// ========================================
+const ORDRE_COLONNES = [
+  'type_nom',       // Type
+  'parcelle_nom',   // Parcelles
+  'arbre_numero',   // Arbre
+  'statut',         // Statut
+  'date_prevue',    // Date prévue
+  'date_realisee',  // Date réalisée
+  'description',    // Description
+  'notes'           // Note
+];
+
 // Composant principal
 function Interventions() {
   // États
@@ -442,9 +514,11 @@ function Interventions() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [editingIntervention, setEditingIntervention] = useState(null);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedInterventions, setSelectedInterventions] = useState([]);
 
   // Filtres et options d'affichage
   const [filterType, setFilterType] = useState('all');
@@ -473,6 +547,15 @@ function Interventions() {
     description: '',
     notes: '',
     donnees_complementaires: {}
+  });
+
+  // Formulaire de modification en masse
+  const [bulkEditData, setBulkEditData] = useState({
+    statut: '',
+    date_prevue: '',
+    date_realisee: '',
+    parcelle_id: '',
+    type_intervention_id: ''
   });
 
   const { colonnesAffichees, colonnesExport, loading: loadingSettings } = useColumnSettings('interventions');
@@ -621,6 +704,71 @@ function Interventions() {
 
   const handleExportPDF = () => {
     exportInterventionsPDF(interventions, colonnesExport);
+  };
+
+  // Gestion de la sélection multiple
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedInterventions(interventionsPaginees.map(i => i.id));
+    } else {
+      setSelectedInterventions([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedInterventions(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(i => i !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  // Ouverture du modal de modification en masse
+  const openBulkEditModal = () => {
+    setBulkEditData({
+      statut: '',
+      date_prevue: '',
+      date_realisee: '',
+      parcelle_id: '',
+      type_intervention_id: ''
+    });
+    setShowBulkEditModal(true);
+  };
+
+  // Soumission de la modification en masse
+  const handleBulkEdit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    
+    try {
+      const updateData = {};
+      
+      // Ajouter seulement les champs remplis
+      if (bulkEditData.statut) updateData.statut = bulkEditData.statut;
+      if (bulkEditData.date_prevue) updateData.date_prevue = bulkEditData.date_prevue;
+      if (bulkEditData.date_realisee) updateData.date_realisee = bulkEditData.date_realisee;
+      if (bulkEditData.parcelle_id) updateData.parcelle_id = parseInt(bulkEditData.parcelle_id);
+      if (bulkEditData.type_intervention_id) updateData.type_intervention_id = parseInt(bulkEditData.type_intervention_id);
+
+      // Mettre à jour toutes les interventions sélectionnées
+      await Promise.all(
+        selectedInterventions.map(id => 
+          axios.put(`${API_URL}/interventions/${id}`, updateData)
+        )
+      );
+
+      showMessage(`${selectedInterventions.length} intervention(s) modifiée(s) !`, 'success');
+      setShowBulkEditModal(false);
+      setSelectedInterventions([]);
+      loadData();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors de la modification en masse', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Gestion du tri
@@ -779,7 +927,11 @@ function Interventions() {
   if (loading || loadingSettings) return <div className="loading">Chargement...</div>;
 
   const config = COLONNES_CONFIG.interventions;
-  const colonnesValides = colonnesAffichees.filter(col => config[col]);
+  
+  // ✅ Filtrer et réorganiser les colonnes selon ORDRE_COLONNES
+  const colonnesOrdonneesAffichees = ORDRE_COLONNES.filter(col => 
+    colonnesAffichees.includes(col) && config[col]
+  );
 
   return (
     <div className="page-container">
@@ -911,6 +1063,39 @@ function Interventions() {
             )}
           </div>
 
+          {/* Barre d'action pour modification en masse */}
+          {selectedInterventions.length > 0 && (
+            <div style={{
+              background: '#e3f2fd',
+              padding: '1rem',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              border: '2px solid #1976d2'
+            }}>
+              <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+                ✅ {selectedInterventions.length} intervention(s) sélectionnée(s)
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={openBulkEditModal}
+                  style={{ background: '#1976d2' }}
+                >
+                  ✏️ Modifier la sélection
+                </button>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setSelectedInterventions([])}
+                >
+                  ✕ Annuler
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Pagination au-dessus du tableau */}
           {totalPages > 1 && (
             <div style={{ 
@@ -1018,7 +1203,15 @@ function Interventions() {
             <table>
               <thead>
                 <tr>
-                  {colonnesValides.map(col => (
+                  <th style={{ width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={handleSelectAll}
+                      checked={selectedInterventions.length === interventionsPaginees.length && interventionsPaginees.length > 0}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </th>
+                  {colonnesOrdonneesAffichees.map(col => (
                     <th 
                       key={col}
                       onClick={() => handleSort(col)}
@@ -1040,9 +1233,19 @@ function Interventions() {
               </thead>
               <tbody>
                 {interventionsPaginees.map(inter => (
-                  <tr key={inter.id}>
-                    {colonnesValides.map(col => {
-                      // ✅ CORRECTION + AMÉLIORATION : Affichage des emojis pour Type ET Statut
+                  <tr key={inter.id} style={{ 
+                    background: selectedInterventions.includes(inter.id) ? '#f0f8ff' : undefined 
+                  }}>
+                    <td>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedInterventions.includes(inter.id)}
+                        onChange={() => handleSelectOne(inter.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
+                    {colonnesOrdonneesAffichees.map(col => {
+                      // Affichage avec emojis pour Type et Statut
                       if (col === 'type_nom') {
                         return (
                           <td key={col}>
@@ -1063,6 +1266,14 @@ function Interventions() {
                           </td>
                         );
                       }
+                      // ✅ Affichage avec limite pour description et notes
+                      if (col === 'description' || col === 'notes') {
+                        return (
+                          <td key={col}>
+                            <TruncatedText text={inter[col]} maxLength={50} />
+                          </td>
+                        );
+                      }
                       return <td key={col}>{config[col].render(inter)}</td>;
                     })}
                     <td>
@@ -1079,7 +1290,7 @@ function Interventions() {
         </>
       )}
 
-      {/* Modal */}
+      {/* Modal de création/modification individuelle */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1220,6 +1431,96 @@ function Interventions() {
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
                 <button type="submit" className="btn btn-primary" disabled={isProcessing}>
                   {isProcessing ? 'En cours...' : (editingIntervention ? 'Mettre à jour' : 'Créer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modification en masse */}
+      {showBulkEditModal && (
+        <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>✏️ Modifier {selectedInterventions.length} intervention(s)</h3>
+              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>✕</button>
+            </div>
+            
+            <form onSubmit={handleBulkEdit}>
+              <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
+                ℹ️ Remplissez uniquement les champs que vous souhaitez modifier. Les champs vides ne seront pas modifiés.
+              </p>
+              
+              <div className="form-group">
+                <label>Statut</label>
+                <select
+                  value={bulkEditData.statut}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, statut: e.target.value }))}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                >
+                  <option value="">-- Ne pas modifier --</option>
+                  <option value="Prévu">📅 Prévu</option>
+                  <option value="En cours">⏳ En cours</option>
+                  <option value="Terminé">✅ Terminé</option>
+                  <option value="Annulé">❌ Annulé</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Date prévue</label>
+                <input 
+                  type="date"
+                  value={bulkEditData.date_prevue}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, date_prevue: e.target.value }))}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Date réalisée</label>
+                <input 
+                  type="date"
+                  value={bulkEditData.date_realisee}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, date_realisee: e.target.value }))}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Parcelle</label>
+                <select
+                  value={bulkEditData.parcelle_id}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, parcelle_id: e.target.value }))}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                >
+                  <option value="">-- Ne pas modifier --</option>
+                  {parcelles.map(p => (
+                    <option key={p.id} value={p.id}>{p.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Type d'intervention</label>
+                <select
+                  value={bulkEditData.type_intervention_id}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, type_intervention_id: e.target.value }))}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                >
+                  <option value="">-- Ne pas modifier --</option>
+                  {typesIntervention.map(type => (
+                    <option key={type.id} value={type.id}>
+                      {getTypeIcon(type.nom)} {type.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowBulkEditModal(false)}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
+                  {isProcessing ? 'En cours...' : 'Appliquer les modifications'}
                 </button>
               </div>
             </form>
