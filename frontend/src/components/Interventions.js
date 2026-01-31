@@ -457,7 +457,7 @@ const getTypeIcon = (typeName) => {
   return CHAMPS_PAR_TYPE[typeName]?.icon || '📋';
 };
 
-// ✅ NOUVELLE FONCTION : Récupère l'icône d'un statut
+// ✅ Fonction pour récupérer l'icône d'un statut
 const getStatutIcon = (statut) => {
   const statutIcons = {
     'Prévu': '📅',
@@ -513,6 +513,7 @@ function Interventions() {
 
   // Filtres et options d'affichage
   const [filterType, setFilterType] = useState('all');
+  const [filterStatut, setFilterStatut] = useState('all'); // ✨ NOUVEAU FILTRE STATUT
   const [filterDateDebut, setFilterDateDebut] = useState('');
   const [filterDateFin, setFilterDateFin] = useState('');
   const [filterParcelle, setFilterParcelle] = useState('all');
@@ -534,6 +535,7 @@ function Interventions() {
     arbre_id: null,
     type_intervention_id: null,
     date_prevue: new Date().toISOString().split('T')[0],
+    date_realisee: null, // ✨ NOUVEAU : Date réalisée
     statut: 'Prévu', 
     description: '',
     notes: '',
@@ -596,6 +598,7 @@ function Interventions() {
         parcelle_id: formData.parcelle_id === '' ? null : formData.parcelle_id,
         arbre_id: formData.arbre_id === '' ? null : formData.arbre_id,
         date_prevue: formData.date_prevue,
+        date_realisee: formData.date_realisee || null, // ✨ NOUVEAU : Inclure date réalisée
         statut: formData.statut,
         description: formData.description,
         notes: formData.notes,
@@ -639,6 +642,7 @@ function Interventions() {
     if (bulkEditData.type_intervention_id) updateData.type_intervention_id = bulkEditData.type_intervention_id;
     if (bulkEditData.statut) updateData.statut = bulkEditData.statut;
     if (bulkEditData.date_prevue) updateData.date_prevue = bulkEditData.date_prevue;
+    if (bulkEditData.date_realisee) updateData.date_realisee = bulkEditData.date_realisee;
     if (bulkEditData.description) updateData.description = bulkEditData.description;
     if (bulkEditData.notes) updateData.notes = bulkEditData.notes;
 
@@ -697,6 +701,7 @@ function Interventions() {
       arbre_id: intervention.arbre_id || null,
       type_intervention_id: intervention.type_intervention_id || null,
       date_prevue: intervention.date_prevue ? intervention.date_prevue.split('T')[0] : '',
+      date_realisee: intervention.date_realisee ? intervention.date_realisee.split('T')[0] : null, // ✨ NOUVEAU
       statut: intervention.statut || 'Prévu', 
       description: intervention.description || '',
       notes: intervention.notes || '',
@@ -723,6 +728,7 @@ function Interventions() {
       arbre_id: null,
       type_intervention_id: null,
       date_prevue: new Date().toISOString().split('T')[0],
+      date_realisee: null, // ✨ NOUVEAU
       statut: 'Prévu',
       description: '',
       notes: '',
@@ -762,14 +768,27 @@ function Interventions() {
     }
   };
 
-  // Filtrage
+  // 🎯 MODIFICATION : Filtrage avec date réalisée en priorité et filtre statut
   const interventionsFiltrees = useMemo(() => {
     return interventions.filter(inter => {
+      // Filtre type
       if (filterType !== 'all' && inter.type_nom !== filterType) return false;
+      
+      // ✨ NOUVEAU : Filtre statut
+      if (filterStatut !== 'all' && inter.statut !== filterStatut) return false;
+      
+      // Filtre parcelle
       if (filterParcelle !== 'all' && inter.parcelle_id !== parseInt(filterParcelle)) return false;
+      
+      // Filtre arbre
       if (filterArbre !== 'all' && inter.arbre_id !== parseInt(filterArbre)) return false;
-      if (filterDateDebut && inter.date_prevue < filterDateDebut) return false;
-      if (filterDateFin && inter.date_prevue > filterDateFin) return false;
+      
+      // 🎯 MODIFICATION : Utiliser date_realisee en priorité, sinon date_prevue
+      const dateReference = inter.date_realisee || inter.date_prevue;
+      if (filterDateDebut && dateReference < filterDateDebut) return false;
+      if (filterDateFin && dateReference > filterDateFin) return false;
+      
+      // Filtre recherche textuelle
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         if (!inter.description?.toLowerCase().includes(search) && 
@@ -780,7 +799,7 @@ function Interventions() {
       }
       return true;
     });
-  }, [interventions, filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
+  }, [interventions, filterType, filterStatut, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]);
 
   // Tri des interventions filtrées
   const interventionsTriees = useMemo(() => {
@@ -817,6 +836,7 @@ function Interventions() {
 
   const resetFilters = () => {
     setFilterType('all');
+    setFilterStatut('all'); // ✨ NOUVEAU
     setFilterParcelle('all');
     setFilterArbre('all');
     setFilterDateDebut('');
@@ -825,7 +845,7 @@ function Interventions() {
     setCurrentPage(1);
   };
 
-  const activeFiltersCount = [filterType, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
+  const activeFiltersCount = [filterType, filterStatut, filterParcelle, filterArbre, filterDateDebut, filterDateFin, searchTerm]
     .filter(f => f && f !== 'all').length;
 
   // Rendu du formulaire selon le type d'intervention
@@ -1005,6 +1025,22 @@ function Interventions() {
                     </select>
                   </div>
                   
+                  {/* ✨ NOUVEAU : Filtre statut */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Statut</label>
+                    <select 
+                      value={filterStatut} 
+                      onChange={(e) => setFilterStatut(e.target.value)} 
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="all">Tous</option>
+                      <option value="Prévu">📅 Prévu</option>
+                      <option value="En cours">⏳ En cours</option>
+                      <option value="Terminé">✅ Terminé</option>
+                      <option value="Annulé">❌ Annulé</option>
+                    </select>
+                  </div>
+                  
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Parcelle</label>
                     <select value={filterParcelle} onChange={(e) => setFilterParcelle(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}>
@@ -1016,7 +1052,10 @@ function Interventions() {
                   </div>
                   
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Du</label>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Du
+                      <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: '0.25rem' }}>(réalisée ou prévue)</span>
+                    </label>
                     <input
                       type="date"
                       value={filterDateDebut}
@@ -1026,7 +1065,10 @@ function Interventions() {
                   </div>
                   
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>Au</label>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Au
+                      <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: '0.25rem' }}>(réalisée ou prévue)</span>
+                    </label>
                     <input
                       type="date"
                       value={filterDateFin}
@@ -1225,7 +1267,15 @@ function Interventions() {
               </thead>
               <tbody>
                 {interventionsPaginees.map(inter => (
-                  <tr key={inter.id}>
+                  <tr 
+                    key={inter.id}
+                    style={{
+                      // 🎨 NOUVEAU : Style visuel pour les interventions terminées
+                      background: inter.statut === 'Terminé' ? 'rgba(76, 175, 80, 0.08)' : 'transparent',
+                      opacity: inter.statut === 'Terminé' ? 0.85 : 1,
+                      color: inter.statut === 'Terminé' ? '#666' : 'inherit'
+                    }}
+                  >
                     {/* ✨ NOUVELLE COLONNE : Checkbox de sélection */}
                     <td>
                       <input
@@ -1317,6 +1367,26 @@ function Interventions() {
                     value={formData.date_prevue} 
                     onChange={handleInputChange} 
                     required 
+                  />
+                </div>
+                
+                {/* ✨ NOUVEAU : Champ Date réalisée */}
+                <div className="form-group">
+                  <label>
+                    Date réalisée
+                    <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.25rem' }}>(si terminée)</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    name="date_realisee"
+                    value={formData.date_realisee || ''} 
+                    onChange={handleInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px'
+                    }}
                   />
                 </div>
                 
@@ -1506,6 +1576,17 @@ function Interventions() {
                     type="date"
                     value={bulkEditData.date_prevue || ''}
                     onChange={(e) => setBulkEditData(prev => ({ ...prev, date_prevue: e.target.value }))}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  />
+                </div>
+
+                {/* ✨ NOUVEAU : Date réalisée dans modification groupée */}
+                <div className="form-group">
+                  <label>Date réalisée</label>
+                  <input
+                    type="date"
+                    value={bulkEditData.date_realisee || ''}
+                    onChange={(e) => setBulkEditData(prev => ({ ...prev, date_realisee: e.target.value }))}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                   />
                 </div>
