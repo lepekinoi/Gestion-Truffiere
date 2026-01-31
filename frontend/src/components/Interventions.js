@@ -16,6 +16,9 @@ const PAGINATION_OPTIONS = [
   { value: 'all', label: 'Tous' }
 ];
 
+// Longueur maximale pour l'affichage du texte tronqué
+const MAX_TEXT_LENGTH = 50;
+
 // ========================================
 // COMPOSANT TOOLTIP POUR LES LABELS
 // ========================================
@@ -78,6 +81,63 @@ function FieldLabel({ label, tooltip }) {
         </span>
       )}
     </label>
+  );
+}
+
+// ========================================
+// COMPOSANT TEXTE TRONQUÉ AVEC TOOLTIP
+// ========================================
+
+function TruncatedText({ text, maxLength = MAX_TEXT_LENGTH }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  if (!text || text.length <= maxLength) {
+    return <span>{text || '-'}</span>;
+  }
+  
+  const truncated = text.substring(0, maxLength) + '...';
+  
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span>{truncated}</span>
+      <span style={{ fontSize: '1rem', cursor: 'help' }}>📄</span>
+      {showTooltip && (
+        <div style={{
+          position: 'absolute',
+          left: '0',
+          top: 'calc(100% + 5px)',
+          background: '#333',
+          color: 'white',
+          padding: '0.75rem',
+          borderRadius: '6px',
+          fontSize: '0.85rem',
+          lineHeight: '1.4',
+          minWidth: '250px',
+          maxWidth: '400px',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          pointerEvents: 'none',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
+        }}>
+          {text}
+          <div style={{
+            position: 'absolute',
+            left: '20px',
+            top: '-6px',
+            width: 0,
+            height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderBottom: '6px solid #333'
+          }} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -446,6 +506,11 @@ function Interventions() {
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ✨ NOUVEAU : États pour la sélection groupée
+  const [selectedInterventions, setSelectedInterventions] = useState([]);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState({});
+
   // Filtres et options d'affichage
   const [filterType, setFilterType] = useState('all');
   const [filterDateDebut, setFilterDateDebut] = useState('');
@@ -559,6 +624,70 @@ function Interventions() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // ✨ NOUVEAU : Gestion de la modification groupée
+  const handleBulkEdit = async () => {
+    if (selectedInterventions.length === 0) {
+      showMessage('Aucune intervention sélectionnée', 'error');
+      return;
+    }
+
+    // Construire l'objet de mise à jour (seulement les champs renseignés)
+    const updateData = {};
+    if (bulkEditData.parcelle_id) updateData.parcelle_id = bulkEditData.parcelle_id;
+    if (bulkEditData.type_intervention_id) updateData.type_intervention_id = bulkEditData.type_intervention_id;
+    if (bulkEditData.statut) updateData.statut = bulkEditData.statut;
+    if (bulkEditData.date_prevue) updateData.date_prevue = bulkEditData.date_prevue;
+    if (bulkEditData.description) updateData.description = bulkEditData.description;
+    if (bulkEditData.notes) updateData.notes = bulkEditData.notes;
+
+    if (Object.keys(updateData).length === 0) {
+      showMessage('Aucun champ à modifier', 'error');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      // Mise à jour de chaque intervention sélectionnée
+      for (const inter of interventions.filter(i => selectedInterventions.includes(i.id))) {
+        await axios.put(`${API_URL}/interventions/${inter.id}`, {
+          ...inter,
+          ...updateData
+        });
+      }
+
+      showMessage(`${selectedInterventions.length} intervention(s) modifiée(s) !`, 'success');
+      setSelectedInterventions([]);
+      setBulkEditData({});
+      setShowBulkEditModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Erreur:', error);
+      showMessage('Erreur lors de la modification groupée', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ✨ NOUVEAU : Gestion de la sélection
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedInterventions(interventionsPaginees.map(i => i.id));
+    } else {
+      setSelectedInterventions([]);
+    }
+  };
+
+  const handleSelectIntervention = (id) => {
+    setSelectedInterventions(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(i => i !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
   const handleEdit = (intervention) => {
@@ -779,7 +908,20 @@ function Interventions() {
   if (loading || loadingSettings) return <div className="loading">Chargement...</div>;
 
   const config = COLONNES_CONFIG.interventions;
-  const colonnesValides = colonnesAffichees.filter(col => config[col]);
+  
+  // ✅ ORDRE DES COLONNES RÉORGANISÉ : Type, Parcelles, Arbre, Statut, Date prévue, Date réalisée, Description, Note
+  const colonnesOrdrées = [
+    'type_nom',
+    'parcelle_nom', 
+    'arbre_numero',
+    'statut',
+    'date_prevue',
+    'date_realisee',
+    'description',
+    'notes'
+  ];
+  
+  const colonnesValides = colonnesOrdrées.filter(col => config[col]);
 
   return (
     <div className="page-container">
@@ -911,6 +1053,40 @@ function Interventions() {
             )}
           </div>
 
+          {/* ✨ NOUVELLE BARRE DE SÉLECTION GROUPÉE */}
+          {selectedInterventions.length > 0 && (
+            <div style={{
+              background: '#e3f2fd',
+              border: '2px solid #1976d2',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                {selectedInterventions.length} intervention(s) sélectionnée(s)
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setShowBulkEditModal(true)}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  ✏️ Modifier la sélection
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedInterventions([])}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  ✕ Désélectionner
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Pagination au-dessus du tableau */}
           {totalPages > 1 && (
             <div style={{ 
@@ -1018,6 +1194,15 @@ function Interventions() {
             <table>
               <thead>
                 <tr>
+                  {/* ✨ NOUVELLE COLONNE : Sélection */}
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedInterventions.length === interventionsPaginees.length && interventionsPaginees.length > 0}
+                      onChange={handleSelectAll}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </th>
                   {colonnesValides.map(col => (
                     <th 
                       key={col}
@@ -1041,8 +1226,17 @@ function Interventions() {
               <tbody>
                 {interventionsPaginees.map(inter => (
                   <tr key={inter.id}>
+                    {/* ✨ NOUVELLE COLONNE : Checkbox de sélection */}
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedInterventions.includes(inter.id)}
+                        onChange={() => handleSelectIntervention(inter.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
                     {colonnesValides.map(col => {
-                      // ✅ CORRECTION + AMÉLIORATION : Affichage des emojis pour Type ET Statut
+                      // ✅ Affichage des emojis pour Type ET Statut
                       if (col === 'type_nom') {
                         return (
                           <td key={col}>
@@ -1063,6 +1257,14 @@ function Interventions() {
                           </td>
                         );
                       }
+                      // ✅ Affichage tronqué pour Description et Notes avec tooltip
+                      if (col === 'description' || col === 'notes') {
+                        return (
+                          <td key={col}>
+                            <TruncatedText text={inter[col]} />
+                          </td>
+                        );
+                      }
                       return <td key={col}>{config[col].render(inter)}</td>;
                     })}
                     <td>
@@ -1079,7 +1281,7 @@ function Interventions() {
         </>
       )}
 
-      {/* Modal */}
+      {/* Modal de création/modification */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1223,6 +1425,135 @@ function Interventions() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NOUVEAU : Modal de modification groupée */}
+      {showBulkEditModal && (
+        <div className="modal-overlay" onClick={() => setShowBulkEditModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h3>✏️ Modifier {selectedInterventions.length} intervention(s)</h3>
+              <button className="modal-close" onClick={() => setShowBulkEditModal(false)}>✕</button>
+            </div>
+            
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{
+                background: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '6px',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
+                  ⚠️ <strong>Les champs renseignés ci-dessous seront appliqués à toutes les interventions sélectionnées.</strong><br/>
+                  Laissez un champ vide pour ne pas le modifier.
+                </p>
+              </div>
+
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Type d'intervention</label>
+                  <select 
+                    value={bulkEditData.type_intervention_id || ''}
+                    onChange={(e) => setBulkEditData(prev => ({ ...prev, type_intervention_id: e.target.value ? parseInt(e.target.value) : null }))}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  >
+                    <option value="">-- Ne pas modifier --</option>
+                    {typesIntervention.map(type => (
+                      <option key={type.id} value={type.id}>
+                        {CHAMPS_PAR_TYPE[type.nom]?.icon || '📋'} {type.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Statut</label>
+                  <select
+                    value={bulkEditData.statut || ''}
+                    onChange={(e) => setBulkEditData(prev => ({ ...prev, statut: e.target.value }))}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  >
+                    <option value="">-- Ne pas modifier --</option>
+                    <option value="Prévu">📅 Prévu</option>
+                    <option value="En cours">⏳ En cours</option>
+                    <option value="Terminé">✅ Terminé</option>
+                    <option value="Annulé">❌ Annulé</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Parcelle</label>
+                  <select
+                    value={bulkEditData.parcelle_id || ''}
+                    onChange={(e) => setBulkEditData(prev => ({ ...prev, parcelle_id: e.target.value ? parseInt(e.target.value) : null }))}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  >
+                    <option value="">-- Ne pas modifier --</option>
+                    {parcelles.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nom} ({p.surface_ha} ha)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Date prévue</label>
+                  <input
+                    type="date"
+                    value={bulkEditData.date_prevue || ''}
+                    onChange={(e) => setBulkEditData(prev => ({ ...prev, date_prevue: e.target.value }))}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Description (sera ajoutée/remplacée)</label>
+                <textarea
+                  value={bulkEditData.description || ''}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, description: e.target.value }))}
+                  rows="3"
+                  placeholder="Nouvelle description..."
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Notes (seront ajoutées/remplacées)</label>
+                <textarea
+                  value={bulkEditData.notes || ''}
+                  onChange={(e) => setBulkEditData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows="3"
+                  placeholder="Nouvelles notes..."
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setShowBulkEditModal(false);
+                  setBulkEditData({});
+                }}
+              >
+                Annuler
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleBulkEdit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'En cours...' : 'Appliquer les modifications'}
+              </button>
+            </div>
           </div>
         </div>
       )}
