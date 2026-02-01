@@ -343,8 +343,8 @@ const handleSubmit = async (e) => {
       surface_ha: parcelle.surface_ha || '',
       type_sol: parcelle.type_sol || '',
       ph_sol: parcelle.ph_sol || '',
-      
-      notes: parcelle.notes || ''
+      notes: parcelle.notes || '',
+      coordinates: parcelle.coordinates || []  // ✅ AJOUT : préserver les coordonnées
     });
     setShowModal(true);
   };
