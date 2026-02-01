@@ -306,7 +306,7 @@ const especesRoutes = require('./routes/especes.routes');
 app.use('/api/especes', (req, res, next) => {
   req.pool = pool;
   next();
-}, especesRoutes(pool));
+}, especesRoutes(pool)); // ✅ CORRIGÉ : Appel de la fonction avec pool
 
 // Types d'intervention
 const typesInterventionRoutes = require('./routes/types-intervention.routes');
@@ -335,6 +335,7 @@ app.use('/api/amendements-ref', (req, res, next) => {
   req.pool = pool;
   next();
 }, amendementsRefRoutes(pool, requireWriteAccess));
+
 
 // Fournisseurs & Achats
 const fournisseursRoutes = require('./routes/fournisseurs');
@@ -407,6 +408,148 @@ app.get('/api/search/global', async (req, res) => {
       }
     } catch (e) {
       console.error('Erreur recherche arbres:', e.message);
+    }
+
+    // Recherche dans les récoltes
+    try {
+      const recoltes = await pool.query(`
+        SELECT r.id, r.date_recolte, r.poids_grammes, r.qualite, r.calibre, 
+               a.numero as arbre_numero, p.nom as parcelle_nom
+        FROM recoltes r
+        LEFT JOIN arbres a ON r.arbre_id = a.id
+        LEFT JOIN parcelles p ON r.parcelle_id = p.id
+        WHERE LOWER(COALESCE(r.qualite, '')) LIKE $1 
+           OR LOWER(COALESCE(r.calibre, '')) LIKE $1 
+           OR LOWER(COALESCE(r.caveur, '')) LIKE $1
+           OR LOWER(COALESCE(p.nom, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (recoltes.rows.length > 0) {
+        results.push({
+          category: 'recoltes',
+          items: recoltes.rows.map(r => ({
+            id: r.id,
+            title: `${new Date(r.date_recolte).toLocaleDateString('fr-FR')} - ${r.poids_grammes}g`,
+            subtitle: `${r.qualite || 'Qualité NC'} - ${r.calibre || 'Calibre NC'} - ${r.parcelle_nom || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche récoltes:', e.message);
+    }
+
+    // Recherche dans les clients
+    try {
+      const clients = await pool.query(`
+        SELECT id, type, nom, prenom, raison_sociale, email, telephone, ville
+        FROM clients
+        WHERE LOWER(COALESCE(nom, '')) LIKE $1 
+           OR LOWER(COALESCE(prenom, '')) LIKE $1 
+           OR LOWER(COALESCE(raison_sociale, '')) LIKE $1
+           OR LOWER(COALESCE(email, '')) LIKE $1 
+           OR LOWER(COALESCE(telephone, '')) LIKE $1 
+           OR LOWER(COALESCE(ville, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (clients.rows.length > 0) {
+        results.push({
+          category: 'clients',
+          items: clients.rows.map(c => ({
+            id: c.id,
+            title: c.type === 'Professionnel' ? (c.raison_sociale || c.nom) : `${c.prenom || ''} ${c.nom}`.trim(),
+            subtitle: `${c.type} - ${c.ville || 'Ville NC'} - ${c.email || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche clients:', e.message);
+    }
+
+    // Recherche dans les ventes
+    try {
+      const ventes = await pool.query(`
+        SELECT v.id, v.date_vente, v.quantite_grammes, v.montant_total, v.statut, v.numero_facture,
+               c.nom as client_nom, c.prenom as client_prenom, c.raison_sociale as client_raison_sociale
+        FROM ventes v
+        LEFT JOIN clients c ON v.client_id = c.id
+        WHERE LOWER(COALESCE(v.numero_facture, '')) LIKE $1 
+           OR LOWER(COALESCE(v.statut, '')) LIKE $1
+           OR LOWER(COALESCE(c.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(c.raison_sociale, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (ventes.rows.length > 0) {
+        results.push({
+          category: 'ventes',
+          items: ventes.rows.map(v => ({
+            id: v.id,
+            title: `${v.numero_facture || 'Sans n°'} - ${v.montant_total}€`,
+            subtitle: `${v.client_raison_sociale || `${v.client_prenom || ''} ${v.client_nom || ''}`.trim() || 'Client NC'} - ${v.statut}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche ventes:', e.message);
+    }
+
+    // Recherche dans les commandes
+    try {
+      const commandes = await pool.query(`
+        SELECT co.id, co.numero_commande, co.date_commande, co.poids_grammes, co.statut,
+               c.nom as client_nom, c.prenom as client_prenom, c.raison_sociale as client_raison_sociale
+        FROM commandes co
+        LEFT JOIN clients c ON co.client_id = c.id
+        WHERE LOWER(COALESCE(co.numero_commande, '')) LIKE $1 
+           OR LOWER(COALESCE(co.statut, '')) LIKE $1
+           OR LOWER(COALESCE(c.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(c.raison_sociale, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (commandes.rows.length > 0) {
+        results.push({
+          category: 'commandes',
+          items: commandes.rows.map(co => ({
+            id: co.id,
+            title: `${co.numero_commande || 'Sans n°'} - ${co.poids_grammes}g`,
+            subtitle: `${co.client_raison_sociale || `${co.client_prenom || ''} ${co.client_nom || ''}`.trim() || 'Client NC'} - ${co.statut}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche commandes:', e.message);
+    }
+
+    // Recherche dans les interventions
+    try {
+      const interventions = await pool.query(`
+        SELECT i.id, i.date_prevue, i.date_realisee, i.description, i.statut,
+               t.nom as type_nom, p.nom as parcelle_nom
+        FROM interventions i
+        LEFT JOIN types_intervention t ON i.type_intervention_id = t.id
+        LEFT JOIN parcelles p ON i.parcelle_id = p.id
+        WHERE LOWER(COALESCE(t.nom, '')) LIKE $1 
+           OR LOWER(COALESCE(i.description, '')) LIKE $1 
+           OR LOWER(COALESCE(p.nom, '')) LIKE $1
+           OR LOWER(COALESCE(i.personnel, '')) LIKE $1
+        LIMIT 5
+      `, [searchTerm]);
+      
+      if (interventions.rows.length > 0) {
+        results.push({
+          category: 'interventions',
+          items: interventions.rows.map(i => ({
+            id: i.id,
+            title: `${i.type_nom || 'Intervention'} - ${new Date(i.date_prevue).toLocaleDateString('fr-FR')}`,
+            subtitle: `${i.parcelle_nom || 'Sans parcelle'} - ${i.statut || ''}`
+          }))
+        });
+      }
+    } catch (e) {
+      console.error('Erreur recherche interventions:', e.message);
     }
 
     res.json(results);
@@ -605,6 +748,7 @@ app.use((err, req, res, next) => {
     });
   }
   
+  // Erreurs PostgreSQL courantes
   if (err.code === '23505') {
     return res.status(409).json({ 
       error: 'Conflit : doublon détecté', 
