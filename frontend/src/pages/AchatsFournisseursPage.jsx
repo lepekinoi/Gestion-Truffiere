@@ -1,7 +1,7 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.2 - Fix édition commandes avec chargement lignes
-// Date: 1 février 2026 - 23h40
+// Version: 2.3 - Fix édition lignes + bouton modifier
+// Date: 1 février 2026 - 23h58
 // Status: ✅ PRÊT À UTILISER
 // ============================================================
 
@@ -301,7 +301,6 @@ function AchatsFournisseursPage() {
     setShowCommandeModal(true);
   };
   
-  // FIX: Chargement des lignes existantes lors de l'édition
   const handleEditCommande = async (commande) => {
     setEditingCommande(commande);
     setCommandeFormData({
@@ -310,7 +309,7 @@ function AchatsFournisseursPage() {
       date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
       notes: commande.notes || ''
     });
-    
+
     // 🔧 FIX: Charger les lignes existantes depuis l'API
     try {
       const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
@@ -325,7 +324,18 @@ function AchatsFournisseursPage() {
       showMessage('Impossible de charger les lignes de commande', 'error');
       setCommandeLignes([]);
     }
-    
+
+    // Réinitialiser l'édition de ligne
+    setEditingLigneIndex(null);
+    setNouvelleLigne({
+      calibre_mm: '',
+      qualite: '',
+      maturite: 'Gris',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+
     setShowCommandeModal(true);
   };
   
@@ -358,7 +368,33 @@ function AchatsFournisseursPage() {
     showMessage('Ligne ajoutée !', 'success');
   };
   
+  const modifierLigne = (index) => {
+    const ligne = commandeLignes[index];
+    setNouvelleLigne({ ...ligne });
+    setEditingLigneIndex(index);
+    showMessage('Ligne chargée pour modification', 'info');
+  };
+
+  const annulerEditionLigne = () => {
+    setNouvelleLigne({
+      calibre_mm: '',
+      qualite: '',
+      maturite: 'Gris',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+    setEditingLigneIndex(null);
+    showMessage('Édition annulée', 'info');
+  };
+
   const supprimerLigne = (index) => {
+    // ✅ FIX: Gérer l'édition en cours
+    if (editingLigneIndex === index) {
+      annulerEditionLigne();
+    } else if (editingLigneIndex !== null && editingLigneIndex > index) {
+      setEditingLigneIndex(editingLigneIndex - 1);
+    }
     setCommandeLignes(prev => prev.filter((_, i) => i !== index));
     showMessage('Ligne supprimée', 'info');
   };
@@ -388,7 +424,6 @@ function AchatsFournisseursPage() {
       console.log('Envoi des données:', dataToSend);
       
       if (editingCommande) {
-        // 🔧 FIX: Utiliser PUT au lieu de POST pour modifier
         await axios.put(`${API_URL}/commandes-achats/${editingCommande.id}`, dataToSend);
         showMessage('Commande modifiée avec succès !', 'success');
       } else {
@@ -602,7 +637,7 @@ function AchatsFournisseursPage() {
       {/* EN-TÊTE */}
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ margin: 0, fontSize: '28px', color: '#333' }}>
-          🛍️ Gestion des Achats de Truffes
+          🛒 Gestion des Achats de Truffes
         </h1>
         <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
           Gestion complète des fournisseurs, commandes d'achat, stock et marges
@@ -929,9 +964,1107 @@ function AchatsFournisseursPage() {
         </div>
       )}
       
-      {/* (Le reste du code pour les autres onglets reste identique) */}
-      {/* Pour économiser de l'espace, je ne répète pas tout le code identique */}
-      {/* ONGLETS: commandes, stock, marge, modals... */}
+      {/* ============================================================ */}
+      {/* ONGLET COMMANDES */}
+      {/* ============================================================ */}
+      {activeTab === 'commandes' && (
+        <div>
+          {/* STATS COMMANDES */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '15px',
+            marginBottom: '30px'
+          }}>
+            <StatsCard
+              label="TOTAL"
+              value={statsCommandes.total}
+              color="#2196f3"
+            />
+            <StatsCard
+              label="EN ATTENTE"
+              value={statsCommandes.enAttente}
+              color="#ff9800"
+            />
+            <StatsCard
+              label="LIVRÉES"
+              value={statsCommandes.livrees}
+              color="#4caf50"
+            />
+            <StatsCard
+              label="MONTANT TOTAL"
+              value={`${statsCommandes.montantTotal.toFixed(2)} €`}
+              color="#9c27b0"
+            />
+          </div>
+          
+          {/* CONTRÔLES COMMANDES */}
+          <div style={{
+            display: 'flex',
+            gap: '15px',
+            marginBottom: '20px',
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            <button
+              onClick={openNewCommandeModal}
+              style={{
+                padding: '10px 20px',
+                background: '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              ➕ Nouvelle Commande
+            </button>
+            
+            <select
+              value={filterStatutCommande}
+              onChange={(e) => {
+                setFilterStatutCommande(e.target.value);
+                setCurrentPageCommandes(1);
+              }}
+              style={{
+                padding: '10px 15px',
+                border: '1px solid #ddd',
+                borderRadius: '6px'
+              }}
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="En attente">En attente</option>
+              <option value="Confirmée">Confirmée</option>
+              <option value="Expédiée">Expédiée</option>
+              <option value="Livrée">Livrée</option>
+              <option value="Réceptionnée">Réceptionnée</option>
+              <option value="Annulée">Annulée</option>
+            </select>
+          </div>
+          
+          {/* TABLEAU COMMANDES */}
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            overflowX: 'auto'
+          }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '14px'
+            }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>N° Commande</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Fournisseur</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Livraison prévue</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Montant</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Statut</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCommandes.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                      Aucune commande
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedCommandes.map((commande, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
+                      <td style={{ padding: '12px', fontWeight: '500' }}>
+                        {commande.numero_commande}
+                      </td>
+                      <td style={{ padding: '12px', color: '#666' }}>
+                        {getFournisseurName(commande.fournisseur_id)}
+                      </td>
+                      <td style={{ padding: '12px', color: '#666' }}>
+                        {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : '-'}
+                      </td>
+                      <td style={{ padding: '12px', color: '#666' }}>
+                        {commande.date_livraison_prevue ? new Date(commande.date_livraison_prevue).toLocaleDateString('fr-FR') : '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontWeight: '600' }}>
+                        {parseFloat(commande.montant_total || 0).toFixed(2)} €
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <StatusBadge statut={commande.statut} type="commande" />
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <button
+                          onClick={() => handleEditCommande(commande)}
+                          style={{
+                            marginRight: '10px',
+                            padding: '6px 12px',
+                            background: '#ff9800',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => askDeleteCommande(commande)}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#f44336',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* PAGINATION */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+            marginTop: '20px'
+          }}>
+            <button
+              onClick={() => setCurrentPageCommandes(prev => Math.max(1, prev - 1))}
+              disabled={currentPageCommandes === 1}
+              style={{
+                padding: '8px 16px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                background: 'white',
+                cursor: currentPageCommandes === 1 ? 'not-allowed' : 'pointer',
+                opacity: currentPageCommandes === 1 ? 0.5 : 1
+              }}
+            >
+              ← Précédent
+            </button>
+            <span style={{ color: '#666' }}>
+              Page {currentPageCommandes} sur {Math.ceil(filteredCommandes.length / itemsPerPage) || 1}
+            </span>
+            <button
+              onClick={() => setCurrentPageCommandes(prev => prev + 1)}
+              disabled={currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage)}
+              style={{
+                padding: '8px 16px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                background: 'white',
+                cursor: currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                opacity: currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage) ? 0.5 : 1
+              }}
+            >
+              Suivant →
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* ============================================================ */}
+      {/* ONGLET STOCK */}
+      {/* ============================================================ */}
+      {activeTab === 'stock' && (
+        <div>
+          {/* STATS STOCK */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '15px',
+            marginBottom: '30px'
+          }}>
+            <StatsCard
+              label="STOCK TOTAL"
+              value={`${statsStock.totalKg.toFixed(1)} kg`}
+              color="#2196f3"
+            />
+            <StatsCard
+              label="NOMBRE DE LOTS"
+              value={statsStock.nbLots}
+              color="#4caf50"
+            />
+            <StatsCard
+              label="⚠️ ALERTES"
+              value={statsStock.alertes}
+              color="#f44336"
+            />
+          </div>
+          
+          {/* CONTRÔLES STOCK */}
+          <div style={{
+            display: 'flex',
+            gap: '15px',
+            marginBottom: '20px',
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            <select
+              value={filterCalibre}
+              onChange={(e) => setFilterCalibre(e.target.value)}
+              style={{
+                padding: '10px 15px',
+                border: '1px solid #ddd',
+                borderRadius: '6px'
+              }}
+            >
+              <option value="all">Tous calibres</option>
+              <option value="20">Extra (20-30mm)</option>
+              <option value="30">1ère (30-50mm)</option>
+              <option value="50">2e (>50mm)</option>
+            </select>
+            
+            <select
+              value={filterQualite}
+              onChange={(e) => setFilterQualite(e.target.value)}
+              style={{
+                padding: '10px 15px',
+                border: '1px solid #ddd',
+                borderRadius: '6px'
+              }}
+            >
+              <option value="all">Toutes qualités</option>
+              <option value="Extra">Extra</option>
+              <option value="1ère">1ère</option>
+              <option value="2e">2e</option>
+            </select>
+          </div>
+          
+          {/* TABLEAU STOCK */}
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            overflowX: 'auto'
+          }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '14px'
+            }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Calibre</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Qualité</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Maturité</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Quantité</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Conservation</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Localisation</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Limite consommation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStock.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                      Aucun stock disponible
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStock.map((item, idx) => {
+                    const jours = item.date_limite_consommation
+                      ? Math.floor((new Date(item.date_limite_consommation) - new Date()) / (1000 * 60 * 60 * 24))
+                      : null;
+                    const isAlerte = jours !== null && jours <= 7;
+                    
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0', background: isAlerte ? '#fff3cd' : 'white' }}>
+                        <td style={{ padding: '12px', fontWeight: '500' }}>
+                          {item.calibre_mm}mm
+                        </td>
+                        <td style={{ padding: '12px', color: '#666' }}>
+                          {item.qualite}
+                        </td>
+                        <td style={{ padding: '12px', color: '#666' }}>
+                          {item.maturite || '-'}
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: '600' }}>
+                          {parseFloat(item.quantite_kg_stock || 0).toFixed(2)} kg
+                        </td>
+                        <td style={{ padding: '12px', color: '#666' }}>
+                          {item.conservation || '-'}
+                        </td>
+                        <td style={{ padding: '12px', color: '#666' }}>
+                          {item.localisation_storage || '-'}
+                        </td>
+                        <td style={{ padding: '12px', color: isAlerte ? '#f44336' : '#666', fontWeight: isAlerte ? '600' : '400' }}>
+                          {item.date_limite_consommation
+                            ? `${new Date(item.date_limite_consommation).toLocaleDateString('fr-FR')}${isAlerte ? ` (${jours}j)` : ''}`
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* ALERTES */}
+          {statsStock.alertes > 0 && (
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: '6px',
+              color: '#856404'
+            }}>
+              <strong>⚠️ Attention :</strong> {statsStock.alertes} lot(s) avec une date limite de consommation approchant (≤ 7 jours)
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* ============================================================ */}
+      {/* ONGLET MARGE */}
+      {/* ============================================================ */}
+      {activeTab === 'marge' && (
+        <div>
+          <h2 style={{ marginTop: 0 }}>💰 Analyse de Marge & Rentabilité</h2>
+          <div style={{
+            background: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            textAlign: 'center',
+            color: '#999'
+          }}>
+            <p>Fonctionnalité d'analyse de marge en cours de développement</p>
+            <p style={{ fontSize: '12px' }}>
+              Les calculs de marge nécessitent des données complémentaires sur les achats et les ventes
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* ============================================================ */}
+      {/* MODALS */}
+      {/* ============================================================ */}
+      
+      {/* MODAL FOURNISSEUR */}
+      {showFournisseurModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          overflow: 'auto',
+          paddingTop: '20px',
+          paddingBottom: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ marginTop: 0 }}>
+              {editingFournisseur ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
+            </h2>
+            
+            <form onSubmit={handleFournisseurSubmit}>
+              {/* Nom */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Nom *</label>
+                <input
+                  type="text"
+                  name="nom"
+                  value={fournisseurFormData.nom}
+                  onChange={handleFournisseurInputChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              
+              {/* Zone & Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Zone production</label>
+                  <select
+                    name="zone_production"
+                    value={fournisseurFormData.zone_production}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Drôme">Drôme</option>
+                    <option value="Vaucluse">Vaucluse</option>
+                    <option value="Var">Var</option>
+                    <option value="Alpes-de-Haute-Provence">Alpes-de-Haute-Provence</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={fournisseurFormData.email}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Téléphone & Statut */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Téléphone</label>
+                  <input
+                    type="tel"
+                    name="telephone"
+                    value={fournisseurFormData.telephone}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Statut</label>
+                  <select
+                    name="statut"
+                    value={fournisseurFormData.statut}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="Actif">Actif</option>
+                    <option value="Inactif">Inactif</option>
+                    <option value="Suspendu">Suspendu</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Adresse */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Adresse</label>
+                <input
+                  type="text"
+                  name="adresse"
+                  value={fournisseurFormData.adresse}
+                  onChange={handleFournisseurInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              
+              {/* Code postal, Ville, Pays */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Code postal</label>
+                  <input
+                    type="text"
+                    name="code_postal"
+                    value={fournisseurFormData.code_postal}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Ville</label>
+                  <input
+                    type="text"
+                    name="ville"
+                    value={fournisseurFormData.ville}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Pays</label>
+                  <input
+                    type="text"
+                    name="pays"
+                    value={fournisseurFormData.pays}
+                    onChange={handleFournisseurInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Certifications */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Certifications</label>
+                <input
+                  type="text"
+                  name="certifications"
+                  value={fournisseurFormData.certifications}
+                  onChange={handleFournisseurInputChange}
+                  placeholder="ex: Bio, IGP, AOP..."
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              
+              {/* Notes */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Notes</label>
+                <textarea
+                  name="notes"
+                  value={fournisseurFormData.notes}
+                  onChange={handleFournisseurInputChange}
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+              
+              {/* Boutons */}
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '30px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowFournisseurModal(false)}
+                  style={{
+                    padding: '12px 24px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  style={{
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    background: '#2196f3',
+                    color: 'white',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    opacity: isProcessing ? 0.7 : 1
+                  }}
+                >
+                  {isProcessing ? 'Enregistrement...' : (editingFournisseur ? 'Mettre à jour' : 'Créer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* MODAL COMMANDE AVEC GESTION DES LIGNES */}
+      {showCommandeModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          overflow: 'auto',
+          paddingTop: '20px',
+          paddingBottom: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '95%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ marginTop: 0 }}>
+              {editingCommande ? 'Modifier la commande' : 'Nouvelle commande d\'achat'}
+            </h2>
+            
+            <form onSubmit={handleCommandeSubmit}>
+              {/* SECTION 1: Informations générales */}
+              <div style={{
+                background: '#f5f5f5',
+                padding: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>📄 Informations générales</h3>
+                
+                {/* Fournisseur */}
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Fournisseur *</label>
+                  <select
+                    name="fournisseur_id"
+                    value={commandeFormData.fournisseur_id}
+                    onChange={handleCommandeInputChange}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">Sélectionner un fournisseur</option>
+                    {fournisseurs.filter(f => f.statut === 'Actif').map(f => (
+                      <option key={f.id} value={f.id}>{f.nom}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Dates */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Date commande *</label>
+                    <input
+                      type="date"
+                      name="date_commande"
+                      value={commandeFormData.date_commande}
+                      onChange={handleCommandeInputChange}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Livraison prévue</label>
+                    <input
+                      type="date"
+                      name="date_livraison_prevue"
+                      value={commandeFormData.date_livraison_prevue}
+                      onChange={handleCommandeInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Notes */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Notes</label>
+                  <textarea
+                    name="notes"
+                    value={commandeFormData.notes}
+                    onChange={handleCommandeInputChange}
+                    rows="2"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* SECTION 2: Lignes de commande */}
+              <div style={{
+                border: '2px solid #2196f3',
+                borderRadius: '8px',
+                padding: '15px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#2196f3' }}>📋 Lignes de commande ({commandeLignes.length})</h3>
+                
+                {/* Formulaire d'ajout de ligne */}
+                <div style={{
+                  background: '#e3f2fd',
+                  padding: '15px',
+                  borderRadius: '6px',
+                  marginBottom: '15px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Calibre (mm) *</label>
+                      <select
+                        name="calibre_mm"
+                        value={nouvelleLigne.calibre_mm}
+                        onChange={handleNouvelleLigneChange}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <option value="">Sélectionner</option>
+                        {CALIBRES.map(c => (
+                          <option key={c} value={c}>{c}mm</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Qualité *</label>
+                      <select
+                        name="qualite"
+                        value={nouvelleLigne.qualite}
+                        onChange={handleNouvelleLigneChange}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <option value="">Sélectionner</option>
+                        {QUALITES.map(q => (
+                          <option key={q} value={q}>{q}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Maturité</label>
+                      <select
+                        name="maturite"
+                        value={nouvelleLigne.maturite}
+                        onChange={handleNouvelleLigneChange}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        {MATURITES.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Quantité (kg) *</label>
+                      <input
+                        type="number"
+                        name="quantite_kg"
+                        value={nouvelleLigne.quantite_kg}
+                        onChange={handleNouvelleLigneChange}
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Prix/kg (€) *</label>
+                      <input
+                        type="number"
+                        name="prix_achat_kg"
+                        value={nouvelleLigne.prix_achat_kg}
+                        onChange={handleNouvelleLigneChange}
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Notes ligne</label>
+                      <input
+                        type="text"
+                        name="notes"
+                        value={nouvelleLigne.notes}
+                        onChange={handleNouvelleLigneChange}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={ajouterLigne}
+                    style={{
+                      flex: editingLigneIndex === null ? 1 : 2,
+                      padding: '12px',
+                      background: editingLigneIndex === null ? '#2196f3' : '#ff9800',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {editingLigneIndex === null ? '➕ Ajouter la ligne' : '✏️ Mettre à jour la ligne'}
+                  </button>
+                  {editingLigneIndex !== null && (
+                    <button
+                      type="button"
+                      onClick={annulerEditionLigne}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        background: '#9e9e9e',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 600
+                      }}
+                    >
+                      ❌ Annuler
+                    </button>
+                  )}
+                </div>
+                </div>
+                
+                {/* Liste des lignes ajoutées */}
+                {commandeLignes.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '30px',
+                    color: '#999',
+                    background: '#f9f9f9',
+                    borderRadius: '6px'
+                  }}>
+                    ⚠️ Aucune ligne de commande ajoutée. Veuillez ajouter au moins une ligne.
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      fontSize: '13px'
+                    }}>
+                      <thead>
+                        <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                          <th style={{ padding: '8px', textAlign: 'left' }}>Calibre</th>
+                          <th style={{ padding: '8px', textAlign: 'left' }}>Qualité</th>
+                          <th style={{ padding: '8px', textAlign: 'left' }}>Maturité</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Qte (kg)</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Prix/kg</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
+                          <th style={{ padding: '8px', textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commandeLignes.map((ligne, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
+                            <td style={{ padding: '8px' }}>{ligne.calibre_mm}mm</td>
+                            <td style={{ padding: '8px' }}>{ligne.qualite}</td>
+                            <td style={{ padding: '8px', fontSize: '11px', color: '#666' }}>{ligne.maturite}</td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>{ligne.quantite_kg}</td>
+                            <td style={{ padding: '8px', textAlign: 'right' }}>{parseFloat(ligne.prix_achat_kg).toFixed(2)}€</td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: '#2196f3' }}>
+                              {(parseFloat(ligne.quantite_kg) * parseFloat(ligne.prix_achat_kg)).toFixed(2)}€
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => modifierLigne(idx)}
+                                style={{
+                                  marginRight: '5px',
+                                  padding: '4px 8px',
+                                  background: editingLigneIndex === idx ? '#4caf50' : '#ff9800',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                {editingLigneIndex === idx ? '✓' : '✏️'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => supprimerLigne(idx)}
+                                style={{
+                                  padding: '4px 8px',
+                                  background: '#f44336',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                ❌
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#f5f5f5', fontWeight: 'bold', borderTop: '2px solid #ddd' }}>
+                          <td colSpan="5" style={{ padding: '10px', textAlign: 'right' }}>TOTAL COMMANDE:</td>
+                          <td style={{ padding: '10px', textAlign: 'right', fontSize: '16px', color: '#2196f3' }}>
+                            {calculerMontantTotal().toFixed(2)}€
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+              
+              {/* Boutons */}
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '20px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCommandeModal(false)}
+                  style={{
+                    padding: '12px 24px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing || commandeLignes.length === 0}
+                  style={{
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    background: commandeLignes.length === 0 ? '#ccc' : '#2196f3',
+                    color: 'white',
+                    cursor: (isProcessing || commandeLignes.length === 0) ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    opacity: (isProcessing || commandeLignes.length === 0) ? 0.7 : 1
+                  }}
+                >
+                  {isProcessing ? 'Enregistrement...' : (editingCommande ? 'Mettre à jour' : 'Créer la commande')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
