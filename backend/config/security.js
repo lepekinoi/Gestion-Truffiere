@@ -61,9 +61,9 @@ const helmetConfig = helmet({
 });
 
 /**
- * Rate limiter global (toutes les requêtes)
+ * Configuration Rate limiter global (toutes les requêtes)
  */
-const globalLimiter = rateLimit({
+const globalLimiterConfig = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // 1000 requêtes par fenêtre
   message: {
@@ -77,12 +77,14 @@ const globalLimiter = rateLimit({
     // Ne pas limiter les health checks
     return req.path === '/api/health';
   }
-});
+};
+
+const globalLimiter = rateLimit(globalLimiterConfig);
 
 /**
- * Rate limiter pour l'authentification (plus strict)
+ * Configuration Rate limiter pour l'authentification (plus strict)
  */
-const authLimiter = rateLimit({
+const authLimiterConfig = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 tentatives max
   message: {
@@ -98,12 +100,14 @@ const authLimiter = rateLimit({
     const email = req.body?.email || '';
     return `${req.ip}-${email}`;
   }
-});
+};
+
+const authLimiter = rateLimit(authLimiterConfig);
 
 /**
- * Rate limiter pour la création de compte
+ * Configuration Rate limiter pour la création de compte
  */
-const registerLimiter = rateLimit({
+const registerLimiterConfig = {
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 5, // 5 créations max par heure
   message: {
@@ -113,12 +117,14 @@ const registerLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false
-});
+};
+
+const registerLimiter = rateLimit(registerLimiterConfig);
 
 /**
- * Rate limiter pour réinitialisation de mot de passe
+ * Configuration Rate limiter pour réinitialisation de mot de passe
  */
-const passwordResetLimiter = rateLimit({
+const passwordResetLimiterConfig = {
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 3, // 3 demandes max par heure
   message: {
@@ -128,12 +134,14 @@ const passwordResetLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false
-});
+};
+
+const passwordResetLimiter = rateLimit(passwordResetLimiterConfig);
 
 /**
- * Rate limiter pour les API sensibles (export, etc.)
+ * Configuration Rate limiter pour les API sensibles (export, etc.)
  */
-const sensitiveLimiter = rateLimit({
+const sensitiveLimiterConfig = {
   windowMs: 60 * 1000, // 1 minute
   max: 10, // 10 requêtes par minute
   message: {
@@ -143,7 +151,9 @@ const sensitiveLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false
-});
+};
+
+const sensitiveLimiter = rateLimit(sensitiveLimiterConfig);
 
 /**
  * Configuration des cookies sécurisés
@@ -185,11 +195,11 @@ const isPublicRoute = (path, method) => {
   });
 };
 
-// À la fin du fichier
+// Affichage de la configuration au démarrage
 console.log('🔒 Configuration sécurité chargée :');
 console.log(`   - CORS origines : ${process.env.CORS_ORIGINS || process.env.FRONTEND_URL}`);
-console.log(`   - Rate limiting global : ${globalLimiter.max} req/${globalLimiter.windowMs/60000}min`);
-console.log(`   - Rate limiting auth : ${authLimiter.max} req/${authLimiter.windowMs/60000}min`);
+console.log(`   - Rate limiting global : ${globalLimiterConfig.max} req/${globalLimiterConfig.windowMs/60000}min`);
+console.log(`   - Rate limiting auth : ${authLimiterConfig.max} req/${authLimiterConfig.windowMs/60000}min`);
 
 module.exports = {
   corsOptions,
