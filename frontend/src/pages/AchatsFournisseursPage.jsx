@@ -1,6 +1,6 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.0 - Avec gestion des lignes de commande
+// Version: 2.1 - Correction enums conformes à PostgreSQL
 // Date: 1 février 2026
 // Status: ✅ PRÊT À UTILISER
 // ============================================================
@@ -35,10 +35,10 @@ const STATUT_COMMANDE_COLORS = {
 
 const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-// Options pour les formulaires de lignes
-const CALIBRES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
-const QUALITES = ['Extra', '1ère', '2e', 'Brisée'];
-const MATURITES = ['Optimal', 'Maturité avancée', 'Immature'];
+// Options pour les formulaires de lignes - CONFORMES À LA BASE POSTGRESQL
+const CALIBRES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]; // en mm
+const QUALITES = ['Extra', '1ère', '2e']; // Enum PostgreSQL
+const MATURITES = ['Blanc', 'Gris', 'Noir']; // Enum PostgreSQL
 
 // ============================================================
 // COMPOSANTS UI RÉUTILISABLES
@@ -133,7 +133,7 @@ function AchatsFournisseursPage() {
   const [nouvelleLigne, setNouvelleLigne] = useState({
     calibre_mm: '',
     qualite: '',
-    maturite: 'Optimal',
+    maturite: 'Gris', // Valeur par défaut conforme
     quantite_kg: '',
     prix_achat_kg: '',
     notes: ''
@@ -293,7 +293,7 @@ function AchatsFournisseursPage() {
     setNouvelleLigne({
       calibre_mm: '',
       qualite: '',
-      maturite: 'Optimal',
+      maturite: 'Gris',
       quantite_kg: '',
       prix_achat_kg: '',
       notes: ''
@@ -334,7 +334,7 @@ function AchatsFournisseursPage() {
     setNouvelleLigne({
       calibre_mm: '',
       qualite: '',
-      maturite: 'Optimal',
+      maturite: 'Gris',
       quantite_kg: '',
       prix_achat_kg: '',
       notes: ''
@@ -694,7 +694,7 @@ function AchatsFournisseursPage() {
               color="#ff9800"
             />
             <StatsCard
-              label="🎖️ CERTIFICATIONS"
+              label="🏆 CERTIFICATIONS"
               value={statsFournisseurs.certifies}
               color="#9c27b0"
             />
