@@ -359,6 +359,124 @@ module.exports = (pool, requireWriteAccess) => {
     }
   });
 
+  // PUT /api/commandes-achats/:id - Modifier une commande complète
+  router.put('/commandes-achats/:id', requireWriteAccess, async (req, res) => {
+    const { id } = req.params;
+    console.log('✏️ Modification commande:', id, JSON.stringify(req.body, null, 2));
+
+    // Extraire les données
+    let fournisseur_id = req.body.fournisseur_id || req.body.fournisseurId;
+    let date_commande = req.body.date_commande || req.body.dateCommande;
+    let date_livraison_prevue = req.body.date_livraison_prevue || req.body.dateLivraisonPrevue;
+    let lignes = req.body.lignes || req.body.items || [];
+    let notes = req.body.notes;
+
+    // Validation
+    if (!fournisseur_id) {
+      return res.status(400).json({ error: 'Fournisseur manquant' });
+    }
+
+    if (!date_commande) {
+      return res.status(400).json({ error: 'Date de commande manquante' });
+    }
+
+    if (!Array.isArray(lignes) || lignes.length === 0) {
+      return res.status(400).json({ 
+        error: 'Aucune ligne de commande fournie',
+        received: { lignes, items: req.body.items }
+      });
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Vérifier que la commande existe
+      const checkCommande = await client.query(`
+        SELECT id, statut FROM commandes_achat_truffes WHERE id = $1
+      `, [id]);
+
+      if (checkCommande.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Commande introuvable' });
+      }
+
+      // Empêcher la modification si réceptionnée
+      const statut = checkCommande.rows[0].statut;
+      if (statut === 'Réceptionnée' || statut === 'Livrée') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Impossible de modifier une commande réceptionnée ou livrée',
+          statut: statut 
+        });
+      }
+
+      // Calculer le nouveau montant total
+      const montantTotal = lignes.reduce((sum, l) => {
+        const quantite = parseFloat(l.quantite_kg || l.quantiteKg || 0);
+        const prix = parseFloat(l.prix_achat_kg || l.prixAchatKg || 0);
+        return sum + (quantite * prix);
+      }, 0);
+
+      // Mettre à jour la commande
+      const commandeResult = await client.query(`
+        UPDATE commandes_achat_truffes
+        SET fournisseur_id = $1,
+            date_commande = $2,
+            date_livraison_prevue = $3,
+            montant_total = $4,
+            notes = $5,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
+        RETURNING *
+      `, [
+        fournisseur_id, date_commande, date_livraison_prevue,
+        montantTotal, notes, id
+      ]);
+
+      console.log(`✅ Commande mise à jour: ${id}`);
+
+      // Supprimer les anciennes lignes
+      await client.query(`
+        DELETE FROM lignes_commande_achat WHERE commande_id = $1
+      `, [id]);
+
+      // Recréer les lignes
+      for (const ligne of lignes) {
+        const calibre_mm = ligne.calibre_mm || ligne.calibreMm;
+        const qualite = ligne.qualite;
+        const maturite = ligne.maturite;
+        const quantite_kg = ligne.quantite_kg || ligne.quantiteKg;
+        const prix_achat_kg = ligne.prix_achat_kg || ligne.prixAchatKg;
+        const notes_ligne = ligne.notes || null;
+
+        await client.query(`
+          INSERT INTO lignes_commande_achat (
+            commande_id, calibre_mm, qualite, maturite, quantite_kg, prix_achat_kg, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [
+          id, calibre_mm, qualite, maturite, quantite_kg, prix_achat_kg, notes_ligne
+        ]);
+      }
+
+      await client.query('COMMIT');
+      console.log(`✅ ${lignes.length} ligne(s) mise(s) à jour`);
+
+      res.json({
+        commande: commandeResult.rows[0],
+        message: `Commande modifiée avec succès. ${lignes.length} ligne(s) mise(s) à jour.`
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Erreur modification commande:', error);
+      res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
+    }
+  });
+
   // PUT /api/commandes-achats/:id/statut - Modifier le statut d'une commande
   router.put('/commandes-achats/:id/statut', requireWriteAccess, async (req, res) => {
     const { id } = req.params;
