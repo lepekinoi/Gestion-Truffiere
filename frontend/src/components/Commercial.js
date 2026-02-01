@@ -83,47 +83,15 @@ function Commercial() {
   const [showImportModal, setShowImportModal] = useState(false);
 
   const [filterRecolte, setFilterRecolte] = useState({ type: 'all', value: '' });
-
-	// Modal Fournisseur
-	const [showFournisseurModal, setShowFournisseurModal] = useState(false);
-	const [editingFournisseur, setEditingFournisseur] = useState(null);
-	const [fournisseurs, setFournisseurs] = useState([]);
-	
-// Formulaire Fournisseur
-const [fournisseurFormData, setFournisseurFormData] = useState({
-  nom: '',
-  zone_production: '',
-  email: '',
-  telephone: '',
-  adresse: '',
-  code_postal: '',
-  ville: '',
-  pays: 'France',
-  certifications: '',
-  statut: 'Actif',
-  prix_moyen_kg: '',
-  notes: ''
-});	
   
   // États généraux
   const [loading, setLoading] = useState(true);
-  const [achatsData, setAchatsData] = useState({ fournisseurs: [], commandes: [], stocks: [], marges: {} });
   const [recoltes, setRecoltes] = useState([]);
   const [arbres, setArbres] = useState([]);
   const [showQuickClientModal, setShowQuickClientModal] = useState(false);
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
-  
-  // PAGINATION
-  // const [currentPageClients, setCurrentPageClients] = useState(1);
-  // const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
-  // const [currentPageVentes, setCurrentPageVentes] = useState(1);
-  // const [itemsPerPageVentes, setItemsPerPageVentes] = useState(20);
-  
-  // TRI
-  // const [sortConfigCommandes, setSortConfigCommandes] = useState({ key: 'date_commande', direction: 'desc' });
-  // const [sortConfigVentes, setSortConfigVentes] = useState({ key: 'date_vente', direction: 'desc' });
   
   // ANALYTICS
   const [analyticsData, setAnalyticsData] = useState({
@@ -190,22 +158,6 @@ const [fournisseurFormData, setFournisseurFormData] = useState({
       setRecoltes(recoltesRes.data);
       setArbres(arbresRes.data);
       setStatsParType(statsRes.data);
-      
-      // Charger les achats - utiliser le bon endpoint
-      try {
-        // Essayer d'abord l'endpoint des fournisseurs depuis l'API principale
-        const achatsRes = await axios.get(`${API_URL}/fournisseurs`)
-          .catch(() => {
-            // Fallback si l'endpoint n'existe pas
-            return { data: { data: [] } };
-          });
-        setAchatsData({
-          fournisseurs: Array.isArray(achatsRes.data) ? achatsRes.data : (achatsRes.data.data || [])
-        });
-      } catch (error) {
-        console.warn('Impossible de charger les fournisseurs:', error.message);
-        setAchatsData({ fournisseurs: [] });
-      }
       
       setLoading(false);
     } catch (error) {
@@ -535,8 +487,6 @@ const {
     });
   };
   
-  // const paginatedClients = paginate(sortedClients, currentPageClients, itemsPerPageClients);
-  
   const paginate = (data, currentPage, itemsPerPage) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -776,22 +726,6 @@ const PaginationControls = PaginationControlsComponent;
           }}
         >
           📊 Statuts
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('achats')}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: activeTab === 'achats' ? '#28a745' : '#f0f0f0',
-            color: activeTab === 'achats' ? 'white' : '#333',
-            border: activeTab === 'achats' ? '2px solid #28a745' : '1px solid #ddd',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600
-          }}
-        >
-          🛒 Achats & Fournisseurs
         </button>
         
         <button
@@ -1567,222 +1501,6 @@ const PaginationControls = PaginationControlsComponent;
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                 Aucune donnée
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* ============================================================ */}
-      {/* ONGLET ACHATS */}
-      {/* ============================================================ */}
-      {activeTab === 'achats' && (
-        <div style={{
-          backgroundColor: '#f9f9f9',
-          borderRadius: '8px',
-          padding: '20px',
-          marginTop: '20px'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '30px',
-            borderBottom: '2px solid #e0e0e0',
-            paddingBottom: '15px'
-          }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '28px', color: '#333' }}>
-                🛒 Gestion des Achats de Truffes
-              </h2>
-              <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
-                Gestion complète des fournisseurs, commandes et marges
-              </p>
-            </div>
-          </div>
-          
-          {/* Statistiques des achats */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '20px',
-            marginBottom: '30px'
-          }}>
-            {/* Stat: Fournisseurs actifs */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #28a745'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px', fontWeight: '600' }}>
-                ✅ FOURNISSEURS ACTIFS
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#28a745', marginBottom: '5px' }}>
-                {achatsData.fournisseurs?.filter(f => f.statut === 'Actif').length || 0}
-              </div>
-              <div style={{ fontSize: '13px', color: '#999' }}>
-                sur {achatsData.fournisseurs?.length || 0} total
-              </div>
-            </div>
-            
-            {/* Stat: Total fournisseurs */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #3182ce'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px', fontWeight: '600' }}>
-                👥 TOUS LES FOURNISSEURS
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3182ce' }}>
-                {achatsData.fournisseurs?.length || 0}
-              </div>
-              <div style={{ fontSize: '13px', color: '#999' }}>
-                partenaires trufficulteurs
-              </div>
-            </div>
-            
-            {/* Stat: Zones */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #e67e22'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px', fontWeight: '600' }}>
-                🗺️ ZONES COUVERTES
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#e67e22' }}>
-                {new Set(achatsData.fournisseurs?.map(f => f.zone_production).filter(Boolean)).size || 0}
-              </div>
-              <div style={{ fontSize: '13px', color: '#999' }}>
-                zones de production
-              </div>
-            </div>
-            
-            {/* Stat: Certifications */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderLeft: '4px solid #9b59b6'
-            }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px', fontWeight: '600' }}>
-                🎖️ CERTIFICATIONS
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9b59b6' }}>
-                {achatsData.fournisseurs?.filter(f => f.certifications).length || 0}
-              </div>
-              <div style={{ fontSize: '13px', color: '#999' }}>
-                fournisseurs certifiés
-              </div>
-            </div>
-          </div>
-          
-          {/* Tableau des fournisseurs */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '20px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            marginBottom: '30px'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '18px', color: '#333' }}>
-              📋 Fournisseurs disponibles
-            </h3>
-            
-            {!achatsData.fournisseurs || achatsData.fournisseurs.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                color: '#999',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '6px'
-              }}>
-                <p style={{ fontSize: '16px', margin: 0 }}>📭 Aucun fournisseur pour le moment</p>
-                <p style={{ fontSize: '13px', margin: '10px 0 0 0' }}>
-                  Commencez par créer un fournisseur dans l'application dédiée
-                </p>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: '14px'
-                }}>
-                  <thead>
-                    <tr style={{
-                      borderBottom: '2px solid #e0e0e0',
-                      backgroundColor: '#f8f8f8'
-                    }}>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Nom</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Zone</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Contact</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Statut</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Certifications</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {achatsData.fournisseurs.slice(0, 10).map((fournisseur, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                        <td style={{ padding: '12px', fontWeight: '500' }}>
-                          {fournisseur.nom}
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {fournisseur.zone_production || '-'}
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {fournisseur.email ? (
-                            <a href={`mailto:${fournisseur.email}`} style={{ color: '#3182ce', textDecoration: 'none' }}>
-                              {fournisseur.email}
-                            </a>
-                          ) : '-'}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: fournisseur.statut === 'Actif' ? '#d4edda' : '#f8d7da',
-                            color: fournisseur.statut === 'Actif' ? '#155724' : '#721c24'
-                          }}>
-                            {fournisseur.statut || 'Actif'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {fournisseur.certifications ? (
-                            <span title={fournisseur.certifications}>
-                              {fournisseur.certifications.substring(0, 20)}...
-                            </span>
-                          ) : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {achatsData.fournisseurs.length > 10 && (
-                  <div style={{
-                    marginTop: '15px',
-                    textAlign: 'center',
-                    padding: '10px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    color: '#666'
-                  }}>
-                    {achatsData.fournisseurs.length - 10} autres fournisseurs...
-                  </div>
-                )}
               </div>
             )}
           </div>
