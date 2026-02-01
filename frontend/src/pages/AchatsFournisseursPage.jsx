@@ -139,6 +139,9 @@ function AchatsFournisseursPage() {
     notes: ''
   });
   
+  // NOUVEAU: État pour l'édition de ligne    ← Ajouter ces 2 lignes
+  const [editingLigneIndex, setEditingLigneIndex] = useState(null);
+  
   // Stock
   const [stock, setStock] = useState([]);
   const [filterCalibre, setFilterCalibre] = useState('all');
@@ -350,23 +353,35 @@ function AchatsFournisseursPage() {
     setNouvelleLigne(prev => ({ ...prev, [name]: value }));
   };
   
-  const ajouterLigne = () => {
-    if (!nouvelleLigne.calibre_mm || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
-      showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
-      return;
-    }
-    
+const ajouterLigne = () => {
+  if (!nouvelleLigne.calibre_mm || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
+    showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
+    return;
+  }
+  
+  if (editingLigneIndex !== null) {
+    // Mode édition : remplacer la ligne existante
+    setCommandeLignes(prev => prev.map((ligne, i) => 
+      i === editingLigneIndex ? { ...nouvelleLigne } : ligne
+    ));
+    showMessage('Ligne modifiée !', 'success');
+    setEditingLigneIndex(null);
+  } else {
+    // Mode ajout : ajouter une nouvelle ligne
     setCommandeLignes(prev => [...prev, { ...nouvelleLigne }]);
-    setNouvelleLigne({
-      calibre_mm: '',
-      qualite: '',
-      maturite: 'Gris',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
     showMessage('Ligne ajoutée !', 'success');
-  };
+  }
+  
+  // Réinitialiser le formulaire
+  setNouvelleLigne({
+    calibre_mm: '',
+    qualite: '',
+    maturite: 'Gris',
+    quantite_kg: '',
+    prix_achat_kg: '',
+    notes: ''
+  });
+};
   
   const modifierLigne = (index) => {
     const ligne = commandeLignes[index];
