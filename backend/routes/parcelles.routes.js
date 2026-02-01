@@ -266,7 +266,40 @@ module.exports = (pool, requireWriteAccess) => {
         await logAuditTrail(pool, req.user.id, 'update', 'parcelle', parseInt(id), oldData, newData);
       }
 
-      res.json(newData);
+      // ✅ CORRECTION : Récupérer avec transformation GeoJSON (comme GET /)
+      const geoResult = await pool.query(`
+        SELECT id, nom, surface_ha, type_sol, ph_sol, notes, date_creation,
+               ST_AsGeoJSON(geometrie) as geojson
+        FROM parcelles WHERE id = $1
+      `, [id]);
+      
+      const p = geoResult.rows[0];
+      let coords = [];
+      if (p.geojson) {
+        try {
+          const geo = JSON.parse(p.geojson);
+          if (geo.type === 'Polygon' && geo.coordinates && geo.coordinates[0]) {
+            coords = geo.coordinates[0].map(coord => [coord[1], coord[0]]);
+            if (coords.length > 0) coords.pop();
+          }
+        } catch (e) {
+          console.error('Erreur parsing GeoJSON:', e);
+        }
+      }
+      
+      const formattedData = {
+        id: p.id,
+        nom: p.nom,
+        surface_ha: p.surface_ha,
+        type_sol: p.type_sol,
+        ph_sol: p.ph_sol,
+        notes: p.notes,
+        date_creation: p.date_creation,
+        coordinates: coords
+      };
+      
+      res.json(formattedData);
+
     } catch (err) {
       console.error('Erreur mise à jour parcelle:', err);
       res.status(500).json({ 
