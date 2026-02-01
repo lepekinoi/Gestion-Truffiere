@@ -2,13 +2,25 @@
 -- MIGRATION ACHATS FOURNISSEURS V7
 -- Harmonisation avec les valeurs récoltes
 -- Date: 2026-02-02
--- Version: 1.2 (nom de table corrigé)
+-- Version: 1.3 (gestion des vues dépendantes)
 -- ========================================
 
 -- IMPORTANT: Exécuter ce script avec précaution sur une base de données de production
 -- Il est recommandé de faire une sauvegarde complète avant l'exécution
 
 BEGIN;
+
+-- ========================================
+-- 0. SUPPRIMER LES VUES DÉPENDANTES
+-- ========================================
+DO $$
+BEGIN
+    -- Supprimer la vue v_stock_truffes_disponible si elle existe
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'v_stock_truffes_disponible') THEN
+        DROP VIEW v_stock_truffes_disponible CASCADE;
+        RAISE NOTICE 'Vue v_stock_truffes_disponible supprimée';
+    END IF;
+END $$;
 
 -- ========================================
 -- 1. MODIFIER LE TYPE qualitetruffe
@@ -350,7 +362,39 @@ BEGIN
 END $$;
 
 -- ========================================
--- 5. VÉRIFICATIONS POST-MIGRATION
+-- 5. RECRÉER LA VUE v_stock_truffes_disponible
+-- ========================================
+DO $$
+BEGIN
+    -- Recréer la vue avec la nouvelle structure
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stocks_truffes_achetees') THEN
+        CREATE VIEW v_stock_truffes_disponible AS
+        SELECT 
+            calibre,
+            qualite,
+            maturite,
+            SUM(quantite_kg_stock) AS quantite_totale_kg,
+            conservation,
+            localisation_storage,
+            COUNT(*) AS nombre_lots,
+            MIN(date_limite_consommation) AS date_limite_prochaine,
+            AVG(prix_achat_kg) AS prix_moyen_achat,
+            MAX(date_achat) AS dernier_achat
+        FROM stocks_truffes_achetees
+        WHERE 
+            quantite_kg_stock > 0
+            AND (date_limite_consommation IS NULL OR date_limite_consommation >= CURRENT_DATE)
+        GROUP BY calibre, qualite, maturite, conservation, localisation_storage
+        ORDER BY calibre, qualite, maturite;
+        
+        COMMENT ON VIEW v_stock_truffes_disponible IS 'Vue du stock disponible de truffes par calibre/qualité';
+        
+        RAISE NOTICE 'Vue v_stock_truffes_disponible recréée avec succès';
+    END IF;
+END $$;
+
+-- ========================================
+-- 6. VÉRIFICATIONS POST-MIGRATION
 -- ========================================
 DO $$
 DECLARE
@@ -393,6 +437,13 @@ BEGIN
         RAISE NOTICE 'Colonne statut existe dans stocks_truffes_achetees: NON';
     END IF;
     
+    -- Vérifier que la vue a été recréée
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'v_stock_truffes_disponible') THEN
+        RAISE NOTICE 'Vue v_stock_truffes_disponible existe: OUI';
+    ELSE
+        RAISE NOTICE 'Vue v_stock_truffes_disponible existe: NON';
+    END IF;
+    
     RAISE NOTICE '=========================================';
     RAISE NOTICE '--- Fin des vérifications ---';
     RAISE NOTICE '=========================================';
@@ -408,6 +459,7 @@ COMMIT;
 -- 2. CALIBRE: Petit (moins de 20g), Moyen (20-50g), Gros (50-100g), Très gros (plus de 100g)
 -- 3. MATURITÉ: Immature, À point, Mature, Très mature
 -- 4. STATUT: Ajouté à stocks_truffes_achetees
+-- 5. VUE: v_stock_truffes_disponible recréée avec la nouvelle structure
 --
 -- Les valeurs sont maintenant identiques à celles utilisées dans recoltes.js
 -- ========================================
