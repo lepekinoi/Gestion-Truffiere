@@ -24,6 +24,8 @@ import Commercial from './components/Commercial';
   // path: '/achats',
   // component: AchatsComponent
 // });
+import AchatsFournisseursPage from './pages/AchatsFournisseursPage';
+
 import Statistiques from './components/Statistiques';
 import Previsions from './components/Previsions';
 import Parametres from './components/Parametres';
@@ -179,6 +181,8 @@ const MainApp = () => {
         return <RecoltesPage highlightId={searchHighlight?.category === 'recoltes' ? searchHighlight.id : null} />;
 	case 'commercial':
         return <Commercial highlightId={searchHighlight?.id} highlightCategory={searchHighlight?.category} />;
+	case 'achats':
+	  return <AchatsFournisseursPage />;		
 	case 'statistiques':
         return <Statistiques />;
 	case 'previsions':
@@ -250,12 +254,18 @@ const MainApp = () => {
           >
             💼 Commercial
           </button>
+		  <button 
+			className={currentPage === 'achats' ? 'active' : ''} 
+			onClick={() => setCurrentPage('achats')}
+		  >
+			🛒 Achats & Fournisseurs
+		  </button>
           <button 
             className={currentPage === 'statistiques' ? 'active' : ''} 
             onClick={() => setCurrentPage('statistiques')}
           >
-            📈 Statistiques
-          </button>
+			📈 Statistiques
+   		  </button>
           <button 
             className={currentPage === 'previsions' ? 'active' : ''} 
             onClick={() => setCurrentPage('previsions')}
