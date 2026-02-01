@@ -1,7 +1,7 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.3 - Fix édition lignes + chargement API
-// Date: 2 février 2026 - 00h10
+// Version: 2.3.1 - Fix édition lignes + touche Entrée
+// Date: 2 février 2026 - 00h27
 // Status: ✅ PRÊT À UTILISER
 // ============================================================
 
@@ -138,9 +138,9 @@ function AchatsFournisseursPage() {
     prix_achat_kg: '',
     notes: ''
   });
-  
-  // NOUVEAU: État pour l'édition de ligne    ← Ajouter ces 2 lignes
+  // NOUVEAU: État pour l'édition de ligne
   const [editingLigneIndex, setEditingLigneIndex] = useState(null);
+
   
   // Stock
   const [stock, setStock] = useState([]);
@@ -313,7 +313,6 @@ function AchatsFournisseursPage() {
       notes: commande.notes || ''
     });
 
-    // 🔧 FIX: Charger les lignes existantes depuis l'API
     try {
       const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
       if (response.data && response.data.lignes) {
@@ -328,7 +327,6 @@ function AchatsFournisseursPage() {
       setCommandeLignes([]);
     }
 
-    // 🔧 FIX: Réinitialiser l'état d'édition de ligne
     setEditingLigneIndex(null);
     setNouvelleLigne({
       calibre_mm: '',
@@ -352,36 +350,40 @@ function AchatsFournisseursPage() {
     const { name, value } = e.target;
     setNouvelleLigne(prev => ({ ...prev, [name]: value }));
   };
+  const handleKeyDownLigne = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      ajouterLigne();
+    }
+  };
+
   
-const ajouterLigne = () => {
-  if (!nouvelleLigne.calibre_mm || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
-    showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
-    return;
-  }
-  
-  if (editingLigneIndex !== null) {
-    // Mode édition : remplacer la ligne existante
-    setCommandeLignes(prev => prev.map((ligne, i) => 
-      i === editingLigneIndex ? { ...nouvelleLigne } : ligne
-    ));
-    showMessage('Ligne modifiée !', 'success');
-    setEditingLigneIndex(null);
-  } else {
-    // Mode ajout : ajouter une nouvelle ligne
-    setCommandeLignes(prev => [...prev, { ...nouvelleLigne }]);
-    showMessage('Ligne ajoutée !', 'success');
-  }
-  
-  // Réinitialiser le formulaire
-  setNouvelleLigne({
-    calibre_mm: '',
-    qualite: '',
-    maturite: 'Gris',
-    quantite_kg: '',
-    prix_achat_kg: '',
-    notes: ''
-  });
-};
+    const ajouterLigne = () => {
+    if (!nouvelleLigne.calibre_mm || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
+      showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
+      return;
+    }
+
+    if (editingLigneIndex !== null) {
+      setCommandeLignes(prev => prev.map((ligne, i) => 
+        i === editingLigneIndex ? { ...nouvelleLigne } : ligne
+      ));
+      showMessage('Ligne modifiée !', 'success');
+      setEditingLigneIndex(null);
+    } else {
+      setCommandeLignes(prev => [...prev, { ...nouvelleLigne }]);
+      showMessage('Ligne ajoutée !', 'success');
+    }
+
+    setNouvelleLigne({
+      calibre_mm: '',
+      qualite: '',
+      maturite: 'Gris',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+  };
   
   const modifierLigne = (index) => {
     const ligne = commandeLignes[index];
@@ -404,7 +406,6 @@ const ajouterLigne = () => {
   };
 
   const supprimerLigne = (index) => {
-    // ✅ FIX: Gérer l'édition en cours
     if (editingLigneIndex === index) {
       annulerEditionLigne();
     } else if (editingLigneIndex !== null && editingLigneIndex > index) {
@@ -1797,6 +1798,7 @@ const ajouterLigne = () => {
                         name="calibre_mm"
                         value={nouvelleLigne.calibre_mm}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         style={{
                           width: '100%',
                           padding: '8px',
@@ -1817,6 +1819,7 @@ const ajouterLigne = () => {
                         name="qualite"
                         value={nouvelleLigne.qualite}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         style={{
                           width: '100%',
                           padding: '8px',
@@ -1837,6 +1840,7 @@ const ajouterLigne = () => {
                         name="maturite"
                         value={nouvelleLigne.maturite}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         style={{
                           width: '100%',
                           padding: '8px',
@@ -1860,6 +1864,7 @@ const ajouterLigne = () => {
                         name="quantite_kg"
                         value={nouvelleLigne.quantite_kg}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         min="0"
                         step="0.01"
                         style={{
@@ -1878,6 +1883,7 @@ const ajouterLigne = () => {
                         name="prix_achat_kg"
                         value={nouvelleLigne.prix_achat_kg}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         min="0"
                         step="0.01"
                         style={{
@@ -1896,6 +1902,7 @@ const ajouterLigne = () => {
                         name="notes"
                         value={nouvelleLigne.notes}
                         onChange={handleNouvelleLigneChange}
+                        onKeyDown={handleKeyDownLigne}
                         style={{
                           width: '100%',
                           padding: '8px',
