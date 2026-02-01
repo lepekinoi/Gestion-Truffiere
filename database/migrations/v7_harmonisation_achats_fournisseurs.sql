@@ -2,7 +2,7 @@
 -- MIGRATION ACHATS FOURNISSEURS V7
 -- Harmonisation avec les valeurs récoltes
 -- Date: 2026-02-02
--- Version: 1.3 (gestion des vues dépendantes)
+-- Version: 1.4 (suppression CASCADE des vues)
 -- ========================================
 
 -- IMPORTANT: Exécuter ce script avec précaution sur une base de données de production
@@ -11,14 +11,26 @@
 BEGIN;
 
 -- ========================================
--- 0. SUPPRIMER LES VUES DÉPENDANTES
+-- 0. SUPPRIMER TOUTES LES VUES DÉPENDANTES
 -- ========================================
 DO $$
 BEGIN
-    -- Supprimer la vue v_stock_truffes_disponible si elle existe
+    -- Supprimer la vue v_stock_truffes_disponible (nouvelle version)
     IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'v_stock_truffes_disponible') THEN
         DROP VIEW v_stock_truffes_disponible CASCADE;
         RAISE NOTICE 'Vue v_stock_truffes_disponible supprimée';
+    END IF;
+    
+    -- Supprimer la vue vstocktruffesdisponible (ancienne version sans underscores)
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'vstocktruffesdisponible') THEN
+        DROP VIEW vstocktruffesdisponible CASCADE;
+        RAISE NOTICE 'Vue vstocktruffesdisponible supprimée';
+    END IF;
+    
+    -- Supprimer vanalysemargeparcalibre qui peut aussi dépendre d'analysemargetruffes
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'vanalysemargeparcalibre') THEN
+        DROP VIEW vanalysemargeparcalibre CASCADE;
+        RAISE NOTICE 'Vue vanalysemargeparcalibre supprimée';
     END IF;
 END $$;
 
@@ -72,6 +84,19 @@ BEGIN
                 END;
         END IF;
         
+        -- Migrer stockstruffesachetees (ancien nom)
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stockstruffesachetees') THEN
+            ALTER TABLE stockstruffesachetees 
+                ALTER COLUMN qualite TYPE public.qualitetruffe 
+                USING CASE qualite::text
+                    WHEN 'Extra' THEN 'Extra'::public.qualitetruffe
+                    WHEN '1re' THEN 'Première catégorie'::public.qualitetruffe
+                    WHEN '2e' THEN 'Deuxième catégorie'::public.qualitetruffe
+                    WHEN 'Pourrie' THEN 'Pourrie'::public.qualitetruffe
+                    ELSE NULL
+                END;
+        END IF;
+        
         -- Migrer recoltes
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recoltes') THEN
             ALTER TABLE recoltes
@@ -97,49 +122,6 @@ BEGIN
             'Deuxième catégorie',
             'Pourrie'
         );
-        
-        -- Convertir les colonnes VARCHAR en ENUM
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'analysemargetruffes') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'analysemargetruffes' AND column_name = 'qualite') THEN
-                ALTER TABLE analysemargetruffes
-                    ALTER COLUMN qualite TYPE public.qualitetruffe
-                    USING CASE qualite
-                        WHEN 'Extra' THEN 'Extra'::public.qualitetruffe
-                        WHEN '1re' THEN 'Première catégorie'::public.qualitetruffe
-                        WHEN '2e' THEN 'Deuxième catégorie'::public.qualitetruffe
-                        WHEN 'Pourrie' THEN 'Pourrie'::public.qualitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
-        
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stocks_truffes_achetees') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'qualite') THEN
-                ALTER TABLE stocks_truffes_achetees
-                    ALTER COLUMN qualite TYPE public.qualitetruffe
-                    USING CASE qualite
-                        WHEN 'Extra' THEN 'Extra'::public.qualitetruffe
-                        WHEN '1re' THEN 'Première catégorie'::public.qualitetruffe
-                        WHEN '2e' THEN 'Deuxième catégorie'::public.qualitetruffe
-                        WHEN 'Pourrie' THEN 'Pourrie'::public.qualitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
-        
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recoltes') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recoltes' AND column_name = 'qualite') THEN
-                ALTER TABLE recoltes
-                    ALTER COLUMN qualite TYPE public.qualitetruffe
-                    USING CASE qualite
-                        WHEN 'Extra' THEN 'Extra'::public.qualitetruffe
-                        WHEN 'Première catégorie' THEN 'Première catégorie'::public.qualitetruffe
-                        WHEN 'Deuxième catégorie' THEN 'Deuxième catégorie'::public.qualitetruffe
-                        WHEN 'Pourrie' THEN 'Pourrie'::public.qualitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
     END IF;
     
     RAISE NOTICE 'Type qualitetruffe mis à jour avec succès';
@@ -150,12 +132,9 @@ END $$;
 -- ========================================
 DO $$
 BEGIN
+    -- Traiter stocks_truffes_achetees (nouveau nom)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'calibremm') THEN
-        -- Ajouter la nouvelle colonne calibre
-        ALTER TABLE stocks_truffes_achetees
-            ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
-        
-        -- Migrer les données
+        ALTER TABLE stocks_truffes_achetees ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
         UPDATE stocks_truffes_achetees
         SET calibre = CASE
             WHEN calibremm IS NULL THEN NULL
@@ -164,13 +143,23 @@ BEGIN
             WHEN calibremm >= 50 AND calibremm < 100 THEN 'Gros (50-100g)'
             WHEN calibremm >= 100 THEN 'Très gros (plus de 100g)'
         END;
-        
-        -- Supprimer l'ancienne colonne
         ALTER TABLE stocks_truffes_achetees DROP COLUMN calibremm;
-        
-        RAISE NOTICE 'Colonne calibre créée et données migrées avec succès';
-    ELSE
-        RAISE NOTICE 'Colonne calibremm n''existe pas, passage à l''étape suivante';
+        RAISE NOTICE 'Colonne calibre créée dans stocks_truffes_achetees';
+    END IF;
+    
+    -- Traiter stockstruffesachetees (ancien nom)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stockstruffesachetees' AND column_name = 'calibremm') THEN
+        ALTER TABLE stockstruffesachetees ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
+        UPDATE stockstruffesachetees
+        SET calibre = CASE
+            WHEN calibremm IS NULL THEN NULL
+            WHEN calibremm < 20 THEN 'Petit (moins de 20g)'
+            WHEN calibremm >= 20 AND calibremm < 50 THEN 'Moyen (20-50g)'
+            WHEN calibremm >= 50 AND calibremm < 100 THEN 'Gros (50-100g)'
+            WHEN calibremm >= 100 THEN 'Très gros (plus de 100g)'
+        END;
+        ALTER TABLE stockstruffesachetees DROP COLUMN calibremm;
+        RAISE NOTICE 'Colonne calibre créée dans stockstruffesachetees';
     END IF;
 END $$;
 
@@ -230,6 +219,22 @@ BEGIN
                 END;
         END IF;
         
+        -- Migrer stockstruffesachetees (ancien nom)
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stockstruffesachetees') THEN
+            ALTER TABLE stockstruffesachetees
+                ALTER COLUMN maturite TYPE public.maturitetruffe
+                USING CASE maturite::text
+                    WHEN 'Blanc' THEN 'Immature'::public.maturitetruffe
+                    WHEN 'Gris' THEN 'À point'::public.maturitetruffe
+                    WHEN 'Noir' THEN 'Mature'::public.maturitetruffe
+                    WHEN 'Immature' THEN 'Immature'::public.maturitetruffe
+                    WHEN 'À point' THEN 'À point'::public.maturitetruffe
+                    WHEN 'Mature' THEN 'Mature'::public.maturitetruffe
+                    WHEN 'Très mature' THEN 'Très mature'::public.maturitetruffe
+                    ELSE NULL
+                END;
+        END IF;
+        
         -- Migrer recoltes
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recoltes') THEN
             ALTER TABLE recoltes
@@ -258,58 +263,6 @@ BEGIN
             'Mature',
             'Très mature'
         );
-        
-        -- Convertir les colonnes VARCHAR en ENUM
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'analysemargetruffes') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'analysemargetruffes' AND column_name = 'maturite') THEN
-                ALTER TABLE analysemargetruffes
-                    ALTER COLUMN maturite TYPE public.maturitetruffe
-                    USING CASE maturite
-                        WHEN 'Blanc' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'Gris' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Noir' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Immature' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'À point' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Mature' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Très mature' THEN 'Très mature'::public.maturitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
-        
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stocks_truffes_achetees') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'maturite') THEN
-                ALTER TABLE stocks_truffes_achetees
-                    ALTER COLUMN maturite TYPE public.maturitetruffe
-                    USING CASE maturite
-                        WHEN 'Blanc' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'Gris' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Noir' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Immature' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'À point' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Mature' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Très mature' THEN 'Très mature'::public.maturitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
-        
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recoltes') THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recoltes' AND column_name = 'maturite') THEN
-                ALTER TABLE recoltes
-                    ALTER COLUMN maturite TYPE public.maturitetruffe
-                    USING CASE maturite
-                        WHEN 'Blanc' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'Gris' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Noir' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Immature' THEN 'Immature'::public.maturitetruffe
-                        WHEN 'À point' THEN 'À point'::public.maturitetruffe
-                        WHEN 'Mature' THEN 'Mature'::public.maturitetruffe
-                        WHEN 'Très mature' THEN 'Très mature'::public.maturitetruffe
-                        ELSE NULL
-                    END;
-            END IF;
-        END IF;
     END IF;
     
     RAISE NOTICE 'Type maturitetruffe mis à jour avec succès';
@@ -340,8 +293,8 @@ BEGIN
         );
     END IF;
     
+    -- Traiter stocks_truffes_achetees (nouveau nom)
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stocks_truffes_achetees') THEN
-        -- Ajouter la colonne statut si elle n'existe pas
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_name = 'stocks_truffes_achetees' 
@@ -352,21 +305,58 @@ BEGIN
             
             COMMENT ON COLUMN stocks_truffes_achetees.statut IS 'Statut de l''achat: En attente, Confirmé, Expédié, Livré, Réceptionné, Annulé';
             
-            RAISE NOTICE 'Colonne statut ajoutée à stocks_truffes_achetees avec succès';
-        ELSE
-            RAISE NOTICE 'Colonne statut existe déjà dans stocks_truffes_achetees';
+            RAISE NOTICE 'Colonne statut ajoutée à stocks_truffes_achetees';
         END IF;
-    ELSE
-        RAISE NOTICE 'Table stocks_truffes_achetees n''existe pas';
+    END IF;
+    
+    -- Traiter stockstruffesachetees (ancien nom)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stockstruffesachetees') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'stockstruffesachetees' 
+            AND column_name = 'statut'
+        ) THEN
+            ALTER TABLE stockstruffesachetees
+                ADD COLUMN statut public.statutcommandeachat DEFAULT 'En attente'::public.statutcommandeachat;
+            
+            COMMENT ON COLUMN stockstruffesachetees.statut IS 'Statut de l''achat: En attente, Confirmé, Expédié, Livré, Réceptionné, Annulé';
+            
+            RAISE NOTICE 'Colonne statut ajoutée à stockstruffesachetees';
+        END IF;
     END IF;
 END $$;
 
 -- ========================================
--- 5. RECRÉER LA VUE v_stock_truffes_disponible
+-- 5. RECRÉER LES VUES
 -- ========================================
 DO $$
 BEGIN
-    -- Recréer la vue avec la nouvelle structure
+    -- Recréer vstocktruffesdisponible (ancienne version, compatible avec l'ancien schéma)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stockstruffesachetees') THEN
+        CREATE VIEW vstocktruffesdisponible AS
+        SELECT 
+            calibre,
+            qualite,
+            maturite,
+            SUM(quantitekgstock) AS quantitetotalekg,
+            conservation,
+            localisationstorage,
+            COUNT(*) AS nombrelots,
+            MIN(datelimiteconsommation) AS datelimiteprochaine,
+            AVG(prixachatkg) AS prixmoyenachat,
+            MAX(dateachat) AS dernierachat
+        FROM stockstruffesachetees
+        WHERE 
+            quantitekgstock > 0
+            AND (datelimiteconsommation IS NULL OR datelimiteconsommation >= CURRENT_DATE)
+        GROUP BY calibre, qualite, maturite, conservation, localisationstorage
+        ORDER BY calibre, qualite, maturite;
+        
+        COMMENT ON VIEW vstocktruffesdisponible IS 'Vue du stock disponible de truffes par calibre/qualité';
+        RAISE NOTICE 'Vue vstocktruffesdisponible recréée';
+    END IF;
+    
+    -- Recréer v_stock_truffes_disponible (nouvelle version)
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stocks_truffes_achetees') THEN
         CREATE VIEW v_stock_truffes_disponible AS
         SELECT 
@@ -388,8 +378,29 @@ BEGIN
         ORDER BY calibre, qualite, maturite;
         
         COMMENT ON VIEW v_stock_truffes_disponible IS 'Vue du stock disponible de truffes par calibre/qualité';
+        RAISE NOTICE 'Vue v_stock_truffes_disponible recréée';
+    END IF;
+    
+    -- Recréer vanalysemargeparcalibre
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'analysemargetruffes') THEN
+        CREATE VIEW vanalysemargeparcalibre AS
+        SELECT 
+            calibremm,
+            qualite,
+            maturite,
+            COUNT(*) AS nombretransactions,
+            AVG(prixachatkg) AS prixachatmoyen,
+            AVG(prixventekg) AS prixventemoyen,
+            AVG(margekg) AS margemoyennekg,
+            AVG(pourcentagemarge) AS pourcentagemargemoyen,
+            SUM(quantitekg) AS quantitetotalekg
+        FROM analysemargetruffes
+        WHERE datevente IS NOT NULL
+        GROUP BY calibremm, qualite, maturite
+        ORDER BY calibremm DESC, qualite;
         
-        RAISE NOTICE 'Vue v_stock_truffes_disponible recréée avec succès';
+        COMMENT ON VIEW vanalysemargeparcalibre IS 'Vue synthétique des marges moyennes par calibre';
+        RAISE NOTICE 'Vue vanalysemargeparcalibre recréée';
     END IF;
 END $$;
 
@@ -423,26 +434,28 @@ BEGIN
     WHERE t.typname = 'statutcommandeachat';
     RAISE NOTICE 'Nombre de valeurs pour statutcommandeachat: %', v_count;
     
-    -- Vérifier la colonne calibre
+    -- Vérifier les colonnes
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'calibre') THEN
-        RAISE NOTICE 'Colonne calibre existe dans stocks_truffes_achetees: OUI';
+        RAISE NOTICE 'Colonne calibre dans stocks_truffes_achetees: OUI';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stockstruffesachetees' AND column_name = 'calibre') THEN
+        RAISE NOTICE 'Colonne calibre dans stockstruffesachetees: OUI';
     ELSE
-        RAISE NOTICE 'Colonne calibre existe dans stocks_truffes_achetees: NON';
+        RAISE NOTICE 'Colonne calibre: NON TROUVÉE';
     END IF;
     
-    -- Vérifier la colonne statut
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'statut') THEN
-        RAISE NOTICE 'Colonne statut existe dans stocks_truffes_achetees: OUI';
+        RAISE NOTICE 'Colonne statut dans stocks_truffes_achetees: OUI';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stockstruffesachetees' AND column_name = 'statut') THEN
+        RAISE NOTICE 'Colonne statut dans stockstruffesachetees: OUI';
     ELSE
-        RAISE NOTICE 'Colonne statut existe dans stocks_truffes_achetees: NON';
+        RAISE NOTICE 'Colonne statut: NON TROUVÉE';
     END IF;
     
-    -- Vérifier que la vue a été recréée
-    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'v_stock_truffes_disponible') THEN
-        RAISE NOTICE 'Vue v_stock_truffes_disponible existe: OUI';
-    ELSE
-        RAISE NOTICE 'Vue v_stock_truffes_disponible existe: NON';
-    END IF;
+    -- Vérifier les vues
+    SELECT COUNT(*) INTO v_count
+    FROM information_schema.views
+    WHERE table_name IN ('vstocktruffesdisponible', 'v_stock_truffes_disponible', 'vanalysemargeparcalibre');
+    RAISE NOTICE 'Nombre de vues recréées: %', v_count;
     
     RAISE NOTICE '=========================================';
     RAISE NOTICE '--- Fin des vérifications ---';
@@ -458,8 +471,10 @@ COMMIT;
 -- 1. QUALITÉ: Extra, Première catégorie, Deuxième catégorie, Pourrie
 -- 2. CALIBRE: Petit (moins de 20g), Moyen (20-50g), Gros (50-100g), Très gros (plus de 100g)
 -- 3. MATURITÉ: Immature, À point, Mature, Très mature
--- 4. STATUT: Ajouté à stocks_truffes_achetees
--- 5. VUE: v_stock_truffes_disponible recréée avec la nouvelle structure
+-- 4. STATUT: Ajouté aux tables de stock
+-- 5. VUES: Toutes les vues dépendantes recréées
 --
--- Les valeurs sont maintenant identiques à celles utilisées dans recoltes.js
+-- Compatibilité assurée avec les deux schémas:
+-- - stockstruffesachetees (ancien)
+-- - stocks_truffes_achetees (nouveau)
 -- ========================================
