@@ -458,6 +458,61 @@ module.exports = (pool, requireWriteAccess) => {
     }
   });
 
+  // DELETE /api/commandes-achats/:id - Supprimer une commande d'achat
+  router.delete('/commandes-achats/:id', requireWriteAccess, async (req, res) => {
+    const { id } = req.params;
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Vérifier si la commande existe
+      const commandeCheck = await client.query(`
+        SELECT id, statut FROM commandes_achat_truffes WHERE id = $1
+      `, [id]);
+
+      if (commandeCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Commande introuvable' });
+      }
+
+      const statut = commandeCheck.rows[0].statut;
+
+      // Empêcher la suppression si la commande a été réceptionnée
+      if (statut === 'Réceptionnée' || statut === 'Livrée') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Impossible de supprimer une commande réceptionnée ou livrée',
+          statut: statut 
+        });
+      }
+
+      // Supprimer les lignes de commande (cascade)
+      await client.query(`
+        DELETE FROM lignes_commande_achat WHERE commande_id = $1
+      `, [id]);
+
+      // Supprimer la commande
+      await client.query(`
+        DELETE FROM commandes_achat_truffes WHERE id = $1
+      `, [id]);
+
+      await client.query('COMMIT');
+
+      res.json({ 
+        message: 'Commande supprimée avec succès',
+        id: parseInt(id)
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Erreur suppression commande:', error);
+      res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
+    }
+  });
+
   // ==========================================
   // ROUTES FACTURES ACHATS
   // ==========================================
