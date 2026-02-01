@@ -196,23 +196,42 @@ module.exports = (pool, requireWriteAccess) => {
 
   // POST /api/commandes-achats - Créer une commande
   router.post('/commandes-achats', requireWriteAccess, async (req, res) => {
-    const {
-      fournisseur_id,
-      date_commande,
-      date_livraison_prevue,
-      lignes,
-      notes
-    } = req.body;
+    console.log('📦 Données reçues:', JSON.stringify(req.body, null, 2));
+
+    // Extraire les données avec support de plusieurs formats
+    let fournisseur_id = req.body.fournisseur_id || req.body.fournisseurId;
+    let date_commande = req.body.date_commande || req.body.dateCommande;
+    let date_livraison_prevue = req.body.date_livraison_prevue || req.body.dateLivraisonPrevue;
+    let lignes = req.body.lignes || req.body.items || [];
+    let notes = req.body.notes;
+
+    // Validation
+    if (!fournisseur_id) {
+      return res.status(400).json({ error: 'Fournisseur manquant' });
+    }
+
+    if (!date_commande) {
+      return res.status(400).json({ error: 'Date de commande manquante' });
+    }
+
+    if (!Array.isArray(lignes) || lignes.length === 0) {
+      return res.status(400).json({ 
+        error: 'Aucune ligne de commande fournie',
+        received: { lignes, items: req.body.items }
+      });
+    }
 
     const client = await pool.connect();
     
     try {
       await client.query('BEGIN');
 
-      // Calculer le montant total
-      const montantTotal = lignes.reduce((sum, l) => 
-        sum + (parseFloat(l.quantite_kg) * parseFloat(l.prix_achat_kg)), 0
-      );
+      // Calculer le montant total avec gestion des noms de propriétés
+      const montantTotal = lignes.reduce((sum, l) => {
+        const quantite = parseFloat(l.quantite_kg || l.quantiteKg || 0);
+        const prix = parseFloat(l.prix_achat_kg || l.prixAchatKg || 0);
+        return sum + (quantite * prix);
+      }, 0);
 
       // Générer un numéro de commande unique
       const numeroCommande = `ACH-${Date.now()}`;
@@ -230,20 +249,29 @@ module.exports = (pool, requireWriteAccess) => {
       ]);
 
       const commandeId = commandeResult.rows[0].id;
+      console.log(`✅ Commande créée: ${commandeId}`);
 
       // Créer les lignes de commande
       for (const ligne of lignes) {
+        const calibre_mm = ligne.calibre_mm || ligne.calibreMm;
+        const qualite = ligne.qualite;
+        const maturite = ligne.maturite;
+        const quantite_kg = ligne.quantite_kg || ligne.quantiteKg;
+        const prix_achat_kg = ligne.prix_achat_kg || ligne.prixAchatKg;
+        const notes_ligne = ligne.notes || null;
+
         await client.query(`
           INSERT INTO lignes_commande_achat (
             commande_id, calibre_mm, qualite, maturite, quantite_kg, prix_achat_kg, notes
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         `, [
-          commandeId, ligne.calibre_mm, ligne.qualite, 
-          ligne.maturite, ligne.quantite_kg, ligne.prix_achat_kg, ligne.notes || null
+          commandeId, calibre_mm, qualite, 
+          maturite, quantite_kg, prix_achat_kg, notes_ligne
         ]);
       }
 
       await client.query('COMMIT');
+      console.log(`✅ ${lignes.length} ligne(s) ajoutée(s)`);
 
       res.status(201).json({
         commande: commandeResult.rows[0],
