@@ -2,7 +2,7 @@
 -- MIGRATION ACHATS FOURNISSEURS V7
 -- Harmonisation avec les valeurs récoltes
 -- Date: 2026-02-02
--- Version: 1.4 (suppression CASCADE des vues)
+-- Version: 1.5 (calibre_mm corrigé)
 -- ========================================
 
 -- IMPORTANT: Exécuter ce script avec précaution sur une base de données de production
@@ -128,12 +128,24 @@ BEGIN
 END $$;
 
 -- ========================================
--- 2. TRANSFORMER calibremm (INTEGER) en calibre (VARCHAR)
+-- 2. TRANSFORMER calibre_mm (INTEGER) en calibre (VARCHAR)
 -- ========================================
 DO $$
 BEGIN
-    -- Traiter stocks_truffes_achetees (nouveau nom)
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'calibremm') THEN
+    -- Traiter stocks_truffes_achetees (nouveau nom avec underscores)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'calibre_mm') THEN
+        ALTER TABLE stocks_truffes_achetees ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
+        UPDATE stocks_truffes_achetees
+        SET calibre = CASE
+            WHEN calibre_mm IS NULL THEN NULL
+            WHEN calibre_mm < 20 THEN 'Petit (moins de 20g)'
+            WHEN calibre_mm >= 20 AND calibre_mm < 50 THEN 'Moyen (20-50g)'
+            WHEN calibre_mm >= 50 AND calibre_mm < 100 THEN 'Gros (50-100g)'
+            WHEN calibre_mm >= 100 THEN 'Très gros (plus de 100g)'
+        END;
+        ALTER TABLE stocks_truffes_achetees DROP COLUMN calibre_mm;
+        RAISE NOTICE 'Colonne calibre créée dans stocks_truffes_achetees (depuis calibre_mm)';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stocks_truffes_achetees' AND column_name = 'calibremm') THEN
         ALTER TABLE stocks_truffes_achetees ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
         UPDATE stocks_truffes_achetees
         SET calibre = CASE
@@ -144,10 +156,12 @@ BEGIN
             WHEN calibremm >= 100 THEN 'Très gros (plus de 100g)'
         END;
         ALTER TABLE stocks_truffes_achetees DROP COLUMN calibremm;
-        RAISE NOTICE 'Colonne calibre créée dans stocks_truffes_achetees';
+        RAISE NOTICE 'Colonne calibre créée dans stocks_truffes_achetees (depuis calibremm)';
+    ELSE
+        RAISE NOTICE 'Colonne calibre_mm/calibremm non trouvée dans stocks_truffes_achetees';
     END IF;
     
-    -- Traiter stockstruffesachetees (ancien nom)
+    -- Traiter stockstruffesachetees (ancien nom sans underscores)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stockstruffesachetees' AND column_name = 'calibremm') THEN
         ALTER TABLE stockstruffesachetees ADD COLUMN IF NOT EXISTS calibre VARCHAR(50);
         UPDATE stockstruffesachetees
