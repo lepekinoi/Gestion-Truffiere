@@ -12,13 +12,13 @@ module.exports = (pool, requireWriteAccess) => {
     try {
       const result = await pool.query(`
         SELECT 
-          id, nom, raisonsociale, email, telephone, adresse,
-          codepostal, ville, pays, zoneproduction, certifications,
-          statut, contactprincipal, telephonecontact,
-          delailivraisonjours, conditionspaiement, notes,
-          createdat, updatedat
-        FROM fournisseurstruffes 
-        WHERE deletedat IS NULL 
+          id, nom, raison_sociale, email, telephone, adresse,
+          code_postal, ville, pays, zone_production, certifications,
+          statut, contact_principal, telephone_contact,
+          delai_livraison_jours, conditions_paiement, notes,
+          created_at, updated_at
+        FROM fournisseurs_truffes 
+        WHERE deleted_at IS NULL 
         ORDER BY nom ASC
       `);
       res.json(result.rows);
@@ -33,8 +33,8 @@ module.exports = (pool, requireWriteAccess) => {
     const { id } = req.params;
     try {
       const result = await pool.query(`
-        SELECT * FROM fournisseurstruffes 
-        WHERE id = $1 AND deletedat IS NULL
+        SELECT * FROM fournisseurs_truffes 
+        WHERE id = $1 AND deleted_at IS NULL
       `, [id]);
       
       if (result.rows.length === 0) {
@@ -50,26 +50,26 @@ module.exports = (pool, requireWriteAccess) => {
   // POST /api/fournisseurs - Créer un fournisseur
   router.post('/fournisseurs', requireWriteAccess, async (req, res) => {
     const {
-      nom, raisonsociale, email, telephone, adresse,
-      codepostal, ville, pays, zoneproduction, certifications,
-      statut, contactprincipal, telephonecontact,
-      delailivraisonjours, conditionspaiement, notes
+      nom, raison_sociale, email, telephone, adresse,
+      code_postal, ville, pays, zone_production, certifications,
+      statut, contact_principal, telephone_contact,
+      delai_livraison_jours, conditions_paiement, notes
     } = req.body;
 
     try {
       const result = await pool.query(`
-        INSERT INTO fournisseurstruffes (
-          nom, raisonsociale, email, telephone, adresse,
-          codepostal, ville, pays, zoneproduction, certifications,
-          statut, contactprincipal, telephonecontact,
-          delailivraisonjours, conditionspaiement, notes
+        INSERT INTO fournisseurs_truffes (
+          nom, raison_sociale, email, telephone, adresse,
+          code_postal, ville, pays, zone_production, certifications,
+          statut, contact_principal, telephone_contact,
+          delai_livraison_jours, conditions_paiement, notes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `, [
-        nom, raisonsociale, email, telephone, adresse,
-        codepostal, ville, pays || 'France', zoneproduction, certifications,
-        statut || 'Actif', contactprincipal, telephonecontact,
-        delailivraisonjours, conditionspaiement, notes
+        nom, raison_sociale, email, telephone, adresse,
+        code_postal, ville, pays || 'France', zone_production, certifications,
+        statut || 'Actif', contact_principal, telephone_contact,
+        delai_livraison_jours, conditions_paiement, notes
       ]);
       res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -82,28 +82,28 @@ module.exports = (pool, requireWriteAccess) => {
   router.put('/fournisseurs/:id', requireWriteAccess, async (req, res) => {
     const { id } = req.params;
     const {
-      nom, raisonsociale, email, telephone, adresse,
-      codepostal, ville, pays, zoneproduction, certifications,
-      statut, contactprincipal, telephonecontact,
-      delailivraisonjours, conditionspaiement, notes
+      nom, raison_sociale, email, telephone, adresse,
+      code_postal, ville, pays, zone_production, certifications,
+      statut, contact_principal, telephone_contact,
+      delai_livraison_jours, conditions_paiement, notes
     } = req.body;
 
     try {
       const result = await pool.query(`
-        UPDATE fournisseurstruffes 
-        SET nom = $1, raisonsociale = $2, email = $3, telephone = $4,
-            adresse = $5, codepostal = $6, ville = $7, pays = $8,
-            zoneproduction = $9, certifications = $10, statut = $11,
-            contactprincipal = $12, telephonecontact = $13,
-            delailivraisonjours = $14, conditionspaiement = $15,
-            notes = $16, updatedat = CURRENT_TIMESTAMP
-        WHERE id = $17 AND deletedat IS NULL
+        UPDATE fournisseurs_truffes 
+        SET nom = $1, raison_sociale = $2, email = $3, telephone = $4,
+            adresse = $5, code_postal = $6, ville = $7, pays = $8,
+            zone_production = $9, certifications = $10, statut = $11,
+            contact_principal = $12, telephone_contact = $13,
+            delai_livraison_jours = $14, conditions_paiement = $15,
+            notes = $16, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $17 AND deleted_at IS NULL
         RETURNING *
       `, [
-        nom, raisonsociale, email, telephone, adresse,
-        codepostal, ville, pays, zoneproduction, certifications,
-        statut, contactprincipal, telephonecontact,
-        delailivraisonjours, conditionspaiement, notes, id
+        nom, raison_sociale, email, telephone, adresse,
+        code_postal, ville, pays, zone_production, certifications,
+        statut, contact_principal, telephone_contact,
+        delai_livraison_jours, conditions_paiement, notes, id
       ]);
       
       if (result.rows.length === 0) {
@@ -121,9 +121,9 @@ module.exports = (pool, requireWriteAccess) => {
     const { id } = req.params;
     try {
       const result = await pool.query(`
-        UPDATE fournisseurstruffes 
-        SET deletedat = CURRENT_TIMESTAMP
-        WHERE id = $1 AND deletedat IS NULL
+        UPDATE fournisseurs_truffes 
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND deleted_at IS NULL
         RETURNING *
       `, [id]);
       
@@ -149,12 +149,12 @@ module.exports = (pool, requireWriteAccess) => {
           c.*,
           f.nom as fournisseur_nom,
           COUNT(l.id) as nombre_lignes,
-          COALESCE(SUM(l.quantitekg), 0) as quantite_totale_kg
-        FROM commandesachattruffes c
-        LEFT JOIN fournisseurstruffes f ON c.fournisseurid = f.id
-        LEFT JOIN lignescommandeachat l ON c.id = l.commandeid
+          COALESCE(SUM(l.quantite_kg), 0) as quantite_totale_kg
+        FROM commandes_achat_truffes c
+        LEFT JOIN fournisseurs_truffes f ON c.fournisseur_id = f.id
+        LEFT JOIN lignes_commande_achat l ON c.id = l.commande_id
         GROUP BY c.id, f.nom
-        ORDER BY c.datecommande DESC
+        ORDER BY c.date_commande DESC
       `);
       res.json(result.rows);
     } catch (error) {
@@ -169,8 +169,8 @@ module.exports = (pool, requireWriteAccess) => {
     try {
       const commandeResult = await pool.query(`
         SELECT c.*, f.nom as fournisseur_nom, f.email as fournisseur_email
-        FROM commandesachattruffes c
-        JOIN fournisseurstruffes f ON c.fournisseurid = f.id
+        FROM commandes_achat_truffes c
+        JOIN fournisseurs_truffes f ON c.fournisseur_id = f.id
         WHERE c.id = $1
       `, [id]);
 
@@ -179,8 +179,8 @@ module.exports = (pool, requireWriteAccess) => {
       }
 
       const lignesResult = await pool.query(`
-        SELECT * FROM lignescommandeachat
-        WHERE commandeid = $1
+        SELECT * FROM lignes_commande_achat
+        WHERE commande_id = $1
         ORDER BY id ASC
       `, [id]);
 
@@ -197,9 +197,9 @@ module.exports = (pool, requireWriteAccess) => {
   // POST /api/commandes-achats - Créer une commande
   router.post('/commandes-achats', requireWriteAccess, async (req, res) => {
     const {
-      fournisseurid,
-      datecommande,
-      datelivraisonprevue,
+      fournisseur_id,
+      date_commande,
+      date_livraison_prevue,
       lignes,
       notes
     } = req.body;
@@ -211,7 +211,7 @@ module.exports = (pool, requireWriteAccess) => {
 
       // Calculer le montant total
       const montantTotal = lignes.reduce((sum, l) => 
-        sum + (parseFloat(l.quantitekg) * parseFloat(l.prixachatkg)), 0
+        sum + (parseFloat(l.quantite_kg) * parseFloat(l.prix_achat_kg)), 0
       );
 
       // Générer un numéro de commande unique
@@ -219,14 +219,14 @@ module.exports = (pool, requireWriteAccess) => {
 
       // Créer la commande
       const commandeResult = await client.query(`
-        INSERT INTO commandesachattruffes (
-          fournisseurid, numerocommande, datecommande, 
-          datelivraisonprevue, montanttotal, statut, notes
+        INSERT INTO commandes_achat_truffes (
+          fournisseur_id, numero_commande, date_commande, 
+          date_livraison_prevue, montant_total, statut, notes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `, [
-        fournisseurid, numeroCommande, datecommande,
-        datelivraisonprevue, montantTotal, 'En attente', notes
+        fournisseur_id, numeroCommande, date_commande,
+        date_livraison_prevue, montantTotal, 'En attente', notes
       ]);
 
       const commandeId = commandeResult.rows[0].id;
@@ -234,12 +234,12 @@ module.exports = (pool, requireWriteAccess) => {
       // Créer les lignes de commande
       for (const ligne of lignes) {
         await client.query(`
-          INSERT INTO lignescommandeachat (
-            commandeid, calibremm, qualite, maturite, quantitekg, prixachatkg, notes
+          INSERT INTO lignes_commande_achat (
+            commande_id, calibre_mm, qualite, maturite, quantite_kg, prix_achat_kg, notes
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         `, [
-          commandeId, ligne.calibremm, ligne.qualite, 
-          ligne.maturite, ligne.quantitekg, ligne.prixachatkg, ligne.notes || null
+          commandeId, ligne.calibre_mm, ligne.qualite, 
+          ligne.maturite, ligne.quantite_kg, ligne.prix_achat_kg, ligne.notes || null
         ]);
       }
 
@@ -284,16 +284,16 @@ module.exports = (pool, requireWriteAccess) => {
       const result = await pool.query(`
         SELECT 
           s.*,
-          c.numerocommande,
-          c.datecommande,
+          c.numero_commande,
+          c.date_commande,
           f.nom as fournisseur_nom
-        FROM stockstruffesachetees s
-        LEFT JOIN lignescommandeachat l ON s.lignecommandeid = l.id
-        LEFT JOIN commandesachattruffes c ON l.commandeid = c.id
-        LEFT JOIN fournisseurstruffes f ON c.fournisseurid = f.id
-        WHERE s.quantitekgstock > 0
-          AND (s.datelimiteconsommation IS NULL OR s.datelimiteconsommation > CURRENT_DATE)
-        ORDER BY s.dateachat DESC
+        FROM stocks_truffes_achetees s
+        LEFT JOIN lignes_commande_achat l ON s.ligne_commande_id = l.id
+        LEFT JOIN commandes_achat_truffes c ON l.commande_id = c.id
+        LEFT JOIN fournisseurs_truffes f ON c.fournisseur_id = f.id
+        WHERE s.quantite_kg_stock > 0
+          AND (s.date_limite_consommation IS NULL OR s.date_limite_consommation > CURRENT_DATE)
+        ORDER BY s.date_achat DESC
       `);
       res.json(result.rows);
     } catch (error) {
@@ -319,14 +319,14 @@ module.exports = (pool, requireWriteAccess) => {
       const margeGlobale = await pool.query(`
         SELECT 
           COUNT(*) as nombre_transactions,
-          SUM(quantitekg) as quantite_totale_kg,
-          AVG(prixachatkg) as prix_achat_moyen,
-          AVG(prixventekg) as prix_vente_moyen,
-          AVG(margekg) as marge_moyenne_kg,
-          AVG(pourcentagemarge) as pourcentage_marge_moyen,
-          SUM(quantitekg * margekg) as marge_totale
-        FROM analysemargetruffes
-        WHERE datevente IS NOT NULL
+          SUM(quantite_kg) as quantite_totale_kg,
+          AVG(prix_achat_kg) as prix_achat_moyen,
+          AVG(prix_vente_kg) as prix_vente_moyen,
+          AVG(marge_kg) as marge_moyenne_kg,
+          AVG(pourcentage_marge) as pourcentage_marge_moyen,
+          SUM(quantite_kg * marge_kg) as marge_totale
+        FROM analyse_marge_truffes
+        WHERE date_vente IS NOT NULL
       `);
 
       res.json({
@@ -343,9 +343,9 @@ module.exports = (pool, requireWriteAccess) => {
   router.get('/marge-globale/details', async (req, res) => {
     try {
       const result = await pool.query(`
-        SELECT * FROM analysemargetruffes
-        WHERE datevente IS NOT NULL
-        ORDER BY dateachat DESC
+        SELECT * FROM analyse_marge_truffes
+        WHERE date_vente IS NOT NULL
+        ORDER BY date_achat DESC
       `);
       res.json(result.rows);
     } catch (error) {
