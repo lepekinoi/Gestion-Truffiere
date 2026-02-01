@@ -130,17 +130,20 @@ function AchatsFournisseursPage() {
   
   // NOUVEAU: Gestion des lignes de commande
   const [commandeLignes, setCommandeLignes] = useState([]);
-  const [nouvelleLigne, setNouvelleLigne] = useState({
-    calibre_mm: '',
-    qualite: '',
-    maturite: 'Gris', // Valeur par défaut conforme
-    quantite_kg: '',
-    prix_achat_kg: '',
-    notes: ''
-  });
-  
-  // Stock
-  const [stock, setStock] = useState([]);
+	const [nouvelleLigne, setNouvelleLigne] = useState({
+	  calibre_mm: '',
+	  qualite: '',
+	  maturite: 'Gris',
+	  quantite_kg: '',
+	  prix_achat_kg: '',
+	  notes: ''
+	});
+
+	// NOUVEAU: État pour l'édition de ligne
+	const [editingLigneIndex, setEditingLigneIndex] = useState(null);
+
+	// Stock
+	const [stock, setStock] = useState([]);
   const [filterCalibre, setFilterCalibre] = useState('all');
   const [filterQualite, setFilterQualite] = useState('all');
   
@@ -301,43 +304,43 @@ function AchatsFournisseursPage() {
     setShowCommandeModal(true);
   };
   
-  const handleEditCommande = async (commande) => {
-    setEditingCommande(commande);
-    setCommandeFormData({
-      fournisseur_id: commande.fournisseur_id,
-      date_commande: commande.date_commande?.split('T')[0] || '',
-      date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
-      notes: commande.notes || ''
-    });
-
-    // 🔧 FIX: Charger les lignes existantes depuis l'API
-    try {
-      const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
-      if (response.data && response.data.lignes) {
-        setCommandeLignes(response.data.lignes);
-        console.log(`✅ ${response.data.lignes.length} ligne(s) chargée(s)`);
-      } else {
-        setCommandeLignes([]);
-      }
-    } catch (error) {
-      console.error('Erreur chargement lignes:', error);
-      showMessage('Impossible de charger les lignes de commande', 'error');
-      setCommandeLignes([]);
-    }
-
-    // Réinitialiser l'édition de ligne
-    setEditingLigneIndex(null);
-    setNouvelleLigne({
-      calibre_mm: '',
-      qualite: '',
-      maturite: 'Gris',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
-
-    setShowCommandeModal(true);
-  };
+	const handleEditCommande = async (commande) => {
+	  setEditingCommande(commande);
+	  setCommandeFormData({
+		fournisseur_id: commande.fournisseur_id,
+		date_commande: commande.date_commande?.split('T')[0] || '',
+		date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
+		notes: commande.notes || ''
+	  });
+	  
+	  // 🔧 FIX: Charger les lignes existantes depuis l'API
+	  try {
+		const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
+		if (response.data && response.data.lignes) {
+		  setCommandeLignes(response.data.lignes);
+		  console.log(`✅ ${response.data.lignes.length} ligne(s) chargée(s)`);
+		} else {
+		  setCommandeLignes([]);
+		}
+	  } catch (error) {
+		console.error('Erreur chargement lignes:', error);
+		showMessage('Impossible de charger les lignes de commande', 'error');
+		setCommandeLignes([]);
+	  }
+	  
+	  // 🔧 FIX: Réinitialiser l'état d'édition de ligne
+	  setEditingLigneIndex(null);
+	  setNouvelleLigne({
+		calibre_mm: '',
+		qualite: '',
+		maturite: 'Gris',
+		quantite_kg: '',
+		prix_achat_kg: '',
+		notes: ''
+	  });
+	  
+	  setShowCommandeModal(true);
+	};
   
   const handleCommandeInputChange = (e) => {
     const { name, value } = e.target;
