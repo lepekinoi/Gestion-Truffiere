@@ -523,7 +523,14 @@ CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    -- Essayer avec updated_at (snake_case)
+    IF TG_TABLE_NAME IN ('users', 'arbres', 'parcelles', 'interventions', 'recoltes', 
+                         'clients', 'ventes', 'commandes') THEN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+    -- Sinon utiliser updatedat (camelCase)
+    ELSE
+        NEW.updatedat = CURRENT_TIMESTAMP;
+    END IF;
     RETURN NEW;
 END;
 $$;
@@ -675,6 +682,13 @@ END) STORED,
 
 
 ALTER TABLE public.analyse_marge_truffes OWNER TO unstuffed1004;
+
+--
+-- Name: TABLE analyse_marge_truffes; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.analyse_marge_truffes IS 'Analyse des marges réalisées sur les ventes de truffes';
+
 
 --
 -- Name: analyse_marge_truffes_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
@@ -2583,6 +2597,13 @@ CREATE TABLE public.stocks_truffes_achetees (
 ALTER TABLE public.stocks_truffes_achetees OWNER TO unstuffed1004;
 
 --
+-- Name: TABLE stocks_truffes_achetees; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON TABLE public.stocks_truffes_achetees IS 'Stock de truffes achetées auprès des fournisseurs';
+
+
+--
 -- Name: stocks_truffes_achetees_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
 --
 
@@ -3180,6 +3201,35 @@ COMMENT ON VIEW public.v_user_stats IS 'Vue consolidée des statistiques utilisa
 
 
 --
+-- Name: vanalysemargeparcalibre; Type: VIEW; Schema: public; Owner: unstuffed1004
+--
+
+CREATE VIEW public.vanalysemargeparcalibre AS
+ SELECT calibre_mm AS calibremm,
+    qualite,
+    maturite,
+    count(*) AS nombretransactions,
+    avg(prix_achat_kg) AS prixachatmoyen,
+    avg(prix_vente_kg) AS prixventemoyen,
+    avg(marge_kg) AS margemoyennekg,
+    avg(pourcentage_marge) AS pourcentagemargemoyen,
+    sum(quantite_kg) AS quantitetotalekg
+   FROM public.analyse_marge_truffes
+  WHERE (date_vente IS NOT NULL)
+  GROUP BY calibre_mm, qualite, maturite
+  ORDER BY calibre_mm DESC, qualite;
+
+
+ALTER VIEW public.vanalysemargeparcalibre OWNER TO unstuffed1004;
+
+--
+-- Name: VIEW vanalysemargeparcalibre; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON VIEW public.vanalysemargeparcalibre IS 'Vue synthétique des marges moyennes par calibre';
+
+
+--
 -- Name: ventes_id_seq; Type: SEQUENCE; Schema: public; Owner: unstuffed1004
 --
 
@@ -3199,6 +3249,36 @@ ALTER SEQUENCE public.ventes_id_seq OWNER TO unstuffed1004;
 --
 
 ALTER SEQUENCE public.ventes_id_seq OWNED BY public.ventes.id;
+
+
+--
+-- Name: vstocktruffesdisponible; Type: VIEW; Schema: public; Owner: unstuffed1004
+--
+
+CREATE VIEW public.vstocktruffesdisponible AS
+ SELECT calibre_mm AS calibremm,
+    qualite,
+    maturite,
+    sum(quantite_kg_stock) AS quantitetotalekg,
+    conservation,
+    localisation_storage AS localisationstorage,
+    count(*) AS nombrelots,
+    min(date_limite_consommation) AS datelimiteprochaine,
+    avg(prix_achat_kg) AS prixmoyenachat,
+    max(date_achat) AS dernierachat
+   FROM public.stocks_truffes_achetees
+  WHERE ((quantite_kg_stock > (0)::numeric) AND ((date_limite_consommation IS NULL) OR (date_limite_consommation >= CURRENT_DATE)))
+  GROUP BY calibre_mm, qualite, maturite, conservation, localisation_storage
+  ORDER BY calibre_mm, qualite, maturite;
+
+
+ALTER VIEW public.vstocktruffesdisponible OWNER TO unstuffed1004;
+
+--
+-- Name: VIEW vstocktruffesdisponible; Type: COMMENT; Schema: public; Owner: unstuffed1004
+--
+
+COMMENT ON VIEW public.vstocktruffesdisponible IS 'Vue du stock disponible de truffes par calibre/qualité';
 
 
 --
@@ -3536,110 +3616,18 @@ COPY public.analyse_sol_details (id, intervention_id, profondeur_prelevement_cm,
 
 
 --
+-- Data for Name: arbres; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
+--
+
+COPY public.arbres (id, parcelle_id, numero, espece, variete_truffe, date_plantation, "position", etat_sanitaire, circonference_cm, hauteur_m, date_derniere_taille, notes, created_at, updated_at, latitude, longitude, deleted_at, porte_greffe, "rendement_estimé") FROM stdin;
+\.
+
+
+--
 -- Data for Name: audit_trail; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
 --
 
 COPY public.audit_trail (id, user_id, action, entity_type, entity_id, old_values, new_values, created_at) FROM stdin;
-\.
-
-
---
--- Data for Name: caveurs; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.caveurs (id, nom, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: chiens; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.chiens (id, nom, race, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: clients; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.clients (id, type, nom, prenom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, siret, notes, date_premier_achat, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: commandes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.commandes (id, client_id, numero_commande, date_commande, date_livraison_demandee, poids_grammes, calibre, qualite, maturite, prix_unitaire_kg, montant_total, statut, notes, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: commandes_achat_truffes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.commandes_achat_truffes (id, fournisseur_id, numero_commande, date_commande, date_livraison_prevue, date_livraison_reelle, montant_total, statut, notes, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: contacts_fournisseurs_truffes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.contacts_fournisseurs_truffes (id, fournisseur_id, nom, titre_poste, email, telephone, est_principal, notes, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: especes_arbres; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.especes_arbres (id, nom, code, nom_scientifique, description, groupe_principal, est_espece_principale, ordre_affichage, actif, notes, created_at, updated_at) FROM stdin;
-1	Chêne pubescent	P	Quercus pubescens	Chêne résistant à la sécheresse, excellent pour la truffe noire	Chêne	t	1	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-2	Chênes vert	V	Quercus ilex	Chêne vert méditerranéen, très productif	Chêne	t	2	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-3	Charmes	C	Carpinus betulus	Charme commun, bon support pour le brûlé	Charme	t	3	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-4	Chênes Cerris	Cé	Quercus cerris	Chêne chevelu, adapté aux terrains alcalins	Chêne	t	4	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-5	Chêne blanc	Blanc	Quercus pubescens var. alba	Excellent pour la truffe noire, bonne rusticité	Chêne	t	5	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-6	Noisetier commun	N	Corylus avellana	Support productive, bon pour brûlé et production	Noisetier	t	6	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-7	Tilleul à petites feuilles	Ti	Tilia cordata	Support secondaire, améliore structure brûlé	Tilleul	f	7	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-8	Châtaignier	Ch	Castanea sativa	Alternative méditerranéenne, zones calcaires	Châtaignier	f	8	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-9	Chêne de Hongrie	Ho	Quercus frainetto	Adapté aux terrains très alcalins	Chêne	f	9	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-10	Érable champêtre	Éra	Acer campestre	Support complémentaire, structure brûlé	Érable	f	10	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-11	Charme-houblon	CH	Ostrya carpinifolia	Variante améliorée du charme	Charme	f	11	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-12	Noisetier de Byzance	NB	Corylus colurna	Noisetier amélioré, meilleure rusticité	Noisetier	f	12	t	\N	2026-01-25 00:47:20.272987	2026-01-25 00:47:20.272987
-\.
-
-
---
--- Data for Name: evaluations_fournisseurs_truffes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.evaluations_fournisseurs_truffes (id, fournisseur_id, date_evaluation, note_qualite, note_delai, note_prix, note_service, commentaires, created_at) FROM stdin;
-\.
-
-
---
--- Data for Name: factures_achat_truffes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.factures_achat_truffes (id, commande_id, fournisseur_id, numero_facture, date_facture, date_echeance, montant_ht, taux_tva, montant_tva, montant_ttc, statut_paiement, date_paiement, mode_paiement, reference_paiement, notes, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: fournisseurs_truffes; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.fournisseurs_truffes (id, nom, raison_sociale, email, telephone, adresse, code_postal, ville, pays, zone_production, certifications, statut, contact_principal, telephone_contact, delai_livraison_jours, conditions_paiement, notes, created_at, updated_at, deleted_at) FROM stdin;
-\.
-
-
---
--- Data for Name: historique; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
---
-
-COPY public.historique (id, table_name, record_id, action, old_data, new_data, user_name, "timestamp") FROM stdin;
 \.
 
 
@@ -3762,9 +3750,6 @@ COPY public.parametres (id, cle, valeur, description, updated_at) FROM stdin;
 --
 
 COPY public.parcelles (id, nom, surface_ha, geometrie, type_sol, ph_sol, exposition, date_creation, notes) FROM stdin;
-1	Champs Chetif	0.52	0103000020E610000001000000090000000000C4FF8DD6C3BF30C18A24001447400100C4FFCFC1C3BFEC1F802E161447400100C4FF97BDC3BFF8742DAD111447400200C4FF6DBAC3BF711C75770B1447400100C4FF27B5C3BF399C6ABE051447400100E27F45AEC3BF7D7D4598FF1347400100E27F2CA9C3BFD8B17274FB1347400000E2FF94A2C3BF28059895F61347400000C4FF8DD6C3BF30C18A2400144740	Argilo-calcaire	8.0	Sud	2025-12-29 11:47:49.050329	
-2	Champs des mojettes	1.00	0103000020E6100000010000000D0000000100C4FF998CC5BFA8184771F11147400100C4FF3488C5BF048CB7FCEA1147400100C4FF9C89C5BF3926B837E21147400100C4FF508AC5BF508012B1D91147400100C4FFAA8AC5BFD5B9F730D01147400000C4FFDA87C5BF44D46860C41147400100C4FFDD84C5BF0557B830BD1147400100C4FF4B80C5BFD36B663AB21147400100C4FF89ABC5BF47180A79C51147400100E27F0FA6C5BF7121D86CCE1147400100E27F079FC5BF1A184D82D91147400100E2FF8096C5BF2D5C2F91E51147400100C4FF998CC5BFA8184771F1114740	Argilo-calcaire	8.2	Sud-Est	2025-12-29 11:47:49.050329	
-13	La Vigne	0.07	0103000020E6100000010000000500000081028D08320AC5BFEF7D048EEA124740C155AE4502FDC4BF2B20E343E7124740F12273742C00C5BF4AFE4E16E2124740B1CF51375C0DC5BFC0514041E512474081028D08320AC5BFEF7D048EEA124740	Argilo-calcaire	8.0	\N	2026-01-27 20:13:40.925076	
 \.
 
 
@@ -3918,20 +3903,12 @@ COPY public.user_sessions (id, user_id, session_id, ip_address, user_agent, devi
 \.
 
 
--- ======================================================================
--- COMPTE ADMINISTRATEUR
--- ======================================================================
---
--- Email: admin@truffiere.local
--- Mot de passe: admin123
---
-
 --
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: unstuffed1004
 --
 
 COPY public.users (id, email, password_hash, nom, prenom, role, is_active, email_verified, last_login, password_changed_at, failed_login_attempts, locked_until, created_at, updated_at) FROM stdin;
-1	admin@truffiere.local	$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu	Administrateur	Système	admin	t	t	2026-01-29 20:36:44.671146	\N	0	\N	2026-01-02 16:29:54.193672	2026-01-29 20:36:44.671146
+1	admin@truffiere.local	$2a$12$gSUlB7gFLJN0huj0SGb9t.4hnXCTnqjcbhlqSag0S2sHkZpwJJGOu	Administrateur	Système	admin	t	t	2026-01-29 22:04:50.06384	\N	0	\N	2026-01-02 16:29:54.193672	2026-01-29 22:04:50.06384
 \.
 
 
@@ -4030,14 +4007,14 @@ SELECT pg_catalog.setval('public.arbres_id_seq', 438, true);
 -- Name: audit_trail_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.audit_trail_id_seq', 3, true);
+SELECT pg_catalog.setval('public.audit_trail_id_seq', 923, true);
 
 
 --
 -- Name: caveurs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.caveurs_id_seq', 5, true);
+SELECT pg_catalog.setval('public.caveurs_id_seq', 6, true);
 
 
 --
@@ -4100,14 +4077,14 @@ SELECT pg_catalog.setval('public.factures_achat_truffes_id_seq', 1, false);
 -- Name: fournisseurs_truffes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.fournisseurs_truffes_id_seq', 1, false);
+SELECT pg_catalog.setval('public.fournisseurs_truffes_id_seq', 1, true);
 
 
 --
 -- Name: historique_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.historique_id_seq', 5441, true);
+SELECT pg_catalog.setval('public.historique_id_seq', 6361, true);
 
 
 --
@@ -4128,7 +4105,7 @@ SELECT pg_catalog.setval('public.intervention_details_id_seq', 5, true);
 -- Name: interventions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.interventions_id_seq', 85, true);
+SELECT pg_catalog.setval('public.interventions_id_seq', 365, true);
 
 
 --
@@ -4149,7 +4126,7 @@ SELECT pg_catalog.setval('public.lignes_commande_achat_id_seq', 1, false);
 -- Name: login_attempts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.login_attempts_id_seq', 144, true);
+SELECT pg_catalog.setval('public.login_attempts_id_seq', 204, true);
 
 
 --
@@ -4177,7 +4154,7 @@ SELECT pg_catalog.setval('public.parametres_id_seq', 74, true);
 -- Name: parcelles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.parcelles_id_seq', 13, true);
+SELECT pg_catalog.setval('public.parcelles_id_seq', 15, true);
 
 
 --
@@ -4226,21 +4203,21 @@ SELECT pg_catalog.setval('public.reception_achats_id_seq', 1, false);
 -- Name: recoltes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.recoltes_id_seq', 1775, true);
+SELECT pg_catalog.setval('public.recoltes_id_seq', 1780, true);
 
 
 --
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 197, true);
+SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 291, true);
 
 
 --
 -- Name: security_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: unstuffed1004
 --
 
-SELECT pg_catalog.setval('public.security_logs_id_seq', 1, false);
+SELECT pg_catalog.setval('public.security_logs_id_seq', 10, true);
 
 
 --
@@ -4788,6 +4765,20 @@ CREATE INDEX idx_analyse_marge_date_achat ON public.analyse_marge_truffes USING 
 --
 
 CREATE INDEX idx_analyse_sol_intervention ON public.analyse_sol_details USING btree (intervention_id);
+
+
+--
+-- Name: idx_analysemarge_calibre; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_analysemarge_calibre ON public.analyse_marge_truffes USING btree (calibre_mm);
+
+
+--
+-- Name: idx_analysemarge_dateachat; Type: INDEX; Schema: public; Owner: unstuffed1004
+--
+
+CREATE INDEX idx_analysemarge_dateachat ON public.analyse_marge_truffes USING btree (date_achat);
 
 
 --
@@ -5463,125 +5454,6 @@ COMMENT ON TRIGGER types_intervention_historique ON public.types_intervention IS
 
 
 --
--- Name: amendement_details update_amendement_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_amendement_updated_at BEFORE UPDATE ON public.amendement_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: analyse_sol_details update_analyse_sol_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_analyse_sol_updated_at BEFORE UPDATE ON public.analyse_sol_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: caveurs update_caveurs_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_caveurs_updated_at BEFORE UPDATE ON public.caveurs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: chiens update_chiens_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_chiens_updated_at BEFORE UPDATE ON public.chiens FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: commandes update_commandes_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_commandes_updated_at BEFORE UPDATE ON public.commandes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: inoculation_details update_inoculation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_inoculation_updated_at BEFORE UPDATE ON public.inoculation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: irrigation_details update_irrigation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_irrigation_updated_at BEFORE UPDATE ON public.irrigation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: observation_details update_observation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_observation_updated_at BEFORE UPDATE ON public.observation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: paillage_details update_paillage_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_paillage_updated_at BEFORE UPDATE ON public.paillage_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: parametres update_parametres_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_parametres_updated_at BEFORE UPDATE ON public.parametres FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: piegeage_details update_piegeage_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_piegeage_updated_at BEFORE UPDATE ON public.piegeage_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: plantation_details update_plantation_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_plantation_updated_at BEFORE UPDATE ON public.plantation_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: preferences_utilisateur update_preferences_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_preferences_updated_at BEFORE UPDATE ON public.preferences_utilisateur FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: taille_details update_taille_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_taille_updated_at BEFORE UPDATE ON public.taille_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: traitement_phyto_details update_traitement_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_traitement_updated_at BEFORE UPDATE ON public.traitement_phyto_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: travail_sol_details update_travail_sol_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_travail_sol_updated_at BEFORE UPDATE ON public.travail_sol_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: users update_users_updated_at; Type: TRIGGER; Schema: public; Owner: unstuffed1004
---
-
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
 -- Name: users users_historique; Type: TRIGGER; Schema: public; Owner: unstuffed1004
 --
 
@@ -5953,6 +5825,7 @@ ALTER TABLE ONLY public.travail_sol_details
 
 ALTER TABLE ONLY public.user_sessions
     ADD CONSTRAINT user_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
 
 --
 -- Name: ventes ventes_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: unstuffed1004
