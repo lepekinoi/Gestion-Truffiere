@@ -68,6 +68,15 @@ export const getDaysIntoSeason = (date) => {
   return Math.floor((date - seasonStart) / (1000 * 60 * 60 * 24));
 };
 
+/**
+ * Vérifie si on est actuellement en saison truffière (septembre-mars)
+ * @returns {boolean} true si en saison, false si hors saison (avril-août)
+ */
+export const isInSeason = () => {
+  const month = new Date().getMonth() + 1;
+  return (month >= 9 && month <= 12) || (month >= 1 && month <= 3);
+};
+
 export const isOffSeason = () => {
   const month = new Date().getMonth() + 1;
   return month >= 4 && month <= 8;
@@ -182,12 +191,94 @@ export const isValidSeasonFormat = (season) => {
   return !isNaN(yearStart) && !isNaN(yearEnd) && yearEnd === yearStart + 1;
 };
 
+/**
+ * Obtient les dates de début et fin de la prochaine saison
+ * @returns {Object} { start: Date, end: Date }
+ */
+export const getNextSeasonDates = () => {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  
+  if (month >= 4 && month <= 8) {
+    // Hors saison : prochaine saison commence en septembre
+    return {
+      start: new Date(year, 8, 1), // 1er septembre
+      end: new Date(year + 1, 2, 31) // 31 mars année suivante
+    };
+  } else {
+    // En saison : prochaine saison sera l'année suivante
+    return {
+      start: new Date(year + 1, 8, 1),
+      end: new Date(year + 2, 2, 31)
+    };
+  }
+};
+
+/**
+ * Obtient un récapitulatif de la dernière saison complète
+ * @param {Array} recoltesData - Données des récoltes
+ * @returns {Object} Stats de la dernière saison
+ */
+export const getLastSeasonSummary = (recoltesData) => {
+  const lastSeason = getLastCompleteSeason();
+  const seasonRecoltes = filterRecoltesBySeason(recoltesData, lastSeason);
+  
+  if (seasonRecoltes.length === 0) {
+    return null;
+  }
+  
+  const totalProduction = seasonRecoltes.reduce((sum, r) => 
+    sum + parseFloat(r.poids_grammes || 0), 0
+  ) / 1000;
+  
+  return {
+    season: lastSeason,
+    production: totalProduction.toFixed(2),
+    count: seasonRecoltes.length,
+    averagePerRecolte: (totalProduction * 1000 / seasonRecoltes.length).toFixed(0)
+  };
+};
+
+/**
+ * Trouve la meilleure saison historique (production maximale)
+ * @param {Array} recoltesData - Données des récoltes
+ * @returns {Object|null} Informations sur la meilleure saison
+ */
+export const getBestPastSeason = (recoltesData) => {
+  const seasons = getAvailableSeasons(recoltesData);
+  
+  if (seasons.length === 0) return null;
+  
+  let bestSeason = null;
+  let maxProduction = 0;
+  
+  seasons.forEach(season => {
+    const seasonRecoltes = filterRecoltesBySeason(recoltesData, season);
+    const production = seasonRecoltes.reduce((sum, r) => 
+      sum + parseFloat(r.poids_grammes || 0), 0
+    ) / 1000;
+    
+    if (production > maxProduction) {
+      maxProduction = production;
+      bestSeason = {
+        season,
+        production: production.toFixed(2),
+        count: seasonRecoltes.length
+      };
+    }
+  });
+  
+  return bestSeason;
+};
+
 export default {
   MOIS_SAISON, SEASON_COLORS,
   getSeasonForDate, getCurrentSeason, getAvailableSeasons,
   calculateSeasonProgress, getDaysIntoSeason,
-  isOffSeason, getDaysUntilNextSeason, getLastCompleteSeason,
+  isInSeason, isOffSeason, getDaysUntilNextSeason, getLastCompleteSeason,
   isInTruffleSeason, filterRecoltesBySeason, compareSeasonsSamePeriod,
   detectIncompleteSeason, formatSeasonLabel,
-  getSeasonColor, formatSeasonDate, getProgressLabel, isValidSeasonFormat
+  getSeasonColor, formatSeasonDate, getProgressLabel, isValidSeasonFormat,
+  getNextSeasonDates, getLastSeasonSummary, getBestPastSeason
 };
