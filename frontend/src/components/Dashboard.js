@@ -5,6 +5,9 @@ import {
   safeArray,
   formatWeight
 } from '../utils/safeDataHandling';
+import { isInSeason } from '../utils/seasonUtils';
+import SeasonWidget from './dashboard/SeasonWidget';
+import OffSeasonWidget from './dashboard/OffSeasonWidget';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const API_URL = process.env.REACT_APP_API_URL || 
@@ -921,6 +924,13 @@ function Dashboard() {
         </div>
       </section>
       
+      {/* WIDGETS DE SAISON - Affichage conditionnel */}
+      {isInSeason() ? (
+        <SeasonWidget recoltesData={recoltesData} />
+      ) : (
+        <OffSeasonWidget recoltesData={recoltesData} />
+      )}
+      
       {/* MÉTÉO ENRICHIE (si disponible) */}
       {weatherEnriched && weatherEnriched.today && (
         <>
@@ -1259,7 +1269,7 @@ function Dashboard() {
 
           <div style={styles.kpiCard}>
             <div style={{...styles.kpiIconWrapper, background: '#3498db20'}}>
-              <span style={styles.kpiIcon}>🛒</span>
+              <span style={styles.kpiIcon}>🛍</span>
             </div>
             <div style={styles.kpiContent}>
               <div style={{...styles.kpiValue, color: COLORS.info}}>
@@ -1386,10 +1396,11 @@ function Dashboard() {
                       <div style={{...styles.activityDot, background: '#8e44ad'}}></div>
                       <div style={styles.activityContent}>
                         <div style={styles.activityDate}>{formatDateShort(recolte.date_recolte)}</div>
-                        <div style={styles.activityInfo}>
-                          {recolte.parcelle_nom || '-'} • <strong>{safeParseFloat(recolte.poids_grammes, 0).toFixed(0)} g</strong>
+                        <div style={styles.activityTitle}>{recolte.parcelle_nom || 'Parcelle inconnue'}</div>
+                        <div style={styles.activityMeta}>
+                          {formatWeight(recolte.poids_grammes)}
+                          {recolte.espece_nom && ` • ${recolte.espece_nom}`}
                         </div>
-                        {recolte.qualite && <div style={styles.activityQuality}>{recolte.qualite}</div>}
                       </div>
                     </div>
                   )
@@ -1397,26 +1408,27 @@ function Dashboard() {
               )}
             </div>
           </div>
-          
+
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
               <span style={styles.activityHeaderIcon}>🛠️</span>
-              <span>Interventions à venir</span>
+              <span>Prochaines interventions</span>
             </div>
             <div style={styles.activityList}>
               {interventionsAVenir.length === 0 ? (
-                <div style={styles.activityEmpty}>Aucune intervention planifiée</div>
+                <div style={styles.activityEmpty}>Aucune intervention prévue</div>
               ) : (
-                interventionsAVenir.map(intervention => (
-                  intervention && (
-                    <div key={intervention.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: intervention?.type_couleur || '#e67e22'}}></div>
+                interventionsAVenir.map(inter => (
+                  inter && (
+                    <div key={inter.id} style={styles.activityItem}>
+                      <div style={{...styles.activityDot, background: '#f39c12'}}></div>
                       <div style={styles.activityContent}>
-                        <div style={styles.activityDate}>{formatDateShort(intervention?.date_prevue)}</div>
-                        <div style={styles.activityBadge}>
-                          <span style={{...styles.typeBadge, background: intervention?.type_couleur || '#ccc'}}>{intervention?.type_nom}</span>
+                        <div style={styles.activityDate}>{formatDateShort(inter.date_prevue)}</div>
+                        <div style={styles.activityTitle}>{inter.type_nom || 'Intervention'}</div>
+                        <div style={styles.activityMeta}>
+                          {inter.parcelle_nom}
+                          {inter.description && ` • ${inter.description.substring(0, 30)}...`}
                         </div>
-                        <div style={styles.activityInfo}>{intervention?.parcelle_nom || '-'}</div>
                       </div>
                     </div>
                   )
@@ -1424,138 +1436,542 @@ function Dashboard() {
               )}
             </div>
           </div>
-          
+
           <div style={styles.activityCard}>
             <div style={styles.activityHeader}>
               <span style={styles.activityHeaderIcon}>📦</span>
-              <span>Commandes en cours</span>
+              <span>Commandes récentes</span>
             </div>
             <div style={styles.activityList}>
               {commandesRecentes.length === 0 ? (
                 <div style={styles.activityEmpty}>Aucune commande</div>
               ) : (
-                commandesRecentes.map(commande => (
-                  commande && (
-                    <div key={commande.id} style={styles.activityItem}>
-                      <div style={{...styles.activityDot, background: '#3498db'}}></div>
+                commandesRecentes.map(cmd => {
+                  const statutColors = {
+                    'En attente': '#f39c12',
+                    'Confirmée': '#3498db',
+                    'En préparation': '#9b59b6',
+                    'Expédiée': '#1abc9c'
+                  };
+                  return cmd && (
+                    <div key={cmd.id} style={styles.activityItem}>
+                      <div style={{...styles.activityDot, background: statutColors[cmd.statut] || '#95a5a6'}}></div>
                       <div style={styles.activityContent}>
-                        <div style={styles.activityHeader2}>
-                          <span>{commande?.numero_commande || `CMD-${commande?.id}`}</span>
-                          <span style={{...styles.statusBadge, background: commande?.statut === 'En attente' ? '#fff3cd' : '#cce5ff', color: commande?.statut === 'En attente' ? '#856404' : '#004085'}}>{commande?.statut}</span>
-                        </div>
-                        <div style={styles.activityInfo}>
-                          {safeParseFloat(commande?.poids_grammes || 0, 0).toFixed(0)} g • <strong>{safeParseFloat(commande?.montant_total || 0, 0).toFixed(2)} €</strong>
+                        <div style={styles.activityDate}>{formatDateShort(cmd.date_commande)}</div>
+                        <div style={styles.activityTitle}>{cmd.client_nom || 'Client'}</div>
+                        <div style={styles.activityMeta}>
+                          {cmd.statut}
+                          {cmd.total_ttc && ` • ${cmd.total_ttc.toFixed(2)}€`}
                         </div>
                       </div>
                     </div>
-                  )
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
       </section>
-
-      <style>{`
-        @keyframes loadingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes loadingBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-      `}</style>
     </div>
   );
 }
 
 // ==================== STYLES ====================
 const styles = {
-  pageContainer: { padding: '1.5rem', maxWidth: '1600px', margin: '0 auto', fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif" },
-  loadingContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' },
-  loadingIcon: { fontSize: '4rem', animation: 'loadingPulse 1.5s ease-in-out infinite' },
-  loadingText: { color: COLORS.muted, fontSize: '1.1rem' },
-  loadingBar: { width: '200px', height: '4px', background: '#eee', borderRadius: '4px', overflow: 'hidden' },
-  loadingProgress: { width: '100%', height: '100%', background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.primaryLight})`, animation: 'loadingBar 1.5s ease-in-out infinite' },
-  errorContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: '1rem' },
-  retryButton: { padding: '0.75rem 1.5rem', background: COLORS.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem' },
-  patrimoneBanner: { display: 'flex', alignItems: 'stretch', padding: '0', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '16px', marginBottom: '1.5rem', boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)', overflow: 'hidden' },
-  patrimoineContent: { display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-around', padding: '2rem 1.5rem' },
-  patrimoineStat: { display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1, justifyContent: 'center' },
-  patrimoineIcon: { fontSize: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  patrimoineStatContent: { display: 'flex', flexDirection: 'column', gap: '0.25rem', color: 'white' },
-  patrimoineValue: { fontSize: '2rem', fontWeight: '700', lineHeight: 1 },
-  patrimoineLabel: { fontSize: '0.9rem', opacity: 0.85, fontWeight: '500' },
-  patrimoineDivider: { width: '1px', height: '60px', background: 'rgba(255,255,255,0.3)', margin: '0 1rem' },
-  weatherBanner: { display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 2rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '16px', color: 'white', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)' },
-  weatherHeader: { display: 'flex', gap: '2rem', alignItems: 'flex-start', justifyContent: 'space-between' },
-  weatherMain: { display: 'flex', alignItems: 'center', gap: '1rem', flex: 0 },
-  weatherIcon: { fontSize: '3rem' },
-  weatherTemp: { fontSize: '2.5rem', fontWeight: '700' },
-  weatherDetails: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
-  weatherCity: { fontSize: '0.9rem', opacity: 0.9 },
-  weatherDesc: { fontSize: '1rem', textTransform: 'capitalize', fontWeight: '500' },
-  weatherGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem', flex: 1 },
-  weatherMetric: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '0.85rem' },
-  metricLabel: { fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem' },
-  metricValue: { fontSize: '1.1rem', fontWeight: '600' },
-  riskMetric: { background: 'rgba(255,255,255,0.15)' },
-  weatherDivider: { height: '1px', background: 'rgba(255,255,255,0.3)', width: '100%' },
-  forecastSection: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
-  forecastTitle: { fontSize: '0.95rem', fontWeight: '600', opacity: 0.9 },
-  forecastContainer: { display: 'flex', gap: '1rem', justifyContent: 'space-between', overflowX: 'auto' },
-  forecastDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', padding: '0.75rem', background: 'rgba(255,255,255,0.1)', borderRadius: '12px', minWidth: '90px', fontSize: '0.85rem' },
-  forecastDayName: { fontSize: '0.8rem', fontWeight: '600', textTransform: 'capitalize' },
-  forecastIcon: { fontSize: '1.75rem' },
-  forecastTemps: { display: 'flex', gap: '0.5rem', fontSize: '0.85rem' },
-  tempMax: { fontWeight: '600' },
-  tempMin: { opacity: 0.7 },
-  forecastMeta: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', marginTop: '0.25rem' },
-  rainInfo: { color: '#87ceeb' },
-  humInfo: { opacity: 0.9 },
-  forecastPop: { fontSize: '0.75rem', opacity: 0.8, fontWeight: '500' },
-  alertsSection: { display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' },
-  alertCard: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.5rem', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '12px', flex: '1 1 280px' },
-  alertInfo: { background: '#d1ecf1', borderColor: '#17a2b8' },
-  alertIcon: { fontSize: '2rem' },
-  alertContent: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
-  kpiSection: { marginBottom: '2rem' },
-  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' },
-  kpiCard: { background: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' },
-  kpiCardAccent: { background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryLight} 100%)`, color: 'white' },
-  kpiIconWrapper: { width: '48px', height: '48px', borderRadius: '12px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  kpiIcon: { fontSize: '1.5rem' },
-  kpiContent: { flex: 1 },
-  kpiValue: { fontSize: '2rem', fontWeight: '700', lineHeight: 1.2 },
-  kpiLabel: { fontSize: '0.9rem', opacity: 0.8, marginTop: '0.25rem' },
-  kpiMeta: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' },
-  kpiTag: { fontSize: '0.8rem', padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '6px', opacity: 0.9 },
-  kpiStatus: { fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: '12px', color: 'white', fontWeight: '500' },
-  chartSection: { marginBottom: '2rem' },
-  chartCardFull: { background: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
-  chartHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' },
-  chartTitle: { display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: COLORS.primary, fontSize: '1.1rem', fontWeight: '600' },
-  chartMeta: { display: 'flex', gap: '1rem', alignItems: 'center' },
-  totalProduction: { fontSize: '0.95rem', fontWeight: '500', color: COLORS.primary, padding: '0.5rem 1rem', background: '#f0f7f0', borderRadius: '8px' },
-  productionTableMultiYear: { display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowX: 'auto' },
-  tableHeaderMultiYear: { display: 'flex', gap: '1rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', fontWeight: '600', fontSize: '0.9rem', color: COLORS.dark, borderBottom: `2px solid ${COLORS.primary}`, minWidth: 'fit-content' },
-  tableRowMultiYear: { display: 'flex', gap: '1rem', padding: '1rem', borderBottom: '1px solid #eee', alignItems: 'center', fontSize: '0.95rem', transition: 'background 0.2s', minWidth: 'fit-content' },
-  tableCell: { display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '100px' },
-  tooltipStyle: { background: 'white', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' },
-  noData: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: COLORS.muted },
-  activitiesSection: { marginBottom: '2rem' },
-  sectionTitle: { display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1.25rem 0', color: COLORS.primary, fontSize: '1.25rem', fontWeight: '600' },
-  activitiesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' },
-  activityCard: { background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
-  activityHeader: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 1.25rem', background: '#f8f9fa', fontWeight: '600', color: COLORS.dark },
-  activityHeaderIcon: { fontSize: '1.25rem' },
-  activityList: { padding: '1rem' },
-  activityEmpty: { padding: '1rem', textAlign: 'center', color: COLORS.muted },
-  activityItem: { display: 'flex', gap: '0.75rem', padding: '0.75rem 0', borderBottom: '1px solid #f0f0f0' },
-  activityDot: { width: '10px', height: '10px', borderRadius: '50%', marginTop: '0.3rem', flexShrink: 0 },
-  activityContent: { flex: 1 },
-  activityDate: { fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.25rem' },
-  activityInfo: { fontSize: '0.85rem', color: '#666' },
-  activityQuality: { fontSize: '0.8rem', color: COLORS.muted, marginTop: '0.25rem' },
-  activityBadge: { marginBottom: '0.25rem' },
-  typeBadge: { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', color: 'white', fontSize: '0.75rem' },
-  activityHeader2: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem', fontWeight: '500' },
-  statusBadge: { fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px' }
+  pageContainer: {
+    padding: '1.5rem',
+    maxWidth: '1600px',
+    margin: '0 auto',
+    backgroundColor: '#f5f5f5'
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    gap: '1.5rem'
+  },
+  loadingIcon: {
+    fontSize: '4rem',
+    animation: 'pulse 2s ease-in-out infinite'
+  },
+  loadingText: {
+    fontSize: '1.25rem',
+    color: COLORS.muted,
+    fontWeight: '600'
+  },
+  loadingBar: {
+    width: '200px',
+    height: '4px',
+    backgroundColor: '#e0e0e0',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  loadingProgress: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    animation: 'loading 1.5s ease-in-out infinite'
+  },
+  errorContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    gap: '1rem'
+  },
+  retryButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: COLORS.primary,
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s'
+  },
+  patrimoneBanner: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '2rem',
+    marginBottom: '1.5rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    border: `2px solid ${COLORS.primary}20`
+  },
+  patrimoineContent: {
+    display: 'flex',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: '2rem'
+  },
+  patrimoineStat: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    flex: 1
+  },
+  patrimoineIcon: {
+    fontSize: '2.5rem'
+  },
+  patrimoineStatContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem'
+  },
+  patrimoineValue: {
+    fontSize: '2rem',
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    lineHeight: 1
+  },
+  patrimoineLabel: {
+    fontSize: '0.9rem',
+    color: '#666',
+    fontWeight: '500'
+  },
+  patrimoineDivider: {
+    width: '2px',
+    height: '60px',
+    backgroundColor: '#e0e0e0'
+  },
+  sectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '1.4rem',
+    fontWeight: '700',
+    marginBottom: '1.25rem',
+    color: COLORS.dark
+  },
+  weatherBanner: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    marginBottom: '1.5rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+  },
+  weatherHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '1.5rem',
+    marginBottom: '1rem',
+    flexWrap: 'wrap'
+  },
+  weatherMain: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
+  },
+  weatherIcon: {
+    fontSize: '3.5rem'
+  },
+  weatherTemp: {
+    fontSize: '3rem',
+    fontWeight: 'bold',
+    color: COLORS.primary
+  },
+  weatherDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem'
+  },
+  weatherCity: {
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#333'
+  },
+  weatherDesc: {
+    fontSize: '0.9rem',
+    color: '#666',
+    textTransform: 'capitalize'
+  },
+  weatherGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: '1rem',
+    flex: 1
+  },
+  weatherMetric: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+    padding: '0.75rem',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px'
+  },
+  metricLabel: {
+    fontSize: '0.75rem',
+    color: '#666',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  metricValue: {
+    fontSize: '1.1rem',
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  riskMetric: {
+    gridColumn: 'span 2'
+  },
+  weatherDivider: {
+    height: '1px',
+    backgroundColor: '#e0e0e0',
+    margin: '1rem 0'
+  },
+  forecastSection: {
+    marginTop: '1rem'
+  },
+  forecastTitle: {
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    marginBottom: '1rem',
+    color: '#333'
+  },
+  forecastContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+    gap: '0.75rem'
+  },
+  forecastDay: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '1rem 0.5rem',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '10px',
+    gap: '0.5rem'
+  },
+  forecastDayName: {
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: '#666'
+  },
+  forecastIcon: {
+    fontSize: '2rem'
+  },
+  forecastTemps: {
+    display: 'flex',
+    gap: '0.5rem',
+    alignItems: 'center'
+  },
+  tempMax: {
+    fontSize: '1.1rem',
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  tempMin: {
+    fontSize: '0.9rem',
+    color: '#999'
+  },
+  forecastMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.25rem'
+  },
+  rainInfo: {
+    fontSize: '0.75rem',
+    color: COLORS.info,
+    fontWeight: '500'
+  },
+  humInfo: {
+    fontSize: '0.7rem',
+    color: '#999'
+  },
+  forecastPop: {
+    fontSize: '0.7rem',
+    color: '#666',
+    marginTop: '0.25rem'
+  },
+  alertsSection: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '1rem',
+    marginBottom: '2rem'
+  },
+  alertCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    padding: '1rem',
+    backgroundColor: '#fff3cd',
+    border: `2px solid ${COLORS.warning}`,
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+  },
+  alertInfo: {
+    backgroundColor: '#d1ecf1',
+    border: `2px solid ${COLORS.info}`
+  },
+  alertIcon: {
+    fontSize: '2rem'
+  },
+  alertContent: {
+    flex: 1,
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    color: '#333'
+  },
+  kpiSection: {
+    marginBottom: '2rem'
+  },
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1rem'
+  },
+  kpiCard: {
+    backgroundColor: 'white',
+    padding: '1.25rem',
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    border: '1px solid #e0e0e0',
+    transition: 'transform 0.2s, box-shadow 0.2s'
+  },
+  kpiCardAccent: {
+    background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryLight} 100%)`,
+    border: 'none'
+  },
+  kpiIconWrapper: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '0.75rem'
+  },
+  kpiIcon: {
+    fontSize: '1.5rem'
+  },
+  kpiContent: {
+    marginBottom: '0.5rem'
+  },
+  kpiValue: {
+    fontSize: '1.75rem',
+    fontWeight: 'bold',
+    lineHeight: 1,
+    marginBottom: '0.25rem'
+  },
+  kpiLabel: {
+    fontSize: '0.85rem',
+    color: '#666',
+    fontWeight: '500'
+  },
+  kpiMeta: {
+    display: 'flex',
+    gap: '0.5rem',
+    flexWrap: 'wrap'
+  },
+  kpiTag: {
+    padding: '0.25rem 0.5rem',
+    fontSize: '0.75rem',
+    backgroundColor: '#f0f0f0',
+    borderRadius: '4px',
+    fontWeight: '500',
+    color: '#666'
+  },
+  kpiStatus: {
+    padding: '0.25rem 0.75rem',
+    fontSize: '0.75rem',
+    color: 'white',
+    borderRadius: '12px',
+    fontWeight: '600'
+  },
+  chartSection: {
+    marginBottom: '2rem'
+  },
+  chartCardFull: {
+    backgroundColor: 'white',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+  },
+  chartHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
+    gap: '1rem'
+  },
+  chartTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    color: '#333',
+    margin: 0
+  },
+  chartMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
+  },
+  totalProduction: {
+    fontSize: '1.1rem',
+    fontWeight: '700',
+    color: COLORS.primary
+  },
+  tooltipStyle: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    border: `1px solid ${COLORS.primary}`,
+    borderRadius: '8px',
+    padding: '8px 12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  },
+  productionTableMultiYear: {
+    border: '1px solid #e0e0e0',
+    borderRadius: '8px',
+    overflow: 'hidden'
+  },
+  tableHeaderMultiYear: {
+    display: 'flex',
+    backgroundColor: '#f8f9fa',
+    padding: '1rem',
+    borderBottom: '2px solid #e0e0e0'
+  },
+  tableRowMultiYear: {
+    display: 'flex',
+    padding: '0.75rem 1rem',
+    borderBottom: '1px solid #e0e0e0',
+    transition: 'background-color 0.2s'
+  },
+  tableCell: {
+    flex: 1,
+    fontSize: '0.9rem',
+    color: '#333',
+    display: 'flex',
+    alignItems: 'center'
+  },
+  noData: {
+    textAlign: 'center',
+    padding: '2rem',
+    color: COLORS.muted,
+    fontStyle: 'italic'
+  },
+  activitiesSection: {
+    marginBottom: '2rem'
+  },
+  activitiesGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '1rem'
+  },
+  activityCard: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '1.25rem',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    border: '1px solid #e0e0e0'
+  },
+  activityHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '1rem',
+    fontWeight: '600',
+    marginBottom: '1rem',
+    color: '#333'
+  },
+  activityHeaderIcon: {
+    fontSize: '1.25rem'
+  },
+  activityList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem'
+  },
+  activityEmpty: {
+    textAlign: 'center',
+    padding: '1.5rem',
+    color: COLORS.muted,
+    fontStyle: 'italic',
+    fontSize: '0.9rem'
+  },
+  activityItem: {
+    display: 'flex',
+    gap: '0.75rem',
+    padding: '0.75rem',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px',
+    transition: 'background-color 0.2s'
+  },
+  activityDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginTop: '0.5rem',
+    flexShrink: 0
+  },
+  activityContent: {
+    flex: 1,
+    minWidth: 0
+  },
+  activityDate: {
+    fontSize: '0.75rem',
+    color: '#999',
+    fontWeight: '500',
+    marginBottom: '0.25rem'
+  },
+  activityTitle: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '0.25rem',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  activityMeta: {
+    fontSize: '0.8rem',
+    color: '#666'
+  }
 };
 
 export default Dashboard;
