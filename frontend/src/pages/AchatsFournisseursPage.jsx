@@ -64,19 +64,9 @@ const convertirCalibreTexteEnMm = (calibreTexte) => {
   return mapping[calibreTexte] || null;
 };
 
-const QUALITES = [
-  'Extra',
-  'Première catégorie',
-  'Deuxième catégorie',
-  'Pourrie'
-];
 
-const MATURITES = [
-  'Immature',
-  'À point',
-  'Mature',
-  'Très mature'
-];
+const QUALITES = ['Extra', '1ère', '2e', 'Pourrie'];
+const MATURITES = ['Immature', 'À point', 'Mature', 'Très mature'];
 
 // ============================================================
 // COMPOSANTS UI RÉUTILISABLES
