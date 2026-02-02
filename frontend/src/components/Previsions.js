@@ -56,15 +56,17 @@ function Previsions() {
     setMeteoLoading(true);
     try {
       // Open-Meteo API - gratuite et sans clé
-      const response = await axios.get(`${METEO_CONFIG.openMeteo.baseUrl}/forecast`, {
-        params: {
-          latitude,
-          longitude,
-          daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,soil_temperature_6cm_max',
-          timezone: 'Europe/Paris',
-          forecast_days: 14
-        }
-      });
+		// Requête horaire (hourly) au lieu de daily
+		const response = await axios.get(`${METEO_CONFIG.openMeteo.baseUrl}/forecast`, {
+		  params: {
+			latitude,
+			longitude,
+			hourly: 'temperature_2m,precipitation,soil_temperature_6cm', // hourly au lieu de daily
+			timezone: 'Europe/Paris',
+			forecast_days: 7
+		  }
+		});
+
       
       setMeteoData({
         source: 'Open-Meteo',
@@ -495,11 +497,11 @@ function Previsions() {
                           <div style={{ fontSize: '0.85rem', color: '#1976d2' }}>
                             💧 {meteoData.daily.precipitation_sum[idx]?.toFixed(1) || 0} mm
                           </div>
-                          {meteoData.daily.soil_temperature_6cm_max && (
-                            <div style={{ fontSize: '0.85rem', color: '#8b4513' }}>
-                              🌡️ Sol: {meteoData.daily.soil_temperature_6cm_max[idx]?.toFixed(1)}°C
-                            </div>
-                          )}
+								{meteoData.daily.rain_sum && meteoData.daily.rain_sum[idx] > 0 && (
+								  <div style={{ fontSize: '0.85rem', color: '#4682b4' }}>
+									☔ Pluie: {meteoData.daily.rain_sum[idx]?.toFixed(1)}mm
+								  </div>
+								)}
                         </div>
                       ))}
                     </div>
