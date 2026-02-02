@@ -4,6 +4,8 @@ import { exportRecoltesPDF } from '../utils/pdfExport';
 import { validateRecoltesCSV } from '../utils/csvImport';
 import CSVImportModal from './CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../hooks/useColumnSettings';
+import SeasonSelector from '../components/shared/SeasonSelector';
+import { filterRecoltesBySeason } from '../utils/seasonUtils';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -42,7 +44,7 @@ function RecoltesPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingRecolte, setEditingRecolte] = useState(null);
-  const [filterAnnee, setFilterAnnee] = useState('all');
+  const [filterSeason, setFilterSeason] = useState(null); // CHANGEMENT: filterAnnee -> filterSeason
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -381,8 +383,8 @@ function RecoltesPage() {
 
   // Export PDF avec colonnes configurées
   const handleExportPDF = () => {
-    const annee = filterAnnee === 'all' ? null : parseInt(filterAnnee);
-    exportRecoltesPDF(filteredRecoltes, annee, colonnesExport);
+    // CHANGEMENT: Export avec saison au lieu d'année
+    exportRecoltesPDF(filteredRecoltes, filterSeason, colonnesExport);
   };
 
   // Arbres filtrés par parcelle sélectionnée et par recherche texte
@@ -403,9 +405,6 @@ function RecoltesPage() {
     }
     return true;
   });
-
-  // Obtenir les années disponibles
-  const annees = [...new Set(recoltes.map(r => new Date(r.date_recolte).getFullYear()))].sort((a, b) => b - a);
 
   // Extraire les valeurs uniques pour les filtres
   const filterOptions = {
@@ -437,19 +436,19 @@ function RecoltesPage() {
       dateDebut: '',
       dateFin: ''
     });
-    setFilterAnnee('all');
+    setFilterSeason(null); // CHANGEMENT: Reset de la saison
     setCurrentPage(1);
   };
 
   // Vérifier si des filtres sont actifs
-  const hasActiveFilters = Object.values(filters).some(v => v !== '') || filterAnnee !== 'all';
+  const hasActiveFilters = Object.values(filters).some(v => v !== '') || filterSeason !== null; // CHANGEMENT
 
   // Filtrage avancé des récoltes
   const filteredRecoltes = recoltes.filter(r => {
-    // Filtre par année
-    if (filterAnnee !== 'all') {
-      const year = new Date(r.date_recolte).getFullYear();
-      if (year !== parseInt(filterAnnee)) return false;
+    // CHANGEMENT: Filtre par saison au lieu d'année
+    if (filterSeason) {
+      const seasonRecoltes = filterRecoltesBySeason(recoltes, filterSeason);
+      if (!seasonRecoltes.find(sr => sr.id === r.id)) return false;
     }
     
     // Filtre recherche textuelle
@@ -1088,19 +1087,20 @@ function RecoltesPage() {
             )}
           </div>
           
-          <select 
-            value={filterAnnee} 
-            onChange={(e) => { setFilterAnnee(e.target.value); setCurrentPage(1); }}
-            style={{ 
-              padding: '0.75rem', 
-              borderRadius: '8px', 
-              border: filterAnnee !== 'all' ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
-              background: filterAnnee !== 'all' ? '#e8f5e9' : 'white'
-            }}
-          >
-            <option value="all">📆 Toutes les années</option>
-            {annees.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          {/* CHANGEMENT: Remplacement du select année par SeasonSelector */}
+          <div style={{ minWidth: '200px' }}>
+            <SeasonSelector
+              recoltesData={recoltes}
+              value={filterSeason}
+              onChange={(season) => { 
+                setFilterSeason(season); 
+                setCurrentPage(1); 
+              }}
+              multiple={false}
+              showAll={true}
+              label=""
+            />
+          </div>
           
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -1117,7 +1117,7 @@ function RecoltesPage() {
               fontWeight: hasActiveFilters ? 'bold' : 'normal'
             }}
           >
-            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length + (filterAnnee !== 'all' ? 1 : 0)})`}
+            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length + (filterSeason !== null ? 1 : 0)})`}
             <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
           </button>
           
@@ -1384,8 +1384,10 @@ function RecoltesPage() {
           </div>
         </div>
         <div className="card">
-          <div className="card-title">Années</div>
-          <div className="card-value">{annees.length}</div>
+          <div className="card-title">{filterSeason ? 'Saison' : 'Saisons'}</div>
+          <div className="card-value" style={{ fontSize: filterSeason ? '1.2rem' : '2rem' }}>
+            {filterSeason || '✨'}
+          </div>
         </div>
       </div>
 
