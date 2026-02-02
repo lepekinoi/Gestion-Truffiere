@@ -7,10 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-// import {
-//  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-//  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-//} from 'recharts';
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -33,7 +33,7 @@ const STATUT_COMMANDE_COLORS = {
   'Annulée': { background: '#f8d7da', color: '#721c24', border: '#dc3545' }
 };
 
-// const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 // ✅ NOUVEAUX ENUMS HARMONISÉS AVEC LA BASE PostgreSQL ET RÉCOLTES
 const CALIBRES_TEXTE = [
@@ -42,6 +42,27 @@ const CALIBRES_TEXTE = [
   'Gros (50-100g)',
   'Très gros (plus de 100g)'
 ];
+
+// Après la déclaration de CALIBRES_TEXTE, QUALITES, MATURITES
+const convertirMmEnCalibreTexte = (calibreMm) => {
+  const mapping = {
+    20: 'Petit (moins de 20g)',
+    30: 'Moyen (20-50g)',
+    50: 'Gros (50-100g)',
+    70: 'Très gros (plus de 100g)'
+  };
+  return mapping[calibreMm] || '';
+};
+
+const convertirCalibreTexteEnMm = (calibreTexte) => {
+  const mapping = {
+    'Petit (moins de 20g)': 20,
+    'Moyen (20-50g)': 30,
+    'Gros (50-100g)': 50,
+    'Très gros (plus de 100g)': 70
+  };
+  return mapping[calibreTexte] || null;
+};
 
 const QUALITES = [
   'Extra',
@@ -323,42 +344,52 @@ function AchatsFournisseursPage() {
     setShowCommandeModal(true);
   };
   
-  const handleEditCommande = async (commande) => {
-    setEditingCommande(commande);
-    setCommandeFormData({
-      fournisseur_id: commande.fournisseur_id,
-      date_commande: commande.date_commande?.split('T')[0] || '',
-      date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
-      statut: commande.statut || 'En attente',
-      notes: commande.notes || ''
-    });
+const handleEditCommande = async (commande) => {
+  setEditingCommande(commande);
+  setCommandeFormData({
+    fournisseur_id: commande.fournisseur_id,
+    date_commande: commande.date_commande?.split('T')[0] || '',
+    date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
+    statut: commande.statut || 'En attente',
+    notes: commande.notes || ''
+  });
 
-    try {
-      const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
-      if (response.data && response.data.lignes) {
-        setCommandeLignes(response.data.lignes);
-        console.log(`✅ ${response.data.lignes.length} ligne(s) chargée(s)`);
-      } else {
-        setCommandeLignes([]);
-      }
-    } catch (error) {
-      console.error('Erreur chargement lignes:', error);
-      showMessage('Impossible de charger les lignes de commande', 'error');
+  try {
+    const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
+    if (response.data && response.data.lignes) {
+      // CONVERSION: calibre_mm → calibre (texte)
+      const lignesConverties = response.data.lignes.map(ligne => ({
+        ...ligne,
+        calibre: convertirMmEnCalibreTexte(ligne.calibre_mm), // Convertir en texte
+        quantite_kg: ligne.quantite_kg || '',
+        prix_achat_kg: ligne.prix_achat_kg || '',
+        notes: ligne.notes || ''
+      }));
+      
+      setCommandeLignes(lignesConverties);
+      console.log(`✅ ${lignesConverties.length} ligne(s) chargée(s) et converties`);
+    } else {
       setCommandeLignes([]);
     }
+  } catch (error) {
+    console.error('Erreur chargement lignes:', error);
+    showMessage('Impossible de charger les lignes de commande', 'error');
+    setCommandeLignes([]);
+  }
 
-    setEditingLigneIndex(null);
-    setNouvelleLigne({
-      calibre: '',
-      qualite: '',
-      maturite: 'À point',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
+  setEditingLigneIndex(null);
+  setNouvelleLigne({
+    calibre: '',
+    qualite: '',
+    maturite: 'À point',
+    quantite_kg: '',
+    prix_achat_kg: '',
+    notes: ''
+  });
 
-    setShowCommandeModal(true);
-  };
+  setShowCommandeModal(true);
+};
+
   
   const handleCommandeInputChange = (e) => {
     const { name, value } = e.target;
@@ -441,41 +472,63 @@ function AchatsFournisseursPage() {
     }, 0);
   };
   
-  const handleCommandeSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (commandeLignes.length === 0) {
-      showMessage('Veuillez ajouter au moins une ligne de commande', 'error');
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    try {
-      const dataToSend = {
-        ...commandeFormData,
-        lignes: commandeLignes
-      };
-      
-      console.log('Envoi des données:', dataToSend);
-      
-      if (editingCommande) {
-        await axios.put(`${API_URL}/commandes-achats/${editingCommande.id}`, dataToSend);
-        showMessage('Commande modifiée avec succès !', 'success');
-      } else {
-        await axios.post(`${API_URL}/commandes-achats`, dataToSend);
-        showMessage('Commande créée avec succès !', 'success');
-      }
-      
-      await loadData();
-      setShowCommandeModal(false);
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage(error.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+	const handleCommandeSubmit = async (e) => {
+	  e.preventDefault();
+	  
+	  if (commandeLignes.length === 0) {
+		showMessage('Veuillez ajouter au moins une ligne de commande', 'error');
+		return;
+	  }
+	  
+	  setIsProcessing(true);
+	  
+	  try {
+		// CONVERSION: calibre (texte) → calibre_mm (numérique)
+		const lignesConverties = commandeLignes.map(ligne => ({
+		  calibre_mm: convertirCalibreTexteEnMm(ligne.calibre),
+		  qualite: ligne.qualite,
+		  maturite: ligne.maturite,
+		  quantite_kg: parseFloat(ligne.quantite_kg),
+		  prix_achat_kg: parseFloat(ligne.prix_achat_kg),
+		  notes: ligne.notes || null
+		}));
+		
+		const dataToSend = {
+		  ...commandeFormData,
+		  lignes: lignesConverties
+		};
+		
+		console.log('Envoi des données:', dataToSend);
+		
+		if (editingCommande) {
+		  await axios.put(`${API_URL}/commandes-achats/${editingCommande.id}`, dataToSend);
+		  showMessage('Commande modifiée avec succès !', 'success');
+		} else {
+		  await axios.post(`${API_URL}/commandes-achats`, dataToSend);
+		  showMessage('Commande créée avec succès !', 'success');
+		}
+		
+		await loadData();
+		setShowCommandeModal(false);
+	  } catch (error) {
+		console.error('Erreur:', error);
+		showMessage(error.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
+	  } finally {
+		setIsProcessing(false);
+	  }
+	};
+
+  
+	// Fonction helper à ajouter
+	const convertirCalibreEnMm = (calibreTexte) => {
+	  const mapping = {
+		'Petit (moins de 20g)': 20,
+		'Moyen (20-50g)': 30,
+		'Gros (50-100g)': 50,
+		'Très gros (plus de 100g)': 70
+	  };
+	  return mapping[calibreTexte] || null;
+	};
   
   const askDeleteCommande = (commande) => {
     setConfirmModal({
@@ -1909,7 +1962,7 @@ function AchatsFournisseursPage() {
                       <input
                         type="number"
                         name="quantite_kg"
-                        value={nouvelleLigne.quantite_kg}
+                        value={nouvelleLigne.quantite_kg || ''}
                         onChange={handleNouvelleLigneChange}
                         onKeyDown={handleKeyDownLigne}
                         min="0"
@@ -1928,7 +1981,7 @@ function AchatsFournisseursPage() {
                       <input
                         type="number"
                         name="prix_achat_kg"
-                        value={nouvelleLigne.prix_achat_kg}
+                        value={nouvelleLigne.prix_achat_kg || ''}
                         onChange={handleNouvelleLigneChange}
                         onKeyDown={handleKeyDownLigne}
                         min="0"
