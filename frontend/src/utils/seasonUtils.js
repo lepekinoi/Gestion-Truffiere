@@ -272,13 +272,31 @@ export const getBestPastSeason = (recoltesData) => {
   return bestSeason;
 };
 
-export default {
-  MOIS_SAISON, SEASON_COLORS,
-  getSeasonForDate, getCurrentSeason, getAvailableSeasons,
-  calculateSeasonProgress, getDaysIntoSeason,
-  isInSeason, isOffSeason, getDaysUntilNextSeason, getLastCompleteSeason,
-  isInTruffleSeason, filterRecoltesBySeason, compareSeasonsSamePeriod,
-  detectIncompleteSeason, formatSeasonLabel,
-  getSeasonColor, formatSeasonDate, getProgressLabel, isValidSeasonFormat,
-  getNextSeasonDates, getLastSeasonSummary, getBestPastSeason
+// ✅ Export nommé pour respecter la règle ESLint
+const seasonUtils = {
+  MOIS_SAISON, 
+  SEASON_COLORS,
+  getSeasonForDate, 
+  getCurrentSeason, 
+  getAvailableSeasons,
+  calculateSeasonProgress, 
+  getDaysIntoSeason,
+  isInSeason, 
+  isOffSeason, 
+  getDaysUntilNextSeason, 
+  getLastCompleteSeason,
+  isInTruffleSeason, 
+  filterRecoltesBySeason, 
+  compareSeasonsSamePeriod,
+  detectIncompleteSeason, 
+  formatSeasonLabel,
+  getSeasonColor, 
+  formatSeasonDate, 
+  getProgressLabel, 
+  isValidSeasonFormat,
+  getNextSeasonDates, 
+  getLastSeasonSummary, 
+  getBestPastSeason
 };
+
+export default seasonUtils;
