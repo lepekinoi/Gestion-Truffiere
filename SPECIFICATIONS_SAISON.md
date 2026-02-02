@@ -11,6 +11,7 @@ La culture de la truffe suit un cycle saisonnier qui commence en septembre et se
 ### Portée des modifications
 - **Dashboard.js** : Vue principale avec statistiques et graphiques
 - **Statistiques.js** : Analyses détaillées et exports
+- **src/utils/seasonUtils.js** : Fonctions utilitaires (nouveau fichier)
 - **API Backend** : Ajout d'endpoints si nécessaire
 
 ---
@@ -103,7 +104,85 @@ const getAvailableSeasons = (recoltesData) => {
 
 ---
 
-### 3. Widget "Saison en Cours" (Dashboard)
+### 3. ⚠️ Gestion Période Hors Saison (Avril-Août) ⭐ NOUVEAU
+
+#### Problématique
+Entre avril et août, il n'y a pas de récolte. L'expérience utilisateur doit être adaptée.
+
+#### Solution
+Afficher un widget spécifique "Hors Saison" avec :
+- Message informatif
+- Statistiques de la dernière saison complète
+- Compte à rebours jusqu'à la prochaine saison
+
+#### Design du Widget Hors Saison
+```
+┌──────────────────────────────────────────────────────────┐
+│ 🌱 Période Hors Saison                                       │
+│                                                           │
+│ Prochaine saison : Septembre 2026                         │
+│ Début dans : 42 jours                                      │
+│                                                           │
+│ 📊 Dernière saison (2025-2026)                           │
+│ Production : 48.5 kg | 132 récoltes                        │
+└──────────────────────────────────────────────────────────┘
+```
+
+#### Implémentation
+```javascript
+/**
+ * Vérifie si on est en période hors saison
+ * @returns {boolean}
+ */
+export const isOffSeason = () => {
+  const month = new Date().getMonth() + 1;
+  return month >= 4 && month <= 8;
+};
+
+/**
+ * Calcule le nombre de jours jusqu'à la prochaine saison
+ * @returns {number} Nombre de jours
+ */
+export const getDaysUntilNextSeason = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  
+  if (month >= 4 && month <= 8) {
+    // Prochaine saison commence en septembre
+    const nextSeasonStart = new Date(year, 8, 1); // Mois 8 = septembre (0-indexé)
+    const diffTime = nextSeasonStart - now;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+  
+  return 0; // En saison
+};
+
+/**
+ * Obtient la dernière saison complète
+ * @returns {string} Saison au format "YYYY-YYYY"
+ */
+export const getLastCompleteSeason = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  
+  if (month >= 4 && month <= 8) {
+    // Dernière saison complète : année précédente
+    return `${year - 1}-${year}`;
+  } else if (month >= 9) {
+    // En cours : dernière complète est l'année précédente
+    return `${year - 1}-${year}`;
+  } else {
+    // Jan-Mars : dernière complète = 2 ans avant
+    return `${year - 2}-${year - 1}`;
+  }
+};
+```
+
+---
+
+### 4. Widget "Saison en Cours" (Dashboard)
 
 #### Description
 Bannière visuelle affichant les statistiques de la saison truffière en cours.
@@ -117,6 +196,7 @@ Après la bannière Patrimoine, avant la météo
 - **Nombre de récoltes** : N récoltes
 - **Progression** : X% (avancement dans la saison)
 - **Barre de progression visuelle**
+- **⭐ NOUVEAU : Comparaison même période**
 
 #### Design
 ```
@@ -125,7 +205,84 @@ Après la bannière Patrimoine, avant la météo
 │                                                           │
 │ Production      Récoltes        Progression              │
 │ 45.32 kg        127            71% ███████░░░             │
+│ ↗️ +8.3% vs même période saison dernière (41.8 kg)        │
 └──────────────────────────────────────────────────────────┘
+```
+
+#### ⭐ Comparaison Même Période (NOUVEAU)
+
+**Problématique** : Comparer une saison en cours avec une saison complète n'est pas juste.
+
+**Solution** : Comparer jusqu'au même point d'avancement.
+
+**Exemple** : Si on est le 15 janvier 2025 (à 71% de la saison 2024-2025):
+- Comparer Sep 2024 → mi-janvier 2025
+- Avec Sep 2023 → mi-janvier 2024 (même % d'avancement)
+
+#### Implémentation
+```javascript
+/**
+ * Calcule le nombre de jours écoulés depuis le début de la saison
+ * @param {Date} date - Date à évaluer
+ * @returns {number} Nombre de jours
+ */
+export const getDaysIntoSeason = (date) => {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  
+  let seasonStart;
+  if (month >= 9 && month <= 12) {
+    seasonStart = new Date(year, 8, 1); // 1er septembre
+  } else if (month >= 1 && month <= 3) {
+    seasonStart = new Date(year - 1, 8, 1); // 1er septembre année précédente
+  } else {
+    return 0; // Hors saison
+  }
+  
+  const diffTime = date - seasonStart;
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Compare deux saisons jusqu'à la même période
+ * @param {Array} recoltesData - Toutes les récoltes
+ * @param {string} currentSeason - Saison actuelle (ex: "2024-2025")
+ * @param {string} previousSeason - Saison précédente (ex: "2023-2024")
+ * @returns {Object} Comparaison
+ */
+export const compareSeasonsSamePeriod = (recoltesData, currentSeason, previousSeason) => {
+  const now = new Date();
+  const currentDaysIntoSeason = getDaysIntoSeason(now);
+  
+  // Filtrer les récoltes de la saison actuelle jusqu'à aujourd'hui
+  const currentRecoltes = filterRecoltesBySeason(recoltesData, currentSeason)
+    .filter(r => getDaysIntoSeason(new Date(r.date_recolte)) <= currentDaysIntoSeason);
+  
+  // Filtrer les récoltes de la saison précédente jusqu'au même point
+  const previousRecoltes = filterRecoltesBySeason(recoltesData, previousSeason)
+    .filter(r => getDaysIntoSeason(new Date(r.date_recolte)) <= currentDaysIntoSeason);
+  
+  const currentProduction = currentRecoltes.reduce((sum, r) => 
+    sum + parseFloat(r.poids_grammes || 0), 0
+  ) / 1000; // kg
+  
+  const previousProduction = previousRecoltes.reduce((sum, r) => 
+    sum + parseFloat(r.poids_grammes || 0), 0
+  ) / 1000; // kg
+  
+  const difference = currentProduction - previousProduction;
+  const percentChange = previousProduction > 0 
+    ? (difference / previousProduction) * 100 
+    : 0;
+  
+  return {
+    currentProduction: currentProduction.toFixed(2),
+    previousProduction: previousProduction.toFixed(2),
+    difference: difference.toFixed(2),
+    percentChange: percentChange.toFixed(1),
+    trend: percentChange > 0 ? 'up' : percentChange < 0 ? 'down' : 'stable'
+  };
+};
 ```
 
 #### Calcul de la progression
@@ -158,7 +315,110 @@ const calculateSeasonProgress = () => {
 
 ---
 
-### 4. Graphique Comparaison Multi-Saisons
+### 5. 🔍 Détection des Saisons Incomplètes ⭐ NOUVEAU
+
+#### Problématique
+Si les données commencent en janvier 2023, la saison 2022-2023 est incomplète (pas de sep-déc 2022).
+
+#### Solution
+Marquer visuellement les saisons incomplètes et afficher le taux de couverture.
+
+#### Implémentation
+```javascript
+/**
+ * Détecte si une saison a des données incomplètes
+ * @param {string} season - Saison au format "YYYY-YYYY"
+ * @param {Array} recoltesData - Tableau des récoltes
+ * @returns {Object} Informations sur la complétude
+ */
+export const detectIncompleteSeason = (season, recoltesData) => {
+  const recoltesBySeason = filterRecoltesBySeason(recoltesData, season);
+  
+  if (recoltesBySeason.length === 0) {
+    return {
+      isComplete: false,
+      coverage: 0,
+      missingMonths: [9, 10, 11, 12, 1, 2, 3],
+      hasData: false
+    };
+  }
+  
+  const monthsCovered = new Set(
+    recoltesBySeason.map(r => new Date(r.date_recolte).getMonth() + 1)
+  );
+  
+  const expectedMonths = [9, 10, 11, 12, 1, 2, 3];
+  const missingMonths = expectedMonths.filter(m => !monthsCovered.has(m));
+  
+  const coverage = ((7 - missingMonths.length) / 7 * 100);
+  
+  return {
+    isComplete: missingMonths.length === 0,
+    coverage: coverage.toFixed(0),
+    missingMonths,
+    hasData: true,
+    monthsPresent: Array.from(monthsCovered).sort((a, b) => {
+      // Trier dans l'ordre de la saison (Sep-Mar)
+      const orderMap = { 9: 1, 10: 2, 11: 3, 12: 4, 1: 5, 2: 6, 3: 7 };
+      return orderMap[a] - orderMap[b];
+    })
+  };
+};
+
+/**
+ * Formate l'affichage d'une saison avec indicateur de complétude
+ * @param {string} season
+ * @param {Object} completenessInfo
+ * @returns {string}
+ */
+export const formatSeasonLabel = (season, completenessInfo) => {
+  if (!completenessInfo.hasData) {
+    return `${season} (Aucune donnée)`;
+  }
+  
+  if (completenessInfo.isComplete) {
+    return season;
+  }
+  
+  const monthNames = {
+    1: 'Jan', 2: 'Fév', 3: 'Mar',
+    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Déc'
+  };
+  
+  const presentMonthsStr = completenessInfo.monthsPresent
+    .map(m => monthNames[m])
+    .join(', ');
+  
+  return `${season} ⚠️ (${completenessInfo.coverage}% - ${presentMonthsStr})`;
+};
+```
+
+#### Affichage dans l'interface
+```javascript
+// Dans le sélecteur de saisons
+{availableSeasons.map(season => {
+  const completeness = detectIncompleteSeason(season, recoltesData);
+  const label = formatSeasonLabel(season, completeness);
+  const isIncomplete = !completeness.isComplete && completeness.hasData;
+  
+  return (
+    <button
+      key={season}
+      style={{
+        opacity: isIncomplete ? 0.7 : 1,
+        border: isIncomplete ? '2px dashed #f39c12' : '2px solid transparent'
+      }}
+      title={isIncomplete ? `Données partielles : ${completeness.coverage}% de couverture` : ''}
+    >
+      {label}
+    </button>
+  );
+})}
+```
+
+---
+
+### 6. Graphique Comparaison Multi-Saisons
 
 #### Description
 Graphique en courbes comparant la production mensuelle de plusieurs saisons truffières.
@@ -189,9 +449,17 @@ Une courbe par saison sélectionnée (ex: 2024-2025, 2023-2024, 2022-2023)
 - **Couleurs** : Palette cohérente (même logique que le graphique multi-années actuel)
 - **Tooltip** : Affiche saison, mois, production au survol
 
-#### Fonction de formatage des données
+#### ⭐ Fonction de formatage optimisée (NOUVEAU)
 ```javascript
-const formatSeasonComparisonData = (recolteMensuellesBrutes, selectedSeasons) => {
+/**
+ * Formate les données pour le graphique de comparaison multi-saisons
+ * Optimisé avec useMemo
+ */
+const formatSeasonComparisonData = useMemo(() => {
+  if (!recolteMensuellesBrutes || selectedSeasons.length === 0) {
+    return [];
+  }
+  
   const data = MOIS_SAISON.map(({ nom, index }) => ({ 
     mois: nom, 
     monthIndex: index 
@@ -231,19 +499,19 @@ const formatSeasonComparisonData = (recolteMensuellesBrutes, selectedSeasons) =>
   });
   
   return data;
-};
+}, [recolteMensuellesBrutes, selectedSeasons]); // ⭐ useMemo pour optimisation
 ```
 
 ---
 
-### 5. KPIs Saisonniers
+### 7. KPIs Saisonniers
 
 #### Nouveaux KPIs
 Ajouter dans la section KPIs du Dashboard (mode saison uniquement) :
 
 1. **Production Saison en Cours**
    - Valeur : X.XX kg
-   - Comparaison : +/- X% vs saison précédente
+   - Comparaison : +/- X% vs même période saison précédente ⭐
    - Icône : 🍄
 
 2. **Moyenne par Récolte (Saison)**
@@ -256,9 +524,11 @@ Ajouter dans la section KPIs du Dashboard (mode saison uniquement) :
    - Exemple : "Décembre (12.5 kg)"
    - Icône : 🏆
 
-#### Calcul des KPIs
+#### Calcul des KPIs (optimisé avec useMemo)
 ```javascript
-const calculateSeasonKPIs = (recoltesData, currentSeason) => {
+const seasonKPIs = useMemo(() => {
+  if (!recoltesData || !currentSeason) return null;
+  
   const [yearStart, yearEnd] = currentSeason.split('-').map(Number);
   
   // Filtrer les récoltes de la saison actuelle
@@ -290,25 +560,9 @@ const calculateSeasonKPIs = (recoltesData, currentSeason) => {
   const meilleurMois = Object.entries(prodParMois)
     .sort((a, b) => b[1] - a[1])[0];
   
-  // Comparaison avec saison précédente
+  // ⭐ Comparaison avec même période saison précédente
   const previousSeason = `${yearStart - 1}-${yearEnd - 1}`;
-  const prevSeasonRecoltes = recoltesData.filter(r => {
-    if (!r.date_recolte) return false;
-    const date = new Date(r.date_recolte);
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
-    
-    return (month >= 9 && month <= 12 && year === yearStart - 1) ||
-           (month >= 1 && month <= 3 && year === yearEnd - 1);
-  });
-  
-  const prevProduction = prevSeasonRecoltes.reduce((sum, r) => 
-    sum + parseFloat(r.poids_grammes || 0), 0
-  );
-  
-  const tendance = prevProduction > 0 
-    ? ((totalProduction - prevProduction) / prevProduction) * 100
-    : 0;
+  const comparison = compareSeasonsSamePeriod(recoltesData, currentSeason, previousSeason);
   
   return {
     saison: currentSeason,
@@ -319,15 +573,14 @@ const calculateSeasonKPIs = (recoltesData, currentSeason) => {
       nom: meilleurMois[0],
       production: (meilleurMois[1] / 1000).toFixed(2) // kg
     } : null,
-    tendance: tendance.toFixed(1),
-    trendDirection: tendance > 0 ? 'up' : tendance < 0 ? 'down' : 'stable'
+    comparison // ⭐ Comparaison même période
   };
-};
+}, [recoltesData, currentSeason]); // ⭐ useMemo pour optimisation
 ```
 
 ---
 
-### 6. Production par Parcelle (Vue Saisonnière)
+### 8. Production par Parcelle (Vue Saisonnière)
 
 #### Modification du tableau existant
 Ajouter une colonne "Saison" et adapter le filtrage
@@ -342,9 +595,11 @@ Ajouter une colonne "Saison" et adapter le filtrage
 └──────────┴─────────┴─────────────┴────────────┴──────────────┘
 ```
 
-#### Calcul
+#### Calcul (optimisé avec useMemo)
 ```javascript
-const getProductionParParcelleParSaison = (recoltesData, selectedSeasons) => {
+const productionParParcelle = useMemo(() => {
+  if (!recoltesData || selectedSeasons.length === 0) return [];
+  
   const prodParParcelle = {};
   
   recoltesData.forEach(recolte => {
@@ -393,12 +648,12 @@ const getProductionParParcelleParSaison = (recoltesData, selectedSeasons) => {
       if (a.saison !== b.saison) return b.saison.localeCompare(a.saison);
       return b.production - a.production;
     });
-};
+}, [recoltesData, selectedSeasons]); // ⭐ useMemo pour optimisation
 ```
 
 ---
 
-### 7. Nouvel Onglet "Saisons" dans Statistiques.js
+### 9. Nouvel Onglet "Saisons" dans Statistiques.js
 
 #### Description
 Ajouter un onglet dédié aux analyses saisonnières
@@ -428,126 +683,6 @@ Graphique en courbes (LineChart) montrant l'évolution mensuelle de plusieurs sa
 - **Tendance** : Graphique sparkline ou flèche ↗️↘️➡️
 - **Mois globalement le plus productif** : Analyse sur toutes les saisons
 
-#### Implémentation
-```javascript
-// Dans Statistiques.js
-{selectedView === 'saisons' && (
-  <>
-    <h3>🗓️ Comparaison des saisons truffières</h3>
-    
-    {/* Sélection des saisons */}
-    <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-      {availableSeasons.map(season => (
-        <button
-          key={season}
-          onClick={() => toggleSeasonVisibility(season)}
-          style={{
-            backgroundColor: selectedSeasons.includes(season) ? getSeasonColor(season) : '#e0e0e0',
-            opacity: selectedSeasons.includes(season) ? 1 : 0.6,
-            color: 'white',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          {season}
-        </button>
-      ))}
-    </div>
-    
-    {/* Graphique */}
-    <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem' }}>
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={formatSeasonComparisonData()}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="mois" 
-            label={{ value: 'Mois de la saison (Sep-Mar)', position: 'insideBottom', offset: -5 }}
-          />
-          <YAxis label={{ value: 'Production (kg)', angle: -90, position: 'insideLeft' }} />
-          <Tooltip formatter={(value) => `${value} kg`} />
-          <Legend />
-          {selectedSeasons.map(season => (
-            <Line
-              key={season}
-              type="monotone"
-              dataKey={season}
-              stroke={getSeasonColor(season)}
-              strokeWidth={3}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 6 }}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-    
-    {/* Tableau récapitulatif */}
-    <h4>📊 Résumé par saison</h4>
-    <table>
-      <thead>
-        <tr>
-          <th>Saison</th>
-          <th style={{ textAlign: 'right' }}>Production</th>
-          <th style={{ textAlign: 'center' }}>Nb récoltes</th>
-          <th>Mois le plus productif</th>
-          <th style={{ textAlign: 'right' }}>Moyenne/récolte</th>
-          <th style={{ textAlign: 'right' }}>Évolution</th>
-        </tr>
-      </thead>
-      <tbody>
-        {seasonsSummary.map((season, idx) => (
-          <tr key={season.nom}>
-            <td><strong>{season.nom}</strong></td>
-            <td style={{ textAlign: 'right' }}>{season.totalKg.toFixed(2)} kg</td>
-            <td style={{ textAlign: 'center' }}>{season.nbRecoltes}</td>
-            <td>{season.meilleurMois} ({season.productionMeilleurMois.toFixed(2)} kg)</td>
-            <td style={{ textAlign: 'right' }}>{season.moyenneGrammes.toFixed(0)} g</td>
-            <td style={{ textAlign: 'right', color: season.tendance >= 0 ? '#27ae60' : '#e74c3c' }}>
-              {idx < seasonsSummary.length - 1 ? (
-                <>
-                  {season.tendance >= 0 ? '↗️' : '↘️'}
-                  {Math.abs(season.tendance).toFixed(1)}%
-                </>
-              ) : '-'}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-    
-    {/* Statistiques agrégées */}
-    <div className="stats-grid" style={{ marginTop: '2rem' }}>
-      <div className="card">
-        <div className="card-title">🏆 Meilleure saison</div>
-        <div className="card-value">{bestSeason.nom}</div>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>
-          {bestSeason.totalKg.toFixed(2)} kg produits
-        </div>
-      </div>
-      
-      <div className="card">
-        <div className="card-title">📊 Moyenne toutes saisons</div>
-        <div className="card-value">{avgProduction.toFixed(2)} kg</div>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>
-          {avgRecoltes.toFixed(0)} récoltes/saison
-        </div>
-      </div>
-      
-      <div className="card">
-        <div className="card-title">⭐ Mois star</div>
-        <div className="card-value">{bestMonthOverall}</div>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>
-          Le plus productif historiquement
-        </div>
-      </div>
-    </div>
-  </>
-)}
-```
-
 ---
 
 ## 🔧 Modifications Techniques
@@ -565,10 +700,12 @@ const [displayMode, setDisplayMode] = useState(() => {
 const [currentSeason, setCurrentSeason] = useState('');
 const [availableSeasons, setAvailableSeasons] = useState([]);
 const [selectedSeasons, setSelectedSeasons] = useState([]);
-const [seasonKPIs, setSeasonKPIs] = useState(null);
+const [isOffSeason, setIsOffSeason] = useState(false); // ⭐ NOUVEAU
 
-// Données formatées par saison
-const [productionParSaison, setProductionParSaison] = useState([]);
+// KPIs optimisés avec useMemo ⭐
+const seasonKPIs = useMemo(() => calculateSeasonKPIs(recoltesData, currentSeason), 
+  [recoltesData, currentSeason]
+);
 ```
 
 #### Statistiques.js
@@ -577,182 +714,36 @@ const [productionParSaison, setProductionParSaison] = useState([]);
 const [selectedView, setSelectedView] = useState('dashboard'); 
 // Ajouter 'saisons' comme option
 
-// Stats saisonnières
-const [seasonsSummary, setSeasonsSummary] = useState([]);
-const [selectedSeasons, setSelectedSeasons] = useState([]);
+// Stats saisonnières optimisées ⭐
+const seasonsSummary = useMemo(() => calculateSeasonsSummary(recoltesData, selectedSeasons),
+  [recoltesData, selectedSeasons]
+);
 ```
 
-### Fonctions utilitaires
+### ⭐ Optimisations Performance (NOUVEAU)
 
-Créer un nouveau fichier `src/utils/seasonUtils.js` :
-
+#### Utilisation systématique de useMemo
 ```javascript
-// src/utils/seasonUtils.js
+import { useMemo } from 'react';
 
-export const MOIS_SAISON = [
-  { nom: 'Sep', index: 9, label: 'Septembre' },
-  { nom: 'Oct', index: 10, label: 'Octobre' },
-  { nom: 'Nov', index: 11, label: 'Novembre' },
-  { nom: 'Déc', index: 12, label: 'Décembre' },
-  { nom: 'Jan', index: 1, label: 'Janvier' },
-  { nom: 'Fév', index: 2, label: 'Février' },
-  { nom: 'Mar', index: 3, label: 'Mars' }
-];
+// Exemple : Calculs lourds mémoïsés
+const seasonData = useMemo(() => {
+  return formatSeasonComparisonData(recolteMensuellesBrutes, selectedSeasons);
+}, [recolteMensuellesBrutes, selectedSeasons]);
 
-/**
- * Détermine la saison truffière pour une date donnée
- * @param {Date} date - Date à évaluer
- * @returns {string|null} Saison au format "YYYY-YYYY" ou null si hors saison
- */
-export const getSeasonForDate = (date) => {
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-  
-  if (month >= 9 && month <= 12) {
-    return `${year}-${year + 1}`;
-  } else if (month >= 1 && month <= 3) {
-    return `${year - 1}-${year}`;
-  }
-  
-  return null; // Hors saison
-};
-
-/**
- * Retourne la saison truffière actuelle
- * @returns {string} Saison au format "YYYY-YYYY"
- */
-export const getCurrentSeason = () => {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  
-  if (month >= 9 && month <= 12) {
-    return `${year}-${year + 1}`;
-  } else if (month >= 1 && month <= 3) {
-    return `${year - 1}-${year}`;
-  } else {
-    // Hors saison : retourner la prochaine saison
-    return `${year}-${year + 1}`;
-  }
-};
-
-/**
- * Extrait toutes les saisons présentes dans un jeu de données
- * @param {Array} recoltesData - Tableau des récoltes
- * @returns {Array<string>} Tableau des saisons triées (plus récent en premier)
- */
-export const getAvailableSeasons = (recoltesData) => {
-  const seasons = new Set();
-  
-  recoltesData.forEach(recolte => {
-    if (!recolte || !recolte.date_recolte) return;
-    
-    const date = new Date(recolte.date_recolte);
-    const season = getSeasonForDate(date);
-    
-    if (season) {
-      seasons.add(season);
-    }
-  });
-  
-  return Array.from(seasons).sort().reverse();
-};
-
-/**
- * Calcule le pourcentage d'avancement dans la saison actuelle
- * @returns {number} Pourcentage (0-100)
- */
-export const calculateSeasonProgress = () => {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  
-  let monthsIntoSeason;
-  
-  if (month >= 9 && month <= 12) {
-    monthsIntoSeason = month - 8;
-  } else if (month >= 1 && month <= 3) {
-    monthsIntoSeason = month + 4;
-  } else {
-    return 0; // Hors saison
-  }
-  
-  const daysInMonth = new Date(now.getFullYear(), month, 0).getDate();
-  const dayProgress = day / daysInMonth;
-  
-  return Math.round(((monthsIntoSeason - 1 + dayProgress) / 7) * 100);
-};
-
-/**
- * Filtre les récoltes pour une saison donnée
- * @param {Array} recoltesData - Tableau des récoltes
- * @param {string} season - Saison au format "YYYY-YYYY"
- * @returns {Array} Récoltes filtrées
- */
-export const filterRecoltesBySeason = (recoltesData, season) => {
-  const [yearStart, yearEnd] = season.split('-').map(Number);
-  
-  return recoltesData.filter(recolte => {
-    if (!recolte || !recolte.date_recolte) return false;
-    
-    const date = new Date(recolte.date_recolte);
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
-    
-    return (month >= 9 && month <= 12 && year === yearStart) ||
-           (month >= 1 && month <= 3 && year === yearEnd);
-  });
-};
-
-/**
- * Vérifie si une date est dans la période de récolte truffière
- * @param {Date} date - Date à vérifier
- * @returns {boolean} true si dans la saison
- */
-export const isInTruffleSeason = (date) => {
-  const month = date.getMonth() + 1;
-  return (month >= 9 && month <= 12) || (month >= 1 && month <= 3);
-};
+const productionStats = useMemo(() => {
+  return calculateProductionStats(recoltesData, currentSeason);
+}, [recoltesData, currentSeason]);
 ```
 
-### API Backend (optionnel)
-
-Si besoin d'optimisation, ajouter un endpoint dédié :
-
+#### Lazy Loading des saisons
 ```javascript
-// backend/routes/stats.js
+// Charger les saisons de manière incrémentale
+const [visibleSeasons, setVisibleSeasons] = useState(3); // Afficher 3 saisons par défaut
 
-/**
- * GET /api/stats/production-saisonniere
- * Retourne la production agrégée par saison
- */
-router.get('/production-saisonniere', async (req, res) => {
-  try {
-    const query = `
-      SELECT 
-        CASE 
-          WHEN EXTRACT(MONTH FROM date_recolte) >= 9 
-          THEN EXTRACT(YEAR FROM date_recolte) || '-' || (EXTRACT(YEAR FROM date_recolte) + 1)
-          WHEN EXTRACT(MONTH FROM date_recolte) <= 3 
-          THEN (EXTRACT(YEAR FROM date_recolte) - 1) || '-' || EXTRACT(YEAR FROM date_recolte)
-        END as saison,
-        EXTRACT(MONTH FROM date_recolte) as mois,
-        COUNT(*) as nombre_recoltes,
-        SUM(poids_grammes) as total_grammes,
-        AVG(poids_grammes) as moyenne_grammes
-      FROM recoltes
-      WHERE EXTRACT(MONTH FROM date_recolte) IN (9,10,11,12,1,2,3)
-      GROUP BY saison, mois
-      ORDER BY saison DESC, mois
-    `;
-    
-    const result = await pool.query(query);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Erreur production saisonnière:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+const loadMoreSeasons = () => {
+  setVisibleSeasons(prev => Math.min(prev + 3, availableSeasons.length));
+};
 ```
 
 ---
@@ -790,89 +781,44 @@ const getSeasonColor = (season, availableSeasons) => {
 
 ---
 
-## 📊 Cas d'usage
-
-### Scénario 1 : Exploitant en pleine saison
-**Date** : 15 janvier 2025  
-**Saison actuelle** : 2024-2025  
-**Progression** : 71% (5 mois sur 7)
-
-**Actions** :
-1. L'exploitant ouvre le Dashboard
-2. Le widget "Saison en Cours" affiche immédiatement :
-   - Production : 32.5 kg
-   - Récoltes : 89
-   - Progression : 71%
-3. Le graphique de comparaison montre 2024-2025, 2023-2024, 2022-2023
-4. Il constate que janvier 2025 est en avance sur janvier 2024
-
-### Scénario 2 : Analyse des saisons passées
-**Date** : 15 mai 2025 (hors saison)  
-**Objectif** : Comparer les 5 dernières saisons
-
-**Actions** :
-1. L'exploitant va dans Statistiques > Onglet "Saisons"
-2. Il sélectionne 2024-2025, 2023-2024, 2022-2023, 2021-2022, 2020-2021
-3. Le graphique affiche les 5 courbes de production mensuelle
-4. Le tableau récapitulatif montre :
-   - Meilleure saison : 2023-2024 (48.2 kg)
-   - Tendance globale : +5.3% par saison
-   - Mois star : Décembre (historiquement le plus productif)
-
-### Scénario 3 : Comparaison par parcelle
-**Objectif** : Identifier quelle parcelle a été la plus productive sur 3 saisons
-
-**Actions** :
-1. Dashboard > Mode Saison
-2. Sélectionner 2024-2025, 2023-2024, 2022-2023
-3. Tableau "Production par Parcelle" affiche :
-   ```
-   Parcelle A | 2024-2025 | 15.2 kg
-   Parcelle A | 2023-2024 | 18.5 kg
-   Parcelle A | 2022-2023 | 16.8 kg
-   → Parcelle A : 50.5 kg sur 3 saisons
-   ```
-4. Identification de la parcelle la plus constante
-
----
-
 ## ✅ Checklist d'implémentation
 
-### Phase 1 : Fondations (Priorité haute)
-- [ ] Créer `src/utils/seasonUtils.js` avec toutes les fonctions utilitaires
+### Phase 1 : Fondations (Priorité haute) ⭐
+- [x] Créer `src/utils/seasonUtils.js` avec toutes les fonctions utilitaires
 - [ ] Ajouter les states dans `Dashboard.js`
 - [ ] Implémenter le toggle Mode Affichage
-- [ ] Implémenter `getCurrentSeason()` et `getAvailableSeasons()`
+- [x] Implémenter `getCurrentSeason()` et `getAvailableSeasons()`
+- [ ] Implémenter `isOffSeason()` et `getDaysUntilNextSeason()` ⭐
+- [ ] Implémenter `detectIncompleteSeason()` ⭐
+- [ ] Implémenter `compareSeasonsSamePeriod()` ⭐
 - [ ] Tester la logique de calcul de saison
 
 ### Phase 2 : Dashboard (Priorité haute)
-- [ ] Créer le composant `SeasonWidget`
-- [ ] Implémenter `calculateSeasonKPIs()`
+- [ ] Créer le composant `SeasonWidget` avec comparaison même période ⭐
+- [ ] Créer le composant `OffSeasonWidget` ⭐
+- [ ] Implémenter `calculateSeasonKPIs()` avec useMemo ⭐
 - [ ] Adapter le graphique de comparaison pour le mode saison
-- [ ] Implémenter `formatSeasonComparisonData()`
-- [ ] Ajouter la sélection/désélection des saisons
+- [ ] Implémenter `formatSeasonComparisonData()` avec useMemo ⭐
+- [ ] Ajouter la sélection/désélection des saisons avec marquage des incomplètes ⭐
 - [ ] Adapter le tableau "Production par Parcelle" pour les saisons
 
 ### Phase 3 : Statistiques (Priorité moyenne)
 - [ ] Ajouter l'onglet "Saisons" dans la navigation
-- [ ] Implémenter le graphique de comparaison multi-saisons
+- [ ] Implémenter le graphique de comparaison multi-saisons avec useMemo ⭐
 - [ ] Créer le tableau récapitulatif des saisons
 - [ ] Calculer les statistiques agrégées (meilleure saison, moyenne, etc.)
-- [ ] Implémenter la fonction `calculateSeasonsSummary()`
+- [ ] Implémenter la fonction `calculateSeasonsSummary()` avec useMemo ⭐
 
-### Phase 4 : KPIs Saisonniers (Priorité moyenne)
-- [ ] Créer les cartes KPI spécifiques saison
-- [ ] Implémenter les comparaisons vs saison précédente
-- [ ] Ajouter l'indicateur "Meilleur Mois de la Saison"
-
-### Phase 5 : Optimisations (Priorité basse)
+### Phase 4 : Optimisations (Priorité haute) ⭐
+- [ ] Appliquer useMemo sur tous les calculs lourds
 - [ ] Persistance du mode d'affichage dans localStorage
-- [ ] Améliorer les performances de filtrage
+- [ ] Lazy loading des saisons anciennes
 - [ ] Ajouter des animations de transition
-- [ ] Endpoint API `/production-saisonniere` (optionnel)
 
-### Phase 6 : Tests & Documentation (Priorité haute)
+### Phase 5 : Tests & Documentation (Priorité haute)
 - [ ] Tests unitaires pour `seasonUtils.js`
+- [ ] Tests pour `compareSeasonsSamePeriod()` ⭐
+- [ ] Tests pour `detectIncompleteSeason()` ⭐
 - [ ] Tests d'intégration Dashboard mode saison
 - [ ] Tests d'intégration Statistiques onglet Saisons
 - [ ] Documenter l'utilisation dans le README
@@ -907,37 +853,30 @@ getSeasonForDate(new Date('2025-04-01')) === null
 // 31 mars → 100% (fin)
 ```
 
-#### Test 3 : Filtrage des données
+#### Test 3 : Comparaison même période ⭐
 ```javascript
-// Saison 2024-2025 doit inclure :
-// - Toutes les récoltes de Sep-Déc 2024
-// - Toutes les récoltes de Jan-Mar 2025
-// Et exclure :
-// - Toutes les récoltes d'Avr-Aoû 2024
-// - Toutes les récoltes d'Avr-Aoû 2025
+// Au 15 janvier 2025 (71% de la saison)
+const comparison = compareSeasonsSamePeriod(data, '2024-2025', '2023-2024');
+// Doit comparer Sep 2024-mi Jan 2025 avec Sep 2023-mi Jan 2024
+// Exclure fin janvier-mars 2024
 ```
 
-### Tests d'interface
+#### Test 4 : Détection saisons incomplètes ⭐
+```javascript
+const info = detectIncompleteSeason('2022-2023', data);
+// Si première récolte = 15 jan 2023
+// isComplete = false
+// coverage = "43" (3 mois sur 7)
+// missingMonths = [9, 10, 11, 12]
+```
 
-1. **Toggle mode** :
-   - Cliquer sur "Année civile" → Graphiques changent
-   - Cliquer sur "Saison truffière" → Graphiques changent
-   - État persisté après rafraîchissement
-
-2. **Widget Saison** :
-   - Affiche la saison correcte
-   - Production = somme des récoltes de la saison
-   - Progression cohérente avec la date
-
-3. **Graphique comparaison** :
-   - Courbes affichées correctement
-   - Sélection/désélection des saisons fonctionne
-   - Tooltip affiche les bonnes valeurs
-
-4. **Tableau parcelles** :
-   - Filtre par saisons sélectionnées
-   - Totaux corrects
-   - Tri fonctionne
+#### Test 5 : Période hors saison ⭐
+```javascript
+// En mai 2025
+isOffSeason() === true
+getDaysUntilNextSeason() > 0 // Nombre de jours jusqu'au 1er septembre
+getLastCompleteSeason() === '2024-2025'
+```
 
 ---
 
@@ -947,6 +886,7 @@ getSeasonForDate(new Date('2025-04-01')) === null
 - Branche `V7` à jour
 - Tests passés
 - Code review effectué
+- Tests de performance validés ⭐
 
 ### Étapes
 1. Merger `V7-Saison` dans `V7`
@@ -964,7 +904,7 @@ En cas de problème, le mode "Année civile" reste fonctionnel tel qu'avant.
 
 ### Documentation
 - [Recharts - Documentation](https://recharts.org/)
-- [React Hooks](https://react.dev/reference/react)
+- [React Hooks - useMemo](https://react.dev/reference/react/useMemo)
 - [Date manipulation JavaScript](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Date)
 
 ### Références projet
@@ -978,8 +918,24 @@ En cas de problème, le mode "Année civile" reste fonctionnel tel qu'avant.
 
 - **Auteur** : Perplexity AI
 - **Date** : 2 février 2026
-- **Version** : 1.0
+- **Version** : 2.0 (avec améliorations prioritaires)
 - **Branche** : V7-Saison
+
+---
+
+## 🔄 Historique des versions
+
+### Version 2.0 (02/02/2026)
+- ⭐ Ajout comparaison "même période" entre saisons
+- ⭐ Ajout gestion période hors saison (avril-août)
+- ⭐ Ajout détection saisons incomplètes avec marquage visuel
+- ⭐ Ajout optimisations performance (useMemo, lazy loading)
+- Amélioration de la documentation technique
+- Mise à jour de la checklist d'implémentation
+
+### Version 1.0 (02/02/2026)
+- Spécifications initiales
+- Fonctionnalités de base
 
 ---
 
