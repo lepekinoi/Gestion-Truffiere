@@ -65,7 +65,7 @@ const convertirCalibreTexteEnMm = (calibreTexte) => {
 };
 
 
-const QUALITES = ['Extra', '1ère', '2e', 'Pourrie'];
+const QUALITES = ['Extra', '1ère', '2e'];
 const MATURITES = ['Immature', 'À point', 'Mature', 'Très mature'];
 
 // ============================================================
