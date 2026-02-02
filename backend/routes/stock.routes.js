@@ -21,35 +21,36 @@ module.exports = (pool) => {
       `);
 
       // Détail par qualité et calibre
-      const detailsStock = await pool.query(`
-        WITH recoltes_agg AS (
-          SELECT 
-            COALESCE(qualite, 'Non spécifié') as qualite,
-            COALESCE(calibre, 'Non spécifié') as calibre,
-            SUM(poids_grammes) as total_recolte
-          FROM recoltes
-          GROUP BY COALESCE(qualite, 'Non spécifié'), COALESCE(calibre, 'Non spécifié')
-        ),
-        ventes_agg AS (
-          SELECT 
-            COALESCE(r.qualite, 'Non spécifié') as qualite,
-            COALESCE(r.calibre, 'Non spécifié') as calibre,
-            SUM(v.quantite_grammes) as total_vendu
-          FROM ventes v
-          LEFT JOIN recoltes r ON v.recolte_id = r.id
-          WHERE v.statut = 'Payée'
-          GROUP BY COALESCE(r.qualite, 'Non spécifié'), COALESCE(r.calibre, 'Non spécifié')
-        )
-        SELECT 
-          COALESCE(ra.qualite, va.qualite) as qualite,
-          COALESCE(ra.calibre, va.calibre) as calibre,
-          COALESCE(ra.total_recolte, 0) as recolte_grammes,
-          COALESCE(va.total_vendu, 0) as vendu_grammes,
-          COALESCE(ra.total_recolte, 0) - COALESCE(va.total_vendu, 0) as disponible_grammes
-        FROM recoltes_agg ra
-        FULL OUTER JOIN ventes_agg va ON ra.qualite = va.qualite AND ra.calibre = va.calibre
-        ORDER BY qualite, calibre
-      `);
+	const detailsStock = await pool.query(`
+	  WITH recoltes_agg AS (
+		SELECT 
+		  COALESCE(qualite::text, 'Non classé') as qualite,
+		  COALESCE(calibre, 'Non classé') as calibre,
+		  SUM(poids_grammes) as total_recolte
+		FROM recoltes
+		GROUP BY COALESCE(qualite::text, 'Non classé'), COALESCE(calibre, 'Non classé')
+	  ),
+	  ventes_agg AS (
+		SELECT 
+		  COALESCE(r.qualite::text, 'Non classé') as qualite,
+		  COALESCE(r.calibre, 'Non classé') as calibre,
+		  SUM(v.quantite_grammes) as total_vendu
+		FROM ventes v
+		LEFT JOIN recoltes r ON v.recolte_id = r.id
+		WHERE v.statut = 'Payée'
+		GROUP BY COALESCE(r.qualite::text, 'Non classé'), COALESCE(r.calibre, 'Non classé')
+	  )
+	  SELECT 
+		COALESCE(ra.qualite, va.qualite, 'Non classé') as qualite,
+		COALESCE(ra.calibre, va.calibre, 'Non classé') as calibre,
+		COALESCE(ra.total_recolte, 0) as recolte_grammes,
+		COALESCE(va.total_vendu, 0) as vendu_grammes,
+		COALESCE(ra.total_recolte, 0) - COALESCE(va.total_vendu, 0) as disponible_grammes
+	  FROM recoltes_agg ra
+	  FULL OUTER JOIN ventes_agg va ON ra.qualite = va.qualite AND ra.calibre = va.calibre
+	  ORDER BY qualite, calibre
+	`);
+
 
       // Stock par saison (année de récolte)
       const stockParSaison = await pool.query(`
