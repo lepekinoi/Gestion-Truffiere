@@ -7,10 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+// import {
+//  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+//  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+//} from 'recharts';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -33,7 +33,7 @@ const STATUT_COMMANDE_COLORS = {
   'Annulée': { background: '#f8d7da', color: '#721c24', border: '#dc3545' }
 };
 
-const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+// const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 // ✅ NOUVEAUX ENUMS HARMONISÉS AVEC LA BASE PostgreSQL ET RÉCOLTES
 const CALIBRES_TEXTE = [
