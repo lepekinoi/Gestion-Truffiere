@@ -1,8 +1,8 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.4.0 - ENUMs harmonisés avec récoltes
-// Date: 2 février 2026 - 01h15
-// Status: ✅ PRÊT À UTILISER - HARMONISÉ
+// Version: 2.5.0 - ENUMs + Statut + Emojis (PRODUCTION)
+// Date: 2 février 2026 - 01h35
+// Status: ✅ PRODUCTION READY - Migration DB effectuée
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -142,6 +142,7 @@ function AchatsFournisseursPage() {
     fournisseur_id: '',
     date_commande: new Date().toISOString().split('T')[0],
     date_livraison_prevue: '',
+    statut: 'En attente',
     notes: ''
   });
   
@@ -307,6 +308,7 @@ function AchatsFournisseursPage() {
       fournisseur_id: '',
       date_commande: new Date().toISOString().split('T')[0],
       date_livraison_prevue: '',
+      statut: 'En attente',
       notes: ''
     });
     setCommandeLignes([]);
@@ -327,6 +329,7 @@ function AchatsFournisseursPage() {
       fournisseur_id: commande.fournisseur_id,
       date_commande: commande.date_commande?.split('T')[0] || '',
       date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
+      statut: commande.statut || 'En attente',
       notes: commande.notes || ''
     });
 
@@ -376,7 +379,7 @@ function AchatsFournisseursPage() {
 
   
     const ajouterLigne = () => {
-    if (!nouvelleLigne.calibre_mm || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
+    if (!nouvelleLigne.calibre || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
       showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
       return;
     }
@@ -530,7 +533,7 @@ function AchatsFournisseursPage() {
   );
   
   const filteredStock = stock.filter(s => {
-    const matchCalibre = filterCalibre === 'all' || s.calibre_mm === parseInt(filterCalibre);
+    const matchCalibre = filterCalibre === 'all' || s.calibre === parseInt(filterCalibre);
     const matchQualite = filterQualite === 'all' || s.qualite === filterQualite;
     return matchCalibre && matchQualite;
   });
@@ -882,7 +885,7 @@ function AchatsFournisseursPage() {
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Zone</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Contact</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Statut</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Certifications</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>🏆 Certifications</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Actions</th>
                 </tr>
               </thead>
@@ -1294,7 +1297,7 @@ function AchatsFournisseursPage() {
                 <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Calibre</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Qualité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Maturité</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>🌱 Maturité</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Quantité</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Conservation</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Localisation</th>
@@ -1318,7 +1321,7 @@ function AchatsFournisseursPage() {
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0', background: isAlerte ? '#fff3cd' : 'white' }}>
                         <td style={{ padding: '12px', fontWeight: '500' }}>
-                          {item.calibre_mm}mm
+                          {item.calibre}
                         </td>
                         <td style={{ padding: '12px', color: '#666' }}>
                           {item.qualite}
@@ -1423,7 +1426,7 @@ function AchatsFournisseursPage() {
             <form onSubmit={handleFournisseurSubmit}>
               {/* Nom */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Nom *</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🏢 Nom *</label>
                 <input
                   type="text"
                   name="nom"
@@ -1443,7 +1446,7 @@ function AchatsFournisseursPage() {
               {/* Zone & Email */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Zone production</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🗺️ Zone production</label>
                   <select
                     name="zone_production"
                     value={fournisseurFormData.zone_production}
@@ -1464,7 +1467,7 @@ function AchatsFournisseursPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Email</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📧 Email</label>
                   <input
                     type="email"
                     name="email"
@@ -1484,7 +1487,7 @@ function AchatsFournisseursPage() {
               {/* Téléphone & Statut */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Téléphone</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📱 Téléphone</label>
                   <input
                     type="tel"
                     name="telephone"
@@ -1500,7 +1503,7 @@ function AchatsFournisseursPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Statut</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>⚡ Statut</label>
                   <select
                     name="statut"
                     value={fournisseurFormData.statut}
@@ -1522,7 +1525,7 @@ function AchatsFournisseursPage() {
               
               {/* Adresse */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Adresse</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📍 Adresse</label>
                 <input
                   type="text"
                   name="adresse"
@@ -1541,7 +1544,7 @@ function AchatsFournisseursPage() {
               {/* Code postal, Ville, Pays */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Code postal</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📮 Code postal</label>
                   <input
                     type="text"
                     name="code_postal"
@@ -1557,7 +1560,7 @@ function AchatsFournisseursPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Ville</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🏙️ Ville</label>
                   <input
                     type="text"
                     name="ville"
@@ -1573,7 +1576,7 @@ function AchatsFournisseursPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Pays</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🌍 Pays</label>
                   <input
                     type="text"
                     name="pays"
@@ -1592,7 +1595,7 @@ function AchatsFournisseursPage() {
               
               {/* Certifications */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Certifications</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🏆 Certifications</label>
                 <input
                   type="text"
                   name="certifications"
@@ -1611,7 +1614,7 @@ function AchatsFournisseursPage() {
               
               {/* Notes */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Notes</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📝 Notes</label>
                 <textarea
                   name="notes"
                   value={fournisseurFormData.notes}
@@ -1714,7 +1717,7 @@ function AchatsFournisseursPage() {
                 
                 {/* Fournisseur */}
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Fournisseur *</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>👤 Fournisseur *</label>
                   <select
                     name="fournisseur_id"
                     value={commandeFormData.fournisseur_id}
@@ -1738,7 +1741,7 @@ function AchatsFournisseursPage() {
                 {/* Dates */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Date commande *</label>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>📅 Date commande *</label>
                     <input
                       type="date"
                       name="date_commande"
@@ -1771,10 +1774,37 @@ function AchatsFournisseursPage() {
                     />
                   </div>
                 </div>
+
+                {/* Statut */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>
+                    ⚡ Statut *
+                  </label>
+                  <select
+                    name="statut"
+                    value={commandeFormData.statut}
+                    onChange={handleCommandeInputChange}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="En attente">En attente</option>
+                    <option value="Confirmée">Confirmée</option>
+                    <option value="Expédiée">Expédiée</option>
+                    <option value="Livrée">Livrée</option>
+                    <option value="Réceptionnée">Réceptionnée</option>
+                    <option value="Annulée">Annulée</option>
+                  </select>
+                </div>
                 
                 {/* Notes */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>Notes</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>📝 Notes</label>
                   <textarea
                     name="notes"
                     value={commandeFormData.notes}
@@ -1812,8 +1842,8 @@ function AchatsFournisseursPage() {
                     <div>
                       <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Calibre (mm) *</label>
                       <select
-                        name="calibre_mm"
-                        value={nouvelleLigne.calibre_mm}
+                        name="calibre"
+                        value={nouvelleLigne.calibre}
                         onChange={handleNouvelleLigneChange}
                         onKeyDown={handleKeyDownLigne}
                         style={{
@@ -1831,7 +1861,7 @@ function AchatsFournisseursPage() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Qualité *</label>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>⭐ Qualité *</label>
                       <select
                         name="qualite"
                         value={nouvelleLigne.qualite}
@@ -1852,7 +1882,7 @@ function AchatsFournisseursPage() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Maturité</label>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>🌱 Maturité</label>
                       <select
                         name="maturite"
                         value={nouvelleLigne.maturite}
@@ -1875,7 +1905,7 @@ function AchatsFournisseursPage() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '10px', marginBottom: '10px' }}>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Quantité (kg) *</label>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>⚖️ Quantité (kg) *</label>
                       <input
                         type="number"
                         name="quantite_kg"
@@ -1894,7 +1924,7 @@ function AchatsFournisseursPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Prix/kg (€) *</label>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>💰 Prix/kg (€) *</label>
                       <input
                         type="number"
                         name="prix_achat_kg"
@@ -1993,7 +2023,7 @@ function AchatsFournisseursPage() {
                         <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
                           <th style={{ padding: '8px', textAlign: 'left' }}>Calibre</th>
                           <th style={{ padding: '8px', textAlign: 'left' }}>Qualité</th>
-                          <th style={{ padding: '8px', textAlign: 'left' }}>Maturité</th>
+                          <th style={{ padding: '8px', textAlign: 'left' }}>🌱 Maturité</th>
                           <th style={{ padding: '8px', textAlign: 'right' }}>Qte (kg)</th>
                           <th style={{ padding: '8px', textAlign: 'right' }}>Prix/kg</th>
                           <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
@@ -2003,7 +2033,7 @@ function AchatsFournisseursPage() {
                       <tbody>
                         {commandeLignes.map((ligne, idx) => (
                           <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                            <td style={{ padding: '8px' }}>{ligne.calibre_mm}mm</td>
+                            <td style={{ padding: '8px' }}>{ligne.calibre}</td>
                             <td style={{ padding: '8px' }}>{ligne.qualite}</td>
                             <td style={{ padding: '8px', fontSize: '11px', color: '#666' }}>{ligne.maturite}</td>
                             <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>{ligne.quantite_kg}</td>
