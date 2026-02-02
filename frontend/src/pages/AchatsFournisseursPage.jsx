@@ -465,10 +465,10 @@ const handleEditCommande = async (commande) => {
 	const handleCommandeSubmit = async (e) => {
 	  e.preventDefault();
 	  
-	  if (commandeLignes.length === 0) {
-		showMessage('Veuillez ajouter au moins une ligne de commande', 'error');
-		return;
-	  }
+	  // if (commandeLignes.length === 0) {
+		// showMessage('Veuillez ajouter au moins une ligne de commande', 'error');
+		// return;
+	  // }
 	  
 	  setIsProcessing(true);
 	  
@@ -2157,14 +2157,17 @@ const handleEditCommande = async (commande) => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isProcessing || commandeLignes.length === 0}
+                  // disabled={isProcessing || commandeLignes.length === 0}
+				  disabled={isProcessing}
                   style={{
                     padding: '12px 24px',
                     border: 'none',
                     borderRadius: '6px',
-                    background: commandeLignes.length === 0 ? '#ccc' : '#2196f3',
+                    // background: commandeLignes.length === 0 ? '#ccc' : '#2196f3',
+					background: isProcessing ? '#ccc' : '#2196f3',
                     color: 'white',
-                    cursor: (isProcessing || commandeLignes.length === 0) ? 'not-allowed' : 'pointer',
+                    // cursor: (isProcessing || commandeLignes.length === 0) ? 'not-allowed' : 'pointer',
+					cursor: isProcessing ? 'not-allowed' : 'pointer',
                     fontSize: '14px',
                     fontWeight: 600,
                     opacity: (isProcessing || commandeLignes.length === 0) ? 0.7 : 1
