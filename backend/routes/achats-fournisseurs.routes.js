@@ -285,12 +285,13 @@ module.exports = (pool, requireWriteAccess) => {
       return res.status(400).json({ error: 'Date de commande manquante' });
     }
 
-    if (!Array.isArray(lignes) || lignes.length === 0) {
-      return res.status(400).json({ 
-        error: 'Aucune ligne de commande fournie',
-        received: { lignes, items: req.body.items }
-      });
-    }
+	// ✅ Autoriser les tableaux de lignes vides (commande sans ligne)
+	if (!Array.isArray(lignes)) {
+	  return res.status(400).json({ 
+		error: 'Le format des lignes est invalide',
+		received: { lignes, items: req.body.items }
+	  });
+	}
 
     const client = await pool.connect();
     
@@ -380,13 +381,13 @@ module.exports = (pool, requireWriteAccess) => {
       return res.status(400).json({ error: 'Date de commande manquante' });
     }
 
-    if (!Array.isArray(lignes) || lignes.length === 0) {
-      return res.status(400).json({ 
-        error: 'Aucune ligne de commande fournie',
-        received: { lignes, items: req.body.items }
-      });
-    }
-
+	// ✅ Autoriser les tableaux de lignes vides pour création de brouillons
+	if (!Array.isArray(lignes)) {
+	  return res.status(400).json({ 
+		error: 'Le format des lignes est invalide',
+		received: { lignes, items: req.body.items }
+	  });
+	}
     const client = await pool.connect();
 
     try {
