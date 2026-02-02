@@ -1612,9 +1612,6 @@ function RecoltesPage() {
         </table>
       )}
 
-      {/* Modal de création/édition - TODO: À compléter avec tout le JSX du formulaire */}
-      {/* Le formulaire complet sera ajouté dans un prochain commit */}
-
       {/* Modal d'import CSV */}
       <CSVImportModal
         show={showImportModal}
