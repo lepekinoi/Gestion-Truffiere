@@ -4,6 +4,8 @@ import { exportRecoltesPDF } from '../../../utils/pdfExport';
 import { validateRecoltesCSV } from '../../../utils/csvImport';
 import CSVImportModal from '../../../components/CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../../../hooks/useColumnSettings';
+import SeasonSelector from '../../../components/shared/SeasonSelector';
+import { filterRecoltesBySeason } from '../../../utils/seasonUtils';
 import { EXPOSITIONS, PAGINATION_OPTIONS, QUALITES_VENDABLES, QUALITES_NON_VENDABLES } from '../../../constants';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -18,7 +20,7 @@ function RecoltesPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingRecolte, setEditingRecolte] = useState(null);
-  const [filterAnnee, setFilterAnnee] = useState('all');
+  const [filterSeason, setFilterSeason] = useState(null); // CHANGEMENT: filterAnnee -> filterSeason
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -254,8 +256,8 @@ function RecoltesPage() {
       loadData();
       showMessage(`${validData.length} récolte(s) importée(s) avec succès !`, 'success');
     } catch (error) {
-      console.error('Erreur lors de l\'import:', error);
-      throw new Error('Erreur lors de l\'import des récoltes');
+      console.error('Erreur lors de l\\'import:', error);
+      throw new Error('Erreur lors de l\\'import des récoltes');
     }
   };
 
@@ -357,8 +359,8 @@ function RecoltesPage() {
 
   // Export PDF avec colonnes configurées
   const handleExportPDF = () => {
-    const annee = filterAnnee === 'all' ? null : parseInt(filterAnnee);
-    exportRecoltesPDF(filteredRecoltes, annee, colonnesExport);
+    // CHANGEMENT: Export avec saison au lieu d'année
+    exportRecoltesPDF(filteredRecoltes, filterSeason, colonnesExport);
   };
 
   // Arbres filtrés par parcelle sélectionnée et par recherche texte
@@ -379,9 +381,6 @@ function RecoltesPage() {
     }
     return true;
   });
-
-  // Obtenir les années disponibles
-  const annees = [...new Set(recoltes.map(r => new Date(r.date_recolte).getFullYear()))].sort((a, b) => b - a);
 
   // Extraire les valeurs uniques pour les filtres
   const filterOptions = {
@@ -413,19 +412,19 @@ function RecoltesPage() {
       dateDebut: '',
       dateFin: ''
     });
-    setFilterAnnee('all');
+    setFilterSeason(null); // CHANGEMENT: Reset de la saison
     setCurrentPage(1);
   };
 
   // Vérifier si des filtres sont actifs
-  const hasActiveFilters = Object.values(filters).some(v => v !== '') || filterAnnee !== 'all';
+  const hasActiveFilters = Object.values(filters).some(v => v !== '') || filterSeason !== null; // CHANGEMENT
 
   // Filtrage avancé des récoltes
   const filteredRecoltes = recoltes.filter(r => {
-    // Filtre par année
-    if (filterAnnee !== 'all') {
-      const year = new Date(r.date_recolte).getFullYear();
-      if (year !== parseInt(filterAnnee)) return false;
+    // CHANGEMENT: Filtre par saison au lieu d'année
+    if (filterSeason) {
+      const seasonRecoltes = filterRecoltesBySeason(recoltes, filterSeason);
+      if (!seasonRecoltes.find(sr => sr.id === r.id)) return false;
     }
     
     // Filtre recherche textuelle
@@ -1033,7 +1032,7 @@ function RecoltesPage() {
           <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
             <input
               type="text"
-              placeholder="🔍 Rechercher par arbre, parcelle, caveur, chien, notes..."
+              placeholder="Rechercher par arbre, parcelle, caveur, chien, notes..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               style={{
@@ -1063,21 +1062,17 @@ function RecoltesPage() {
               </button>
             )}
           </div>
-          
-          <select 
-            value={filterAnnee} 
-            onChange={(e) => { setFilterAnnee(e.target.value); setCurrentPage(1); }}
-            style={{ 
-              padding: '0.75rem', 
-              borderRadius: '8px', 
-              border: filterAnnee !== 'all' ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
-              background: filterAnnee !== 'all' ? '#e8f5e9' : 'white'
+
+          {/* CHANGEMENT: Remplacement du select année par SeasonSelector */}
+          <SeasonSelector
+            selectedSeason={filterSeason}
+            onSeasonChange={(season) => {
+              setFilterSeason(season);
+              setCurrentPage(1);
             }}
-          >
-            <option value="all">📆 Toutes les années</option>
-            {annees.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          
+            recoltes={recoltes}
+          />
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             style={{
@@ -1093,10 +1088,15 @@ function RecoltesPage() {
               fontWeight: hasActiveFilters ? 'bold' : 'normal'
             }}
           >
-            🎛️ Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length + (filterAnnee !== 'all' ? 1 : 0)})`}
-            <span style={{ fontSize: '0.8rem' }}>{showFilters ? '▲' : '▼'}</span>
+            🔍 Filtres
+            {hasActiveFilters && (
+              <span style={{ fontSize: '0.8rem' }}>
+                ({Object.values(filters).filter(v => v !== '').length + (filterSeason ? 1 : 0)})
+              </span>
+            )}
+            <span>{showFilters ? '▲' : '▼'}</span>
           </button>
-          
+
           {hasActiveFilters && (
             <button
               onClick={resetFilters}
@@ -1117,14 +1117,15 @@ function RecoltesPage() {
 
         {/* Panneau de filtres avancés */}
         {showFilters && (
-          <div style={{ 
-            marginTop: '1rem', 
-            paddingTop: '1rem', 
+          <div style={{
+            marginTop: '1rem',
+            paddingTop: '1rem',
             borderTop: '1px solid #eee',
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
             gap: '1rem'
           }}>
+            {/* Filtre Parcelle */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Parcelle
@@ -1147,6 +1148,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Qualité */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Qualité
@@ -1163,13 +1165,14 @@ function RecoltesPage() {
                 }}
               >
                 <option value="">Toutes</option>
-                <option value="Extra">⭐ Extra</option>
-                <option value="Première catégorie">🥇 Première</option>
-                <option value="Deuxième catégorie">🥈 Deuxième</option>
-                <option value="Pourrie">🗑️ Pourrie</option>
+                <option value="Extra">Extra</option>
+                <option value="Première catégorie">Première</option>
+                <option value="Deuxième catégorie">Deuxième</option>
+                <option value="Pourrie">Pourrie</option>
               </select>
             </div>
 
+            {/* Filtre Calibre */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Calibre
@@ -1192,6 +1195,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Maturité */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Maturité
@@ -1214,6 +1218,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Caveur */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Caveur
@@ -1236,6 +1241,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Chien */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Chien
@@ -1258,6 +1264,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Exposition */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Exposition
@@ -1280,6 +1287,7 @@ function RecoltesPage() {
               </select>
             </div>
 
+            {/* Filtre Date début */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Date début
@@ -1298,6 +1306,7 @@ function RecoltesPage() {
               />
             </div>
 
+            {/* Filtre Date fin */}
             <div>
               <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
                 Date fin
@@ -1320,20 +1329,20 @@ function RecoltesPage() {
 
         {/* Résumé des résultats */}
         {hasActiveFilters && (
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.75rem', 
-            background: '#f5f5f5', 
+          <div style={{
+            marginTop: '1rem',
+            padding: '0.75rem',
+            background: '#f5f5f5',
             borderRadius: '6px',
             fontSize: '0.9rem',
             color: '#666'
           }}>
-            <strong>{filteredRecoltes.length}</strong> récolte{filteredRecoltes.length > 1 ? 's' : ''} trouvée{filteredRecoltes.length > 1 ? 's' : ''} 
+            <strong>{filteredRecoltes.length}</strong> récolte{filteredRecoltes.length !== 1 ? 's' : ''} trouvée{filteredRecoltes.length !== 1 ? 's' : ''}
             {filteredRecoltes.length !== recoltes.length && (
               <span> sur {recoltes.length} au total</span>
             )}
             {filteredRecoltes.length > 0 && (
-              <span> ➡ Total: <strong style={{ color: '#8b4513' }}>{(stats.poidsTotal / 1000).toFixed(2)} kg</strong></span>
+              <span> • Total: <strong style={{ color: '#8b4513' }}>{(stats.poidsTotal / 1000).toFixed(2)} kg</strong></span>
             )}
           </div>
         )}
@@ -1354,23 +1363,17 @@ function RecoltesPage() {
         <div className="card">
           <div className="card-title">Poids moyen</div>
           <div className="card-value">
-            {filteredRecoltes.length > 0 
-              ? (stats.poidsTotal / filteredRecoltes.length).toFixed(1) 
-              : 0} <span style={{ fontSize: '1rem' }}>g</span>
+            {filteredRecoltes.length > 0 ? (stats.poidsTotal / filteredRecoltes.length).toFixed(1) : 0} <span style={{ fontSize: '1rem' }}>g</span>
           </div>
-        </div>
-        <div className="card">
-          <div className="card-title">Années</div>
-          <div className="card-value">{annees.length}</div>
         </div>
       </div>
 
       {/* Contrôles de pagination */}
       {filteredRecoltes.length > 0 && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: '1rem',
           flexWrap: 'wrap',
           gap: '1rem'
@@ -1395,7 +1398,7 @@ function RecoltesPage() {
               </button>
             ))}
           </div>
-          
+
           {itemsPerPage !== 'all' && totalPages > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button
@@ -1410,7 +1413,7 @@ function RecoltesPage() {
                   opacity: currentPage === 1 ? 0.5 : 1
                 }}
               >
-                ◀️
+                ◀
               </button>
               
               {getPageNumbers().map((page, idx) => (
@@ -1444,7 +1447,7 @@ function RecoltesPage() {
                   opacity: currentPage === totalPages ? 0.5 : 1
                 }}
               >
-                ▶️
+                ▶
               </button>
               
               <span style={{ color: '#666', marginLeft: '0.5rem' }}>
@@ -1455,10 +1458,15 @@ function RecoltesPage() {
         </div>
       )}
 
+      {/* Tableau des récoltes */}
       {filteredRecoltes.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-          <p style={{ fontSize: '1.2rem' }}>Aucune récolte {hasActiveFilters ? 'correspondant aux filtres' : 'enregistrée'}</p>
-          <p>{hasActiveFilters ? 'Essayez de modifier vos critères de recherche' : 'Cliquez sur "Nouvelle récolte" pour commencer'}</p>
+          <p style={{ fontSize: '1.2rem' }}>
+            Aucune récolte {hasActiveFilters ? 'correspondant aux filtres' : 'enregistrée'}
+          </p>
+          <p>
+            {hasActiveFilters ? 'Essayez de modifier vos critères de recherche' : 'Cliquez sur "Nouvelle récolte" pour commencer'}
+          </p>
         </div>
       ) : (
         <table>
@@ -1490,7 +1498,7 @@ function RecoltesPage() {
               return (
                 <tr 
                   key={recolte.id}
-                  style={{ 
+                  style={{
                     background: selectedRecoltes.has(recolte.id) ? '#e3f2fd' : 'transparent',
                     transition: 'background 0.2s'
                   }}
@@ -1508,9 +1516,9 @@ function RecoltesPage() {
                   </td>
                   <td>{recolte.parcelle_nom || '-'}</td>
                   <td>
-                    <span style={{ 
-                      padding: '0.2rem 0.5rem', 
-                      background: '#f0f0f0', 
+                    <span style={{
+                      padding: '0.2rem 0.5rem',
+                      background: '#f0f0f0',
                       borderRadius: '4px',
                       fontFamily: 'monospace'
                     }}>
@@ -1532,9 +1540,7 @@ function RecoltesPage() {
                         fontSize: '0.85rem',
                         fontWeight: '500'
                       }}>
-                        {qualiteStyle.icon} {recolte.qualite === 'Première catégorie' ? '1ère' : 
-                                              recolte.qualite === 'Deuxième catégorie' ? '2ème' : 
-                                              recolte.qualite}
+                        {qualiteStyle.icon} {recolte.qualite === 'Première catégorie' ? '1ère' : recolte.qualite === 'Deuxième catégorie' ? '2ème' : recolte.qualite}
                       </span>
                     ) : '-'}
                   </td>
@@ -1562,16 +1568,16 @@ function RecoltesPage() {
                     </div>
                   </td>
                   <td>
-                    <button 
-                      className="btn btn-secondary" 
+                    <button
+                      className="btn btn-secondary"
                       onClick={() => handleEdit(recolte)}
                       style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem' }}
                       title="Modifier"
                     >
                       ✏️
                     </button>
-                    <button 
-                      className="btn btn-danger" 
+                    <button
+                      className="btn btn-danger"
                       onClick={() => askDelete(recolte)}
                       style={{ padding: '0.4rem 0.8rem' }}
                       title="Supprimer"
@@ -1594,7 +1600,7 @@ function RecoltesPage() {
               <h3>{editingRecolte ? 'Modifier la récolte' : 'Nouvelle récolte'}</h3>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
-            
+
             {/* Bouton pour afficher/masquer la recherche */}
             <div style={{ padding: '0 1.5rem', marginBottom: '1rem' }}>
               <button
@@ -1633,36 +1639,63 @@ function RecoltesPage() {
                 {/* Filtres de recherche */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Parcelle</label>
-                    <select 
-                      name="parcelle_id" 
-                      value={searchFilters.parcelle_id} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Parcelle
+                    </label>
+                    <select
+                      name="parcelle_id"
+                      value={searchFilters.parcelle_id}
                       onChange={handleSearchFilterChange}
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     >
                       <option value="">Toutes</option>
-                      {parcelles.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                      {parcelles.map(p => (
+                        <option key={p.id} value={p.id}>{p.nom}</option>
+                      ))}
                     </select>
                   </div>
+
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Arbre</label>
-                    <select 
-                      name="arbre_id" 
-                      value={searchFilters.arbre_id} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Arbre
+                    </label>
+                    <select
+                      name="arbre_id"
+                      value={searchFilters.arbre_id}
                       onChange={handleSearchFilterChange}
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     >
                       <option value="">Tous</option>
-                      {arbresFilteredSearch.map(a => <option key={a.id} value={a.id}>{a.numero}</option>)}
+                      {arbresFilteredSearch.map(a => (
+                        <option key={a.id} value={a.id}>{a.numero}</option>
+                      ))}
                     </select>
                   </div>
+
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Qualité</label>
-                    <select 
-                      name="qualite" 
-                      value={searchFilters.qualite} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Qualité
+                    </label>
+                    <select
+                      name="qualite"
+                      value={searchFilters.qualite}
                       onChange={handleSearchFilterChange}
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     >
                       <option value="">Toutes</option>
                       <option value="Extra">Extra</option>
@@ -1672,49 +1705,66 @@ function RecoltesPage() {
                     </select>
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '0.75rem', marginBottom: '1rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Date début</label>
-                    <input 
-                      type="date" 
-                      name="date_debut" 
-                      value={searchFilters.date_debut} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Date début
+                    </label>
+                    <input
+                      type="date"
+                      name="date_debut"
+                      value={searchFilters.date_debut}
                       onChange={handleSearchFilterChange}
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     />
                   </div>
+
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Date fin</label>
-                    <input 
-                      type="date" 
-                      name="date_fin" 
-                      value={searchFilters.date_fin} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Date fin
+                    </label>
+                    <input
+                      type="date"
+                      name="date_fin"
+                      value={searchFilters.date_fin}
                       onChange={handleSearchFilterChange}
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     />
                   </div>
+
                   <div>
-                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Recherche texte</label>
-                    <input 
-                      type="text" 
-                      name="texte" 
-                      value={searchFilters.texte} 
+                    <label style={{ fontSize: '0.85rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>
+                      Recherche texte
+                    </label>
+                    <input
+                      type="text"
+                      name="texte"
+                      value={searchFilters.texte}
                       onChange={handleSearchFilterChange}
                       placeholder="Caveur, chien, notes..."
-                      style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Résultats de recherche */}
-                <div style={{ 
-                  maxHeight: '200px', 
-                  overflowY: 'auto', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '4px',
-                  background: 'white'
-                }}>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px', background: 'white' }}>
                   {getFilteredSearchResults().length === 0 ? (
                     <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
                       Aucune récolte trouvée
@@ -1764,86 +1814,177 @@ function RecoltesPage() {
                   )}
                 </div>
                 <small style={{ display: 'block', marginTop: '0.5rem', color: '#888' }}>
-                  💡 Cliquez sur "Copier" pour pré-remplir le formulaire avec les données d'une récolte existante (20 résultats max)
+                  Cliquez sur "Copier" pour pré-remplir le formulaire avec les données d'une récolte existante (20 résultats max)
                 </small>
               </div>
             )}
-            
+
             <form onSubmit={handleSubmit}>
+              {/* Localisation */}
               <h4 style={{ color: '#2c5f2d', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                📍 Localisation
+                🌳 Localisation
               </h4>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Parcelle *</label>
-                  <select name="parcelle_id" value={formData.parcelle_id} onChange={handleInputChange} required>
+                  <label>Parcelle</label>
+                  <select
+                    name="parcelle_id"
+                    value={formData.parcelle_id}
+                    onChange={handleInputChange}
+                    required
+                  >
                     <option value="">Sélectionner...</option>
-                    {parcelles.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                    {parcelles.map(p => (
+                      <option key={p.id} value={p.id}>{p.nom}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label>Arbre * <span style={{ color: '#e74c3c', fontSize: '0.85rem' }}>(obligatoire)</span></label>
-                  <input 
-                    type="text" 
-                    placeholder="🔍 Rechercher un arbre (numéro, espèce, variété)..." 
+                  <label>
+                    Arbre <span style={{ color: '#e74c3c', fontSize: '0.85rem' }}>*obligatoire</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Rechercher un arbre (numéro, espèce, variété)..."
                     value={arbreSearchText}
                     onChange={(e) => setArbreSearchText(e.target.value)}
-                    style={{ 
-                      marginBottom: '0.5rem', 
-                      padding: '0.5rem', 
-                      border: '1px solid #ddd', 
+                    style={{
+                      marginBottom: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #ddd',
                       borderRadius: '4px',
                       width: '100%'
                     }}
                   />
-                  <select name="arbre_id" value={formData.arbre_id} onChange={handleInputChange} required>
+                  <select
+                    name="arbre_id"
+                    value={formData.arbre_id}
+                    onChange={handleInputChange}
+                    required
+                  >
                     <option value="">Sélectionner un arbre...</option>
-                    {arbresFiltered.map(a => <option key={a.id} value={a.id}>{a.numero} - {a.espece}{a.variete_truffe ? ` (${a.variete_truffe})` : ''}</option>)}
+                    {arbresFiltered.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.numero} - {a.espece}{a.variete_truffe ? ` (${a.variete_truffe})` : ''}
+                      </option>
+                    ))}
                   </select>
                   {!formData.parcelle_id && (
                     <small style={{ color: '#888' }}>Sélectionnez d'abord une parcelle</small>
                   )}
                   {formData.parcelle_id && arbresFiltered.length === 0 && (
-                    <small style={{ color: '#e74c3c' }}>Aucun arbre trouvé{arbreSearchText ? ' pour cette recherche' : ' dans cette parcelle'}</small>
+                    <small style={{ color: '#e74c3c' }}>
+                      Aucun arbre trouvé{arbreSearchText ? ' pour cette recherche' : ''} dans cette parcelle
+                    </small>
                   )}
                   {formData.parcelle_id && arbresFiltered.length > 0 && (
-                    <small style={{ color: '#888' }}>{arbresFiltered.length} arbre(s) disponible(s)</small>
+                    <small style={{ color: '#888' }}>
+                      {arbresFiltered.length} arbre{arbresFiltered.length > 1 ? 's' : ''} disponible{arbresFiltered.length > 1 ? 's' : ''}
+                    </small>
                   )}
                 </div>
               </div>
 
+              {/* Date et poids */}
               <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                📆 Date et poids
+                📅 Date et poids
               </h4>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Date de récolte *</label>
-                  <input type="date" name="date_recolte" value={formData.date_recolte} onChange={handleInputChange} required />
+                  <label>Date de récolte</label>
+                  <input
+                    type="date"
+                    name="date_recolte"
+                    value={formData.date_recolte}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
 
                 <div className="form-group">
-                  <label>Poids (grammes) *</label>
-                  <input type="number" name="poids_grammes" value={formData.poids_grammes} onChange={handleInputChange} step="0.1" required placeholder="Ex: 45.5" />
+                  <label>Poids (grammes)</label>
+                  <input
+                    type="number"
+                    name="poids_grammes"
+                    value={formData.poids_grammes}
+                    onChange={handleInputChange}
+                    step="0.1"
+                    required
+                    placeholder="Ex: 45.5"
+                  />
                 </div>
 
                 <div className="form-group">
                   <label>Profondeur (cm)</label>
-                  <input type="number" name="profondeur_cm" value={formData.profondeur_cm} onChange={handleInputChange} placeholder="Ex: 15" />
+                  <input
+                    type="number"
+                    name="profondeur_cm"
+                    value={formData.profondeur_cm}
+                    onChange={handleInputChange}
+                    placeholder="Ex: 15"
+                  />
                 </div>
               </div>
 
+              {/* Caractéristiques */}
+              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
+                ⭐ Caractéristiques
+              </h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Qualité</label>
+                  <select
+                    name="qualite"
+                    value={formData.qualite}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Extra">Extra</option>
+                    <option value="Première catégorie">Première catégorie</option>
+                    <option value="Deuxième catégorie">Deuxième catégorie</option>
+                    <option value="Pourrie">Pourrie</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Calibre</label>
+                  <select
+                    name="calibre"
+                    value={formData.calibre}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Petit (moins de 20g)">Petit (moins de 20g)</option>
+                    <option value="Moyen (20-50g)">Moyen (20-50g)</option>
+                    <option value="Gros (50-100g)">Gros (50-100g)</option>
+                    <option value="Très gros (plus de 100g)">Très gros (plus de 100g)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Maturité</label>
+                  <select
+                    name="maturite"
+                    value={formData.maturite}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Immature">Immature</option>
+                    <option value="À point">À point</option>
+                    <option value="Mature">Mature</option>
+                    <option value="Très mature">Très mature</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Position par rapport à l'arbre */}
               <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
                 🧭 Position par rapport à l'arbre
               </h4>
               <div className="form-group">
                 <label>Exposition (côté de l'arbre où la truffe a été trouvée)</label>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(4, 1fr)', 
-                  gap: '0.5rem',
-                  marginTop: '0.5rem'
-                }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
                   {EXPOSITIONS.map(expo => (
                     <button
                       key={expo.value}
@@ -1882,78 +2023,64 @@ function RecoltesPage() {
                 )}
               </div>
 
+              {/* Équipe de cavage */}
               <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                🍄 Caractéristiques
-              </h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Qualité</label>
-                  <select name="qualite" value={formData.qualite} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
-                    <option value="Extra">Extra</option>
-                    <option value="Première catégorie">Première catégorie</option>
-                    <option value="Deuxième catégorie">Deuxième catégorie</option>
-                    <option value="Pourrie">Pourrie</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Calibre</label>
-                  <select name="calibre" value={formData.calibre} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
-                    <option value="Petit (moins de 20g)">Petit (moins de 20g)</option>
-                    <option value="Moyen (20-50g)">Moyen (20-50g)</option>
-                    <option value="Gros (50-100g)">Gros (50-100g)</option>
-                    <option value="Très gros (plus de 100g)">Très gros (plus de 100g)</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Maturité</label>
-                  <select name="maturite" value={formData.maturite} onChange={handleInputChange}>
-                    <option value="">Sélectionner...</option>
-                    <option value="Immature">Immature</option>
-                    <option value="À point">À point</option>
-                    <option value="Mature">Mature</option>
-                    <option value="Très mature">Très mature</option>
-                  </select>
-                </div>
-              </div>
-
-              <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
-                🐕 Équipe de cavage
+                👥 Équipe de cavage
               </h4>
               <div className="form-grid">
                 <div className="form-group">
                   <label>Caveur</label>
-                  <select name="caveur" value={formData.caveur} onChange={handleInputChange}>
+                  <select
+                    name="caveur"
+                    value={formData.caveur}
+                    onChange={handleInputChange}
+                  >
                     <option value="">Sélectionner...</option>
-                    {caveurs.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
+                    {caveurs.map(c => (
+                      <option key={c.id} value={c.nom}>{c.nom}</option>
+                    ))}
                   </select>
                   {caveurs.length === 0 && (
-                    <small style={{ color: '#888' }}>Ajoutez des caveurs dans Paramètres</small>
+                    <small style={{ color: '#888' }}>
+                      Ajoutez des caveurs dans "Paramètres"
+                    </small>
                   )}
                 </div>
 
                 <div className="form-group">
                   <label>Chien</label>
-                  <select name="chien" value={formData.chien} onChange={handleInputChange}>
+                  <select
+                    name="chien"
+                    value={formData.chien}
+                    onChange={handleInputChange}
+                  >
                     <option value="">Sélectionner...</option>
-                    {chiens.map(c => <option key={c.id} value={c.nom}>{c.nom} {c.race ? `(${c.race})` : ''}</option>)}
+                    {chiens.map(c => (
+                      <option key={c.id} value={c.nom}>
+                        {c.nom}{c.race ? ` (${c.race})` : ''}
+                      </option>
+                    ))}
                   </select>
                   {chiens.length === 0 && (
-                    <small style={{ color: '#888' }}>Ajoutez des chiens dans Paramètres</small>
+                    <small style={{ color: '#888' }}>
+                      Ajoutez des chiens dans "Paramètres"
+                    </small>
                   )}
                 </div>
               </div>
 
+              {/* Conditions */}
               <h4 style={{ color: '#2c5f2d', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', paddingBottom: '0.5rem' }}>
                 🌤️ Conditions
               </h4>
               <div className="form-grid">
                 <div className="form-group">
                   <label>Conditions météo</label>
-                  <select name="conditions_meteo" value={formData.conditions_meteo} onChange={handleInputChange}>
+                  <select
+                    name="conditions_meteo"
+                    value={formData.conditions_meteo}
+                    onChange={handleInputChange}
+                  >
                     <option value="">Sélectionner...</option>
                     <option value="Ensoleillé">☀️ Ensoleillé</option>
                     <option value="Nuageux">⛅ Nuageux</option>
@@ -1965,19 +2092,42 @@ function RecoltesPage() {
 
                 <div className="form-group">
                   <label>Température du sol (°C)</label>
-                  <input type="number" name="temperature_sol" value={formData.temperature_sol} onChange={handleInputChange} step="0.1" placeholder="Ex: 12.5" />
+                  <input
+                    type="number"
+                    name="temperature_sol"
+                    value={formData.temperature_sol}
+                    onChange={handleInputChange}
+                    step="0.1"
+                    placeholder="Ex: 12.5"
+                  />
                 </div>
               </div>
 
               <div className="form-group" style={{ marginTop: '1rem' }}>
                 <label>Notes</label>
-                <textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Observations..." rows="3" />
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Observations..."
+                  rows="3"
+                />
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>Annuler</button>
-                <button type="submit" className="btn btn-primary" disabled={isProcessing}>
-                  {isProcessing ? 'En cours...' : (editingRecolte ? 'Mettre à jour' : 'Enregistrer')}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeModal}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? 'En cours...' : editingRecolte ? 'Mettre à jour' : 'Enregistrer'}
                 </button>
               </div>
             </form>
