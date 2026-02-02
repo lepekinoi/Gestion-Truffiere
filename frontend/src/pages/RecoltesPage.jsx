@@ -1098,7 +1098,7 @@ function RecoltesPage() {
               background: filterAnnee !== 'all' ? '#e8f5e9' : 'white'
             }}
           >
-            <option value="all">📆 Toutes les années</option>
+            <option value="all">📆 Toutes les saisons</option>
             {annees.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           
