@@ -20,7 +20,8 @@ function RecoltesPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingRecolte, setEditingRecolte] = useState(null);
-  const [filterSeason, setFilterSeason] = useState(null); // CHANGEMENT: filterAnnee -> filterSeason
+  const [filterSeason, setFilterSeason] = useState('all');
+  
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -256,8 +257,8 @@ function RecoltesPage() {
       loadData();
       showMessage(`${validData.length} récolte(s) importée(s) avec succès !`, 'success');
     } catch (error) {
-      console.error('Erreur lors de l\\'import:', error);
-      throw new Error('Erreur lors de l\\'import des récoltes');
+      console.error('Erreur lors de l\'import:', error);
+      throw new Error('Erreur lors de l\'import des récoltes');
     }
   };
 
