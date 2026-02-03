@@ -1,8 +1,8 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.5.4 - FIX CRITIQUE calibre_mm
+// Version: 2.5.5 - FIX force_modify dans body
 // Date: 3 février 2026
-// Status: ✅ PRODUCTION READY - Utilisation correcte de convertirCalibreTexteEnMm
+// Status: ✅ PRODUCTION READY - force_modify correctement passé dans req.body
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -376,17 +376,19 @@ function AchatsFournisseursPage() {
         };
       });
       
+      // ✅ FIX: Ajouter force_modify dans le body, pas dans l'URL
       const dataToSend = {
         ...commandeFormData,
         lignes: lignesAvecMm,
-        montant_total: calculerMontantTotal()
+        montant_total: calculerMontantTotal(),
+        force_modify: forceModify // ← ICI dans le body !
       };
       
       console.log('📤 Données envoyées:', JSON.stringify(dataToSend, null, 2));
       
       let url = `${API_URL}/commandes-achats`;
       if (editingCommande) {
-        url += `/${editingCommande.id}${forceModify ? '?force_modify=true' : ''}`;
+        url += `/${editingCommande.id}`;
         await axios.put(url, dataToSend);
         showMessage('✅ Commande modifiée avec succès', 'success');
       } else {
