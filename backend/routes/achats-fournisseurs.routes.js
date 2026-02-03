@@ -371,7 +371,7 @@ router.put('/commandes-achats/:id', requireWriteAccess, async (req, res) => {
   let date_livraison_prevue = req.body.date_livraison_prevue || req.body.dateLivraisonPrevue;
   let lignes = req.body.lignes || req.body.items || [];
   let notes = req.body.notes;
-  let statut = req.body.statut || 'En attente';  // ✅ AJOUTÉ
+  let statut = req.body.statut || 'En attente';
   
   // Validation
   if (!fournisseur_id) {
@@ -405,12 +405,15 @@ router.put('/commandes-achats/:id', requireWriteAccess, async (req, res) => {
       return res.status(404).json({ error: 'Commande introuvable' });
     }
     
-    // Empêcher la modification si réceptionnée
+    // ✅ V7: Vérifier si une confirmation est requise pour les statuts sensibles
     const statutActuel = checkCommande.rows[0].statut;
-    if (statutActuel === 'Réceptionnée' || statutActuel === 'Livrée') {
+    const forceModify = req.body.force_modify || false;
+    
+    if ((statutActuel === 'Réceptionnée' || statutActuel === 'Livrée') && !forceModify) {
       await client.query('ROLLBACK');
-      return res.status(400).json({
-        error: 'Impossible de modifier une commande réceptionnée ou livrée',
+      return res.status(409).json({
+        error: 'confirmation_required',
+        message: `Cette commande est ${statutActuel}. Une confirmation est requise pour la modifier.`,
         statut: statutActuel
       });
     }
@@ -601,12 +604,15 @@ router.put('/commandes-achats/:id', requireWriteAccess, async (req, res) => {
 
       const statut = commandeCheck.rows[0].statut;
 
-      // Empêcher la suppression si la commande a été réceptionnée
-      if (statut === 'Réceptionnée' || statut === 'Livrée') {
+      // ✅ V7: Vérifier si une confirmation est requise pour les statuts sensibles  
+      const forceDelete = req.query.force_delete === 'true' || req.body.force_delete === true;
+      
+      if ((statut === 'Réceptionnée' || statut === 'Livrée') && !forceDelete) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ 
-          error: 'Impossible de supprimer une commande réceptionnée ou livrée',
-          statut: statut 
+        return res.status(409).json({
+          error: 'confirmation_required',
+          message: `Cette commande est ${statut}. Une confirmation est requise pour la supprimer.`,
+          statut: statut
         });
       }
 
