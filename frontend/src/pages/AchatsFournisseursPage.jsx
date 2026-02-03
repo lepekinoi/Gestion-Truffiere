@@ -24,6 +24,13 @@ import {
   convertirCalibreTexteEnMm
 } from '../components/achats/constants';
 
+// ✅ PHASE 2: Imports des tabs
+import FournisseursTab from '../components/achats/tabs/FournisseursTab';
+import CommandesAchatsTab from '../components/achats/tabs/CommandesAchatsTab';
+import StockTab from '../components/achats/tabs/StockTab';
+import MargeTab from '../components/achats/tabs/MargeTab';
+
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 
@@ -183,316 +190,80 @@ const handleRegionChange = (e) => {
     return fournisseur ? fournisseur.nom : '-';
   };
   
-  // ==================== GESTION FOURNISSEURS ====================
-  
-  const openNewFournisseurModal = () => {
-    setEditingFournisseur(null);
-	setRegionSelectionnee('');
-    setFournisseurFormData({
-      nom: '',
-      zone_production: '',
-      email: '',
-      telephone: '',
-      adresse: '',
-      code_postal: '',
-      ville: '',
-      pays: 'France',
-      certifications: '',
-      statut: 'Actif',
-      prix_moyen_kg: '',
-      notes: ''
-    });
-    setShowFournisseurModal(true);
-  };
-  
-	const handleEditFournisseur = (fournisseur) => {
-	  setEditingFournisseur(fournisseur);
-	  setFournisseurFormData({ ...fournisseur });
-	  
-	  // ✅ Pré-remplir la région basée sur la zone
-	  if (fournisseur.zone_production) {
-		const zone = zonesProduction.find(z => z.nom === fournisseur.zone_production);
-		if (zone) {
-		  setRegionSelectionnee(zone.region);
-		}
-	  }
-	  
-	  setShowFournisseurModal(true);
-	};
-  
-  const handleFournisseurInputChange = (e) => {
-    const { name, value } = e.target;
-    setFournisseurFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleFournisseurSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    
-    try {
-      if (editingFournisseur) {
-        await axios.put(`${API_URL}/fournisseurs/${editingFournisseur.id}`, fournisseurFormData);
-        showMessage('Fournisseur modifié avec succès !', 'success');
-      } else {
-        await axios.post(`${API_URL}/fournisseurs`, fournisseurFormData);
-        showMessage('Fournisseur créé avec succès !', 'success');
-      }
+      {/* ============================================================ */}
+      {/* ONGLET FOURNISSEURS */}
+      {/* ============================================================ */}
+      {activeTab === 'fournisseurs' && (
+        <FournisseursTab
+          statsFournisseurs={statsFournisseurs}
+          fournisseurs={fournisseurs}
+          zonesProduction={zonesProduction}
+          regionsFournisseur={regionsFournisseur}
+          filterRegion={filterRegion}
+          setFilterRegion={setFilterRegion}
+          filterZone={filterZone}
+          setFilterZone={setFilterZone}
+          filterStatutFournisseur={filterStatutFournisseur}
+          setFilterStatutFournisseur={setFilterStatutFournisseur}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          currentPageFournisseurs={currentPageFournisseurs}
+          setCurrentPageFournisseurs={setCurrentPageFournisseurs}
+          filteredFournisseurs={filteredFournisseurs}
+          paginatedFournisseurs={paginatedFournisseurs}
+          itemsPerPage={itemsPerPage}
+          openNewFournisseurModal={openNewFournisseurModal}
+          handleEditFournisseur={handleEditFournisseur}
+          askDeleteFournisseur={askDeleteFournisseur}
+          resetFiltersFournisseurs={resetFiltersFournisseurs}
+          getZonesByRegion={getZonesByRegion}
+        />
+      )}
       
-      await loadData();
-      setShowFournisseurModal(false);
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors de l\'enregistrement', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const askDeleteFournisseur = (fournisseur) => {
-    setConfirmModal({
-      type: 'delete-fournisseur',
-      item: fournisseur,
-      title: 'Confirmer la suppression',
-      message: `Êtes-vous sûr de vouloir supprimer le fournisseur "${fournisseur.nom}" ?`,
-      confirmText: 'Supprimer',
-      confirmColor: '#f44336'
-    });
-  };
-  
-  const doDeleteFournisseur = async (fournisseur) => {
-    setIsProcessing(true);
-    try {
-      await axios.delete(`${API_URL}/fournisseurs/${fournisseur.id}`);
-      showMessage('Fournisseur supprimé avec succès', 'success');
-      await loadData();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors de la suppression', 'error');
-    } finally {
-      setIsProcessing(false);
-      setConfirmModal(null);
-    }
-  };
-  
-  // ==================== GESTION COMMANDES ====================
-  
-  const openNewCommandeModal = () => {
-    setEditingCommande(null);
-    setCommandeFormData({
-      fournisseur_id: '',
-      date_commande: new Date().toISOString().split('T')[0],
-      date_livraison_prevue: '',
-      statut: 'En attente',
-      notes: ''
-    });
-    setCommandeLignes([]);
-    setNouvelleLigne({
-      calibre: '',
-      qualite: '',
-      maturite: 'À point',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
-    setShowCommandeModal(true);
-  };
-  
-const handleEditCommande = async (commande) => {
-  setEditingCommande(commande);
-  setCommandeFormData({
-    fournisseur_id: commande.fournisseur_id,
-    date_commande: commande.date_commande?.split('T')[0] || '',
-    date_livraison_prevue: commande.date_livraison_prevue?.split('T')[0] || '',
-    statut: commande.statut || 'En attente',
-    notes: commande.notes || ''
-  });
-
-  try {
-    const response = await axios.get(`${API_URL}/commandes-achats/${commande.id}`);
-    if (response.data && response.data.lignes) {
-      // CONVERSION: calibre_mm → calibre (texte)
-      const lignesConverties = response.data.lignes.map(ligne => ({
-        ...ligne,
-        calibre: convertirMmEnCalibreTexte(ligne.calibre_mm), // Convertir en texte
-        quantite_kg: ligne.quantite_kg || '',
-        prix_achat_kg: ligne.prix_achat_kg || '',
-        notes: ligne.notes || ''
-      }));
+      {/* ============================================================ */}
+      {/* ONGLET COMMANDES ACHATS */}
+      {/* ============================================================ */}
+      {activeTab === 'commandes' && (
+        <CommandesAchatsTab
+          statsCommandes={statsCommandes}
+          commandes={commandes}
+          fournisseurs={fournisseurs}
+          filterStatutCommande={filterStatutCommande}
+          setFilterStatutCommande={setFilterStatutCommande}
+          currentPageCommandes={currentPageCommandes}
+          setCurrentPageCommandes={setCurrentPageCommandes}
+          filteredCommandes={filteredCommandes}
+          paginatedCommandes={paginatedCommandes}
+          itemsPerPage={itemsPerPage}
+          openNewCommandeModal={openNewCommandeModal}
+          handleEditCommande={handleEditCommande}
+          askDeleteCommande={askDeleteCommande}
+          getFournisseurName={getFournisseurName}
+        />
+      )}
       
-      setCommandeLignes(lignesConverties);
-      console.log(`✅ ${lignesConverties.length} ligne(s) chargée(s) et converties`);
-    } else {
-      setCommandeLignes([]);
-    }
-  } catch (error) {
-    console.error('Erreur chargement lignes:', error);
-    showMessage('Impossible de charger les lignes de commande', 'error');
-    setCommandeLignes([]);
-  }
+      {/* ============================================================ */}
+      {/* ONGLET STOCK */}
+      {/* ============================================================ */}
+      {activeTab === 'stock' && (
+        <StockTab
+          statsStock={statsStock}
+          stock={stock}
+          filterCalibre={filterCalibre}
+          setFilterCalibre={setFilterCalibre}
+          filterQualite={filterQualite}
+          setFilterQualite={setFilterQualite}
+          filteredStock={filteredStock}
+        />
+      )}
+      
+      {/* ============================================================ */}
+      {/* ONGLET MARGE */}
+      {/* ============================================================ */}
+      {activeTab === 'marge' && (
+        <MargeTab />
+      )}
 
-  setEditingLigneIndex(null);
-  setNouvelleLigne({
-    calibre: '',
-    qualite: '',
-    maturite: 'À point',
-    quantite_kg: '',
-    prix_achat_kg: '',
-    notes: ''
-  });
-
-  setShowCommandeModal(true);
-};
-
-  
-  const handleCommandeInputChange = (e) => {
-    const { name, value } = e.target;
-	console.log(`🔄 Changement ${name}:`, value); // ← AJOUTER
-    setCommandeFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  // NOUVEAU: Gestion des lignes de commande
-  const handleNouvelleLigneChange = (e) => {
-    const { name, value } = e.target;
-    setNouvelleLigne(prev => ({ ...prev, [name]: value }));
-  };
-  const handleKeyDownLigne = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      ajouterLigne();
-    }
-  };
-  
-    const ajouterLigne = () => {
-    if (!nouvelleLigne.calibre || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
-      showMessage('Veuillez remplir tous les champs obligatoires de la ligne', 'error');
-      return;
-    }
-
-    if (editingLigneIndex !== null) {
-      setCommandeLignes(prev => prev.map((ligne, i) => 
-        i === editingLigneIndex ? { ...nouvelleLigne } : ligne
-      ));
-      showMessage('Ligne modifiée !', 'success');
-      setEditingLigneIndex(null);
-    } else {
-      setCommandeLignes(prev => [...prev, { ...nouvelleLigne }]);
-      showMessage('Ligne ajoutée !', 'success');
-    }
-
-    setNouvelleLigne({
-      calibre: '',
-      qualite: '',
-      maturite: 'À point',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
-  };
-  
-  const modifierLigne = (index) => {
-    const ligne = commandeLignes[index];
-    setNouvelleLigne({ ...ligne });
-    setEditingLigneIndex(index);
-    showMessage('Ligne chargée pour modification', 'info');
-  };
-
-  const annulerEditionLigne = () => {
-    setNouvelleLigne({
-      calibre: '',
-      qualite: '',
-      maturite: 'À point',
-      quantite_kg: '',
-      prix_achat_kg: '',
-      notes: ''
-    });
-    setEditingLigneIndex(null);
-    showMessage('Édition annulée', 'info');
-  };
-
-  const supprimerLigne = (index) => {
-    if (editingLigneIndex === index) {
-      annulerEditionLigne();
-    } else if (editingLigneIndex !== null && editingLigneIndex > index) {
-      setEditingLigneIndex(editingLigneIndex - 1);
-    }
-    setCommandeLignes(prev => prev.filter((_, i) => i !== index));
-    showMessage('Ligne supprimée', 'info');
-  };
-  
-  const calculerMontantTotal = () => {
-    return commandeLignes.reduce((sum, ligne) => {
-      return sum + (parseFloat(ligne.quantite_kg) * parseFloat(ligne.prix_achat_kg));
-    }, 0);
-  };
-  
-	const handleCommandeSubmit = async (e, forceModify = false) => {
-	  e.preventDefault();
-	  
-	  // if (commandeLignes.length === 0) {
-		// showMessage('Veuillez ajouter au moins une ligne de commande', 'error');
-		// return;
-	  // }
-	  
-	  setIsProcessing(true);
-	  
-	  try {
-		// CONVERSION: calibre (texte) → calibre_mm (numérique)
-		const lignesConverties = commandeLignes.map(ligne => ({
-		  calibre_mm: convertirCalibreTexteEnMm(ligne.calibre),
-		  qualite: ligne.qualite,
-		  maturite: ligne.maturite,
-		  quantite_kg: parseFloat(ligne.quantite_kg),
-		  prix_achat_kg: parseFloat(ligne.prix_achat_kg),
-		  notes: ligne.notes || null
-		}));
-		
-		const dataToSend = {
-		  ...commandeFormData,
-		  lignes: lignesConverties,
-		  // ✅ V7: Ajouter le flag force_modify si demandé
-		  ...(forceModify && { force_modify: true })
-		};
-		
-		console.log('📤 STATUT ENVOYÉ:', dataToSend.statut); // ← AJOUTER
-		console.log('📦 DATA COMPLÈTE:', dataToSend); // ← AJOUTER
-		
-		if (editingCommande) {
-		  await axios.put(`${API_URL}/commandes-achats/${editingCommande.id}`, dataToSend);
-		  showMessage('Commande modifiée avec succès !', 'success');
-		} else {
-		  await axios.post(`${API_URL}/commandes-achats`, dataToSend);
-		  showMessage('Commande créée avec succès !', 'success');
-		}
-		
-		await loadData();
-		setShowCommandeModal(false);
-		  } catch (error) {
-	  console.error('❌ Erreur:', error);
-	  
-	  // ✅ V7: Gérer le code 409 (confirmation requise)
-	  if (editingCommande && error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
-		// Enregistrer l'action en attente
-		setPendingAction({
-		  type: 'save-commande-force',
-		  data: e
-		});
-		
-		// ✅ Le modal de commande reste ouvert, on affiche juste la confirmation par-dessus
-		setConfirmModal({
-		  type: 'save-commande-force',
-		  title: 'Confirmation requise',
-		  message: `⚠️ ${error.response.data.message}\n\nVoulez-vous continuer la modification ?`,
-		  confirmText: 'Oui, modifier quand même',
-		  confirmColor: '#ff9800'
-		});
-	  } else {
-		showMessage(error.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
-	  }
-	} finally {
-	  setIsProcessing(false);
-	}
-	};
-	
   
 	// Fonction helper à ajouter
 	const convertirCalibreEnMm = (calibreTexte) => {
@@ -833,413 +604,413 @@ const handleEditCommande = async (commande) => {
             />
           </div>
           
-	{/* CONTRÔLES FOURNISSEURS */}
-	<div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-		  <button 
-			onClick={openNewFournisseurModal}
-			style={{ 
-			  padding: '10px 20px', 
-			  background: '#2196f3', 
-			  color: 'white', 
-			  border: 'none', 
-			  borderRadius: '6px', 
-			  cursor: 'pointer', 
-			  fontWeight: 600,
-			  transition: 'background 0.2s'
-			}}
-			onMouseEnter={(e) => e.currentTarget.style.background = '#1976d2'}
-			onMouseLeave={(e) => e.currentTarget.style.background = '#2196f3'}
-		  >
-			➕ Nouveau Fournisseur
-		  </button>
+			{/* CONTRÔLES FOURNISSEURS */}
+			<div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+				  <button 
+					onClick={openNewFournisseurModal}
+					style={{ 
+					  padding: '10px 20px', 
+					  background: '#2196f3', 
+					  color: 'white', 
+					  border: 'none', 
+					  borderRadius: '6px', 
+					  cursor: 'pointer', 
+					  fontWeight: 600,
+					  transition: 'background 0.2s'
+					}}
+					onMouseEnter={(e) => e.currentTarget.style.background = '#1976d2'}
+					onMouseLeave={(e) => e.currentTarget.style.background = '#2196f3'}
+				  >
+					➕ Nouveau Fournisseur
+				  </button>
 
-		  {/* ✅ BOUTON RESET */}
-		  <button 
-			onClick={resetFiltersFournisseurs}
-			title="Réinitialiser tous les filtres"
-			style={{ 
-			  padding: '10px 20px', 
-			  background: '#9e9e9e', 
-			  color: 'white', 
-			  border: 'none', 
-			  borderRadius: '6px', 
-			  cursor: 'pointer', 
-			  fontWeight: 600,
-			  transition: 'background 0.2s'
-			}}
-			onMouseEnter={(e) => e.currentTarget.style.background = '#757575'}
-			onMouseLeave={(e) => e.currentTarget.style.background = '#9e9e9e'}
-		  >
-			🔄 Réinitialiser filtres
-		  </button>
+				  {/* ✅ BOUTON RESET */}
+				  <button 
+					onClick={resetFiltersFournisseurs}
+					title="Réinitialiser tous les filtres"
+					style={{ 
+					  padding: '10px 20px', 
+					  background: '#9e9e9e', 
+					  color: 'white', 
+					  border: 'none', 
+					  borderRadius: '6px', 
+					  cursor: 'pointer', 
+					  fontWeight: 600,
+					  transition: 'background 0.2s'
+					}}
+					onMouseEnter={(e) => e.currentTarget.style.background = '#757575'}
+					onMouseLeave={(e) => e.currentTarget.style.background = '#9e9e9e'}
+				  >
+					🔄 Réinitialiser filtres
+				  </button>
 
-		  {/* FILTRE PAR RÉGION */}
-		  <select
-			value={filterRegion}
-			onChange={(e) => {
-			  setFilterRegion(e.target.value);
-			  setFilterZone('all');
-			  setCurrentPageFournisseurs(1);
-			}}
-			style={{ 
-			  padding: '10px 15px', 
-			  border: '1px solid #ddd', 
-			  borderRadius: '6px',
-			  cursor: 'pointer'
-			}}
-		  >
-			<option value="all">🗺️ Toutes les régions</option>
-			{regionsFournisseur.map(region => (
-			  <option key={region} value={region}>{region}</option>
-			))}
-		  </select>
+				  {/* FILTRE PAR RÉGION */}
+				  <select
+					value={filterRegion}
+					onChange={(e) => {
+					  setFilterRegion(e.target.value);
+					  setFilterZone('all');
+					  setCurrentPageFournisseurs(1);
+					}}
+					style={{ 
+					  padding: '10px 15px', 
+					  border: '1px solid #ddd', 
+					  borderRadius: '6px',
+					  cursor: 'pointer'
+					}}
+				  >
+					<option value="all">🗺️ Toutes les régions</option>
+					{regionsFournisseur.map(region => (
+					  <option key={region} value={region}>{region}</option>
+					))}
+				  </select>
 
-		  {/* FILTRE PAR ZONE */}
-		  <select
-			value={filterZone}
-			onChange={(e) => {
-			  setFilterZone(e.target.value);
-			  setCurrentPageFournisseurs(1);
-			}}
-			disabled={filterRegion === 'all'}
-			style={{ 
-			  padding: '10px 15px', 
-			  border: '1px solid #ddd', 
-			  borderRadius: '6px',
-			  cursor: filterRegion === 'all' ? 'not-allowed' : 'pointer',
-			  backgroundColor: filterRegion === 'all' ? '#f5f5f5' : 'white',
-			  color: filterRegion === 'all' ? '#999' : '#333'
-			}}
-		  >
-			<option value="all">
-			  {filterRegion === 'all' ? '📍 Toutes les zones' : '📍 Toutes zones de la région'}
-			</option>
-			{filterRegion !== 'all' && getZonesByRegion(filterRegion).map(zone => (
-			  <option key={zone.id} value={zone.nom}>
-				{zone.nom}
-			  </option>
-			))}
-		  </select>
+				  {/* FILTRE PAR ZONE */}
+				  <select
+					value={filterZone}
+					onChange={(e) => {
+					  setFilterZone(e.target.value);
+					  setCurrentPageFournisseurs(1);
+					}}
+					disabled={filterRegion === 'all'}
+					style={{ 
+					  padding: '10px 15px', 
+					  border: '1px solid #ddd', 
+					  borderRadius: '6px',
+					  cursor: filterRegion === 'all' ? 'not-allowed' : 'pointer',
+					  backgroundColor: filterRegion === 'all' ? '#f5f5f5' : 'white',
+					  color: filterRegion === 'all' ? '#999' : '#333'
+					}}
+				  >
+					<option value="all">
+					  {filterRegion === 'all' ? '📍 Toutes les zones' : '📍 Toutes zones de la région'}
+					</option>
+					{filterRegion !== 'all' && getZonesByRegion(filterRegion).map(zone => (
+					  <option key={zone.id} value={zone.nom}>
+						{zone.nom}
+					  </option>
+					))}
+				  </select>
 
-		  {/* FILTRE PAR STATUT */}
-		  <select
-			value={filterStatutFournisseur}
-			onChange={(e) => {
-			  setFilterStatutFournisseur(e.target.value);
-			  setCurrentPageFournisseurs(1);
-			}}
-			style={{ 
-			  padding: '10px 15px', 
-			  border: '1px solid #ddd', 
-			  borderRadius: '6px',
-			  cursor: 'pointer'
-			}}
-		  >
-			<option value="all">⚡ Tous les statuts</option>
-			<option value="Actif">✅ Actif</option>
-			<option value="Inactif">❌ Inactif</option>
-			<option value="Suspendu">⏸️ Suspendu</option>
-		  </select>
+				  {/* FILTRE PAR STATUT */}
+				  <select
+					value={filterStatutFournisseur}
+					onChange={(e) => {
+					  setFilterStatutFournisseur(e.target.value);
+					  setCurrentPageFournisseurs(1);
+					}}
+					style={{ 
+					  padding: '10px 15px', 
+					  border: '1px solid #ddd', 
+					  borderRadius: '6px',
+					  cursor: 'pointer'
+					}}
+				  >
+					<option value="all">⚡ Tous les statuts</option>
+					<option value="Actif">✅ Actif</option>
+					<option value="Inactif">❌ Inactif</option>
+					<option value="Suspendu">⏸️ Suspendu</option>
+				  </select>
 
-		  {/* RECHERCHE */}
-		  <input
-			type="text"
-			placeholder="🔍 Rechercher un fournisseur..."
-			value={searchTerm}
-			onChange={(e) => {
-			  setSearchTerm(e.target.value);
-			  setCurrentPageFournisseurs(1);
-			}}
-			style={{ 
-			  padding: '10px 15px', 
-			  border: '1px solid #ddd', 
-			  borderRadius: '6px', 
-			  flex: 1, 
-			  minWidth: '200px',
-			  fontSize: '14px'
-			}}
-		  />
-	  
-		  {/* ✅ INDICATEUR DE FILTRES ACTIFS */}
-		  {(filterRegion !== 'all' || filterZone !== 'all' || filterStatutFournisseur !== 'all' || searchTerm) && (
-			<div style={{ 
-			  padding: '8px 12px', 
-			  background: '#fff3cd', 
-			  border: '1px solid #ffc107',
-			  borderRadius: '6px',
-			  fontSize: '13px',
-			  color: '#856404',
-			  fontWeight: 500
-			}}>
-			  🎯 Filtres actifs
+				  {/* RECHERCHE */}
+				  <input
+					type="text"
+					placeholder="🔍 Rechercher un fournisseur..."
+					value={searchTerm}
+					onChange={(e) => {
+					  setSearchTerm(e.target.value);
+					  setCurrentPageFournisseurs(1);
+					}}
+					style={{ 
+					  padding: '10px 15px', 
+					  border: '1px solid #ddd', 
+					  borderRadius: '6px', 
+					  flex: 1, 
+					  minWidth: '200px',
+					  fontSize: '14px'
+					}}
+				  />
+			  
+				  {/* ✅ INDICATEUR DE FILTRES ACTIFS */}
+				  {(filterRegion !== 'all' || filterZone !== 'all' || filterStatutFournisseur !== 'all' || searchTerm) && (
+					<div style={{ 
+					  padding: '8px 12px', 
+					  background: '#fff3cd', 
+					  border: '1px solid #ffc107',
+					  borderRadius: '6px',
+					  fontSize: '13px',
+					  color: '#856404',
+					  fontWeight: 500
+					}}>
+					  🎯 Filtres actifs
+					</div>
+					)}
 			</div>
-			)}
-	</div>
   
-	{/* TABLEAU FOURNISSEURS */}
-	<div style={{ background: 'white', borderRadius: '8px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-	  
-		  {/* ✅ PAGINATION ET INFO AU-DESSUS */}
-		  <div style={{ 
-			display: 'flex', 
-			justifyContent: 'space-between', 
-			alignItems: 'center', 
-			marginBottom: '15px', 
-			paddingBottom: '15px', 
-			borderBottom: '2px solid #e0e0e0' 
-		  }}>
-			<div style={{ color: '#666', fontSize: '14px' }}>
-			  🧑‍🌾 <strong>{filteredFournisseurs.length}</strong> fournisseur(s) trouvé(s)
-			  {filterRegion !== 'all' && ` • 🗺️ ${filterRegion}`}
-			  {filterZone !== 'all' && ` • 📍 ${filterZone}`}
-			</div>
-		
-			<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-			  <button
-				onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
-				disabled={currentPageFournisseurs === 1}
-				style={{
-				  padding: '8px 16px',
-				  border: '1px solid #ddd',
-				  borderRadius: '4px',
-				  background: currentPageFournisseurs === 1 ? '#f5f5f5' : 'white',
-				  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
-				  opacity: currentPageFournisseurs === 1 ? 0.5 : 1,
-				  fontWeight: 500
-				}}
-			  >
-				← Précédent
-			  </button>
-			  
-			  <span style={{ color: '#666', fontSize: '14px' }}>
-				Page <strong>{currentPageFournisseurs}</strong> / <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
-			  </span>
-			  
-			  <button
-				onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
-				disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
-				style={{
-				  padding: '8px 16px',
-				  border: '1px solid #ddd',
-				  borderRadius: '4px',
-				  background: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? '#f5f5f5' : 'white',
-				  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-				  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1,
-				  fontWeight: 500
-				}}
-			  >
-				Suivant →
-			  </button>
-			</div>
-		  </div>
+		{/* TABLEAU FOURNISSEURS */}
+		<div style={{ background: 'white', borderRadius: '8px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+		  
+			  {/* ✅ PAGINATION ET INFO AU-DESSUS */}
+			  <div style={{ 
+				display: 'flex', 
+				justifyContent: 'space-between', 
+				alignItems: 'center', 
+				marginBottom: '15px', 
+				paddingBottom: '15px', 
+				borderBottom: '2px solid #e0e0e0' 
+			  }}>
+				<div style={{ color: '#666', fontSize: '14px' }}>
+				  🧑‍🌾 <strong>{filteredFournisseurs.length}</strong> fournisseur(s) trouvé(s)
+				  {filterRegion !== 'all' && ` • 🗺️ ${filterRegion}`}
+				  {filterZone !== 'all' && ` • 📍 ${filterZone}`}
+				</div>
+			
+				<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+				  <button
+					onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
+					disabled={currentPageFournisseurs === 1}
+					style={{
+					  padding: '8px 16px',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  background: currentPageFournisseurs === 1 ? '#f5f5f5' : 'white',
+					  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
+					  opacity: currentPageFournisseurs === 1 ? 0.5 : 1,
+					  fontWeight: 500
+					}}
+				  >
+					← Précédent
+				  </button>
+				  
+				  <span style={{ color: '#666', fontSize: '14px' }}>
+					Page <strong>{currentPageFournisseurs}</strong> / <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
+				  </span>
+				  
+				  <button
+					onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
+					disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
+					style={{
+					  padding: '8px 16px',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  background: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? '#f5f5f5' : 'white',
+					  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+					  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1,
+					  fontWeight: 500
+					}}
+				  >
+					Suivant →
+				  </button>
+				</div>
+			  </div>
 
-		  {/* TABLEAU AVEC TRI */}
-		  <div style={{ overflowX: 'auto' }}>
-			<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-			  <thead>
-				<tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					👤 Nom
-				  </th>
-				  
-				  {/* ✅ NOUVELLE COLONNE RÉGION */}
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					🗺️ Région
-				  </th>
-				  
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					📍 Zone Production
-				  </th>
-				  
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					📞 Contact
-				  </th>
-				  
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					⚡ Statut
-				  </th>
-				  
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					🏆 Certifications
-				  </th>
-				  
-				  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-					⚙️ Actions
-				  </th>
-				</tr>
-			  </thead>
-			  <tbody>
-				{paginatedFournisseurs.length === 0 ? (
-				  <tr>
-					<td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-					  😔 Aucun fournisseur trouvé
-					</td>
-				  </tr>
-				) : (
-				  paginatedFournisseurs.map((fournisseur, idx) => {
-					// ✅ Calculer la région depuis la zone
-					const fournisseurRegion = fournisseur.zone_production 
-					  ? (zonesProduction.find(z => z.nom === fournisseur.zone_production)?.region || '-')
-					  : '-';
-					
-					return (
-					  <tr 
-						key={idx} 
-						style={{ 
-						  borderBottom: '1px solid #e0e0e0',
-						  transition: 'background 0.2s'
-						}}
-						onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
-						onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-					  >
-						{/* Nom */}
-						<td style={{ padding: '12px', fontWeight: 600, color: '#333' }}>
-						  {fournisseur.nom}
-						</td>
-						
-						{/* ✅ RÉGION */}
-						<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-						  {fournisseurRegion}
-						</td>
-						
-						{/* Zone */}
-						<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-						  {fournisseur.zone_production || '-'}
-						</td>
-						
-						{/* Contact */}
-						<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-						  {fournisseur.email ? (
-							<a 
-							  href={`mailto:${fournisseur.email}`} 
-							  style={{ color: '#2196f3', textDecoration: 'none', display: 'block' }}
-							>
-							  📧 {fournisseur.email}
-							</a>
-						  ) : (
-							<span style={{ color: '#999' }}>-</span>
-						  )}
-						  {fournisseur.telephone && (
-							<div style={{ marginTop: '4px', color: '#666' }}>
-							  📱 {fournisseur.telephone}
-							</div>
-						  )}
-						</td>
-						
-						{/* Statut */}
-						<td style={{ padding: '12px' }}>
-						  <StatusBadge statut={fournisseur.statut || 'Actif'} type="fournisseur" />
-						</td>
-						
-						{/* Certifications */}
-						<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-						  {fournisseur.certifications ? (
-							<span>🏅 {fournisseur.certifications}</span>
-						  ) : (
-							<span style={{ color: '#999' }}>-</span>
-						  )}
-						</td>
-						
-						{/* Actions */}
-						<td style={{ padding: '12px' }}>
-						  <div style={{ display: 'flex', gap: '8px' }}>
-							<button
-							  onClick={() => handleEditFournisseur(fournisseur)}
-							  title="Modifier le fournisseur"
-							  style={{
-								padding: '6px 12px',
-								background: '#ff9800',
-								color: 'white',
-								border: 'none',
-								borderRadius: '4px',
-								cursor: 'pointer',
-								fontSize: '12px',
-								fontWeight: 500,
-								transition: 'background 0.2s'
-							  }}
-							  onMouseEnter={(e) => e.currentTarget.style.background = '#f57c00'}
-							  onMouseLeave={(e) => e.currentTarget.style.background = '#ff9800'}
-							>
-							  ✏️ Modifier
-							</button>
-							<button
-							  onClick={() => askDeleteFournisseur(fournisseur)}
-							  title="Supprimer le fournisseur"
-							  style={{
-								padding: '6px 12px',
-								background: '#f44336',
-								color: 'white',
-								border: 'none',
-								borderRadius: '4px',
-								cursor: 'pointer',
-								fontSize: '12px',
-								fontWeight: 500,
-								transition: 'background 0.2s'
-							  }}
-							  onMouseEnter={(e) => e.currentTarget.style.background = '#d32f2f'}
-							  onMouseLeave={(e) => e.currentTarget.style.background = '#f44336'}
-							>
-							  🗑️ Supprimer
-							</button>
-						  </div>
+			  {/* TABLEAU AVEC TRI */}
+			  <div style={{ overflowX: 'auto' }}>
+				<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+				  <thead>
+					<tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						👤 Nom
+					  </th>
+					  
+					  {/* ✅ NOUVELLE COLONNE RÉGION */}
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						🗺️ Région
+					  </th>
+					  
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						📍 Zone Production
+					  </th>
+					  
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						📞 Contact
+					  </th>
+					  
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						⚡ Statut
+					  </th>
+					  
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						🏆 Certifications
+					  </th>
+					  
+					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
+						⚙️ Actions
+					  </th>
+					</tr>
+				  </thead>
+				  <tbody>
+					{paginatedFournisseurs.length === 0 ? (
+					  <tr>
+						<td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+						  😔 Aucun fournisseur trouvé
 						</td>
 					  </tr>
-					);
-				  })
-				)}
-			  </tbody>
-			</table>
-		  </div>
-	  
-			{/* ✅ PAGINATION EN BAS AUSSI (optionnel) */}
-			{filteredFournisseurs.length > itemsPerPage && (
-			<div style={{ 
-			  display: 'flex', 
-			  justifyContent: 'center', 
-			  alignItems: 'center', 
-			  gap: '10px', 
-			  marginTop: '20px',
-			  paddingTop: '15px',
-			  borderTop: '1px solid #e0e0e0'
-			}}>
-			  <button
-				onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
-				disabled={currentPageFournisseurs === 1}
-				style={{
-				  padding: '8px 16px',
-				  border: '1px solid #ddd',
-				  borderRadius: '4px',
-				  background: 'white',
-				  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
-				  opacity: currentPageFournisseurs === 1 ? 0.5 : 1
-				}}
-			  >
-				⬅️ Précédent
-			  </button>
-			  
-			  <span style={{ color: '#666' }}>
-				Page <strong>{currentPageFournisseurs}</strong> sur <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
-			  </span>
-			  
-			  <button
-				onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
-				disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
-				style={{
-				  padding: '8px 16px',
-				  border: '1px solid #ddd',
-				  borderRadius: '4px',
-				  background: 'white',
-				  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-				  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1
-				}}
-			  >
-				Suivant ➡️
-			  </button>
-			</div>
-		)}
+					) : (
+					  paginatedFournisseurs.map((fournisseur, idx) => {
+						// ✅ Calculer la région depuis la zone
+						const fournisseurRegion = fournisseur.zone_production 
+						  ? (zonesProduction.find(z => z.nom === fournisseur.zone_production)?.region || '-')
+						  : '-';
+						
+						return (
+						  <tr 
+							key={idx} 
+							style={{ 
+							  borderBottom: '1px solid #e0e0e0',
+							  transition: 'background 0.2s'
+							}}
+							onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
+							onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+						  >
+							{/* Nom */}
+							<td style={{ padding: '12px', fontWeight: 600, color: '#333' }}>
+							  {fournisseur.nom}
+							</td>
+							
+							{/* ✅ RÉGION */}
+							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
+							  {fournisseurRegion}
+							</td>
+							
+							{/* Zone */}
+							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
+							  {fournisseur.zone_production || '-'}
+							</td>
+							
+							{/* Contact */}
+							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
+							  {fournisseur.email ? (
+								<a 
+								  href={`mailto:${fournisseur.email}`} 
+								  style={{ color: '#2196f3', textDecoration: 'none', display: 'block' }}
+								>
+								  📧 {fournisseur.email}
+								</a>
+							  ) : (
+								<span style={{ color: '#999' }}>-</span>
+							  )}
+							  {fournisseur.telephone && (
+								<div style={{ marginTop: '4px', color: '#666' }}>
+								  📱 {fournisseur.telephone}
+								</div>
+							  )}
+							</td>
+							
+							{/* Statut */}
+							<td style={{ padding: '12px' }}>
+							  <StatusBadge statut={fournisseur.statut || 'Actif'} type="fournisseur" />
+							</td>
+							
+							{/* Certifications */}
+							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
+							  {fournisseur.certifications ? (
+								<span>🏅 {fournisseur.certifications}</span>
+							  ) : (
+								<span style={{ color: '#999' }}>-</span>
+							  )}
+							</td>
+							
+							{/* Actions */}
+							<td style={{ padding: '12px' }}>
+							  <div style={{ display: 'flex', gap: '8px' }}>
+								<button
+								  onClick={() => handleEditFournisseur(fournisseur)}
+								  title="Modifier le fournisseur"
+								  style={{
+									padding: '6px 12px',
+									background: '#ff9800',
+									color: 'white',
+									border: 'none',
+									borderRadius: '4px',
+									cursor: 'pointer',
+									fontSize: '12px',
+									fontWeight: 500,
+									transition: 'background 0.2s'
+								  }}
+								  onMouseEnter={(e) => e.currentTarget.style.background = '#f57c00'}
+								  onMouseLeave={(e) => e.currentTarget.style.background = '#ff9800'}
+								>
+								  ✏️ Modifier
+								</button>
+								<button
+								  onClick={() => askDeleteFournisseur(fournisseur)}
+								  title="Supprimer le fournisseur"
+								  style={{
+									padding: '6px 12px',
+									background: '#f44336',
+									color: 'white',
+									border: 'none',
+									borderRadius: '4px',
+									cursor: 'pointer',
+									fontSize: '12px',
+									fontWeight: 500,
+									transition: 'background 0.2s'
+								  }}
+								  onMouseEnter={(e) => e.currentTarget.style.background = '#d32f2f'}
+								  onMouseLeave={(e) => e.currentTarget.style.background = '#f44336'}
+								>
+								  🗑️ Supprimer
+								</button>
+							  </div>
+							</td>
+						  </tr>
+						);
+					  })
+					)}
+				  </tbody>
+				</table>
+			  </div>
+		  
+				{/* ✅ PAGINATION EN BAS AUSSI (optionnel) */}
+				{filteredFournisseurs.length > itemsPerPage && (
+				<div style={{ 
+				  display: 'flex', 
+				  justifyContent: 'center', 
+				  alignItems: 'center', 
+				  gap: '10px', 
+				  marginTop: '20px',
+				  paddingTop: '15px',
+				  borderTop: '1px solid #e0e0e0'
+				}}>
+				  <button
+					onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
+					disabled={currentPageFournisseurs === 1}
+					style={{
+					  padding: '8px 16px',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  background: 'white',
+					  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
+					  opacity: currentPageFournisseurs === 1 ? 0.5 : 1
+					}}
+				  >
+					⬅️ Précédent
+				  </button>
+				  
+				  <span style={{ color: '#666' }}>
+					Page <strong>{currentPageFournisseurs}</strong> sur <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
+				  </span>
+				  
+				  <button
+					onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
+					disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
+					style={{
+					  padding: '8px 16px',
+					  border: '1px solid #ddd',
+					  borderRadius: '4px',
+					  background: 'white',
+					  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+					  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1
+					}}
+				  >
+					Suivant ➡️
+				  </button>
+				</div>
+			)}
+		</div>
 	</div>
-</div>
-)}
+	)}
       
       {/* ============================================================ */}
       {/* ONGLET COMMANDES */}
