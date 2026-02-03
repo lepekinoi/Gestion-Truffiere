@@ -119,6 +119,8 @@ function AchatsFournisseursPage() {
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
+  // ✅ V7: État pour gérer les confirmations avec force_modify/force_delete
+  const [pendingAction, setPendingAction] = useState(null);
   
   // Fournisseurs
   const [fournisseurs, setFournisseurs] = useState([]);
@@ -504,7 +506,7 @@ const handleEditCommande = async (commande) => {
     }, 0);
   };
   
-	const handleCommandeSubmit = async (e) => {
+	const handleCommandeSubmit = async (e, forceModify = false) => {
 	  e.preventDefault();
 	  
 	  // if (commandeLignes.length === 0) {
@@ -527,7 +529,9 @@ const handleEditCommande = async (commande) => {
 		
 		const dataToSend = {
 		  ...commandeFormData,
-		  lignes: lignesConverties
+		  lignes: lignesConverties,
+		  // ✅ V7: Ajouter le flag force_modify si demandé
+		  ...(forceModify && { force_modify: true })
 		};
 		
 		console.log('📤 STATUT ENVOYÉ:', dataToSend.statut); // ← AJOUTER
@@ -544,8 +548,27 @@ const handleEditCommande = async (commande) => {
 		await loadData();
 		setShowCommandeModal(false);
 	  } catch (error) {
-		console.error('Erreur:', error);
-		showMessage(error.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
+		console.error('❌ Erreur:', error);
+		
+		// ✅ V7: Gérer le code 409 (confirmation requise)
+		if (editingCommande && error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
+		  // Enregistrer l'action en attente
+		  setPendingAction({
+			type: 'save-commande-force',
+			data: e
+		  });
+		  
+		  // Afficher la confirmation
+		  setConfirmModal({
+			type: 'save-commande-force',
+			title: 'Confirmation requise',
+			message: `⚠️ ${error.response.data.message}\n\nVoulez-vous continuer la modification ?`,
+			confirmText: 'Oui, modifier quand même',
+			confirmColor: '#ff9800'
+		  });
+		} else {
+		  showMessage(error.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
+		}
 	  } finally {
 		setIsProcessing(false);
 	  }
@@ -564,11 +587,15 @@ const handleEditCommande = async (commande) => {
 	};
   
   const askDeleteCommande = (commande) => {
+    const isStatutSensible = commande?.statut === 'Réceptionnée' || commande?.statut === 'Livrée';
+
     setConfirmModal({
       type: 'delete-commande',
       item: commande,
       title: 'Confirmer la suppression',
-      message: `Êtes-vous sûr de vouloir supprimer la commande "${commande.numero_commande}" ?`,
+      message: isStatutSensible 
+        ? `⚠️ ATTENTION: Cette commande est ${commande.statut}. Êtes-vous sûr de vouloir la supprimer définitivement ?`
+        : `Êtes-vous sûr de vouloir supprimer la commande "${commande.numero_commande}" ?`,
       confirmText: 'Supprimer',
       confirmColor: '#f44336'
     });
@@ -580,9 +607,40 @@ const handleEditCommande = async (commande) => {
       await axios.delete(`${API_URL}/commandes-achats/${commande.id}`);
       showMessage('Commande supprimée avec succès', 'success');
       await loadData();
+      setConfirmModal(null);
     } catch (error) {
-      console.error('Erreur:', error);
-      showMessage('Erreur lors de la suppression', 'error');
+      console.error('❌ Erreur suppression:', error);
+
+      // ✅ V7: Gérer le code 409 (confirmation requise)
+      if (error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
+        // Redemander confirmation avec le flag force_delete
+        setConfirmModal({
+          type: 'delete-commande-force',
+          item: commande,
+          title: 'Confirmation requise',
+          message: `⚠️ ${error.response.data.message}\n\nÊtes-vous sûr de vouloir continuer ?`,
+          confirmText: 'Oui, supprimer quand même',
+          confirmColor: '#d32f2f'
+        });
+      } else {
+        showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
+        setConfirmModal(null);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ✅ V7: Suppression forcée (après confirmation)
+  const doDeleteCommandeForce = async (commande) => {
+    setIsProcessing(true);
+    try {
+      await axios.delete(`${API_URL}/commandes-achats/${commande.id}?force_delete=true`);
+      showMessage('✅ Commande supprimée avec succès', 'success');
+      await loadData();
+    } catch (error) {
+      console.error('❌ Erreur suppression forcée:', error);
+      showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
     } finally {
       setIsProcessing(false);
       setConfirmModal(null);
