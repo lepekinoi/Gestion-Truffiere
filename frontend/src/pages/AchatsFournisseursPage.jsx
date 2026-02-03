@@ -1,8 +1,8 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.5.0 - ENUMs + Statut + Emojis (PRODUCTION)
-// Date: 2 février 2026 - 01h35
-// Status: ✅ PRODUCTION READY - Migration DB effectuée
+// Version: 2.5.1 - Phase 1 Refactoring
+// Date: 3 février 2026
+// Status: ✅ PRODUCTION READY - Composants extraits
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -12,101 +12,20 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
+// ✅ PHASE 1: Imports des composants et constantes
+import StatsCard from '../components/achats/StatsCard';
+import StatusBadge from '../components/achats/StatusBadge';
+import ConfirmModal from '../components/achats/ConfirmModal';
+import {
+  CALIBRES_TEXTE,
+  QUALITES,
+  MATURITES,
+  convertirMmEnCalibreTexte,
+  convertirCalibreTexteEnMm
+} from '../components/achats/constants';
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-// ============================================================
-// CONFIGURATION
-// ============================================================
-
-const STATUT_FOURNISSEUR_COLORS = {
-  'Actif': { background: '#d4edda', color: '#155724', border: '#28a745' },
-  'Inactif': { background: '#f8d7da', color: '#721c24', border: '#dc3545' },
-  'Suspendu': { background: '#fff3cd', color: '#856404', border: '#ffc107' }
-};
-
-const STATUT_COMMANDE_COLORS = {
-  'En attente': { background: '#fff3cd', color: '#856404', border: '#ffc107' },
-  'Confirmée': { background: '#cce5ff', color: '#004085', border: '#007bff' },
-  'Expédiée': { background: '#d1ecf1', color: '#0c5460', border: '#17a2b8' },
-  'Livrée': { background: '#d4edda', color: '#155724', border: '#28a745' },
-  'Réceptionnée': { background: '#d4edda', color: '#155724', border: '#28a745' },
-  'Annulée': { background: '#f8d7da', color: '#721c24', border: '#dc3545' }
-};
-
-const COLORS_PIE_CHART = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-// ✅ NOUVEAUX ENUMS HARMONISÉS AVEC LA BASE PostgreSQL ET RÉCOLTES
-const CALIBRES_TEXTE = [
-  'Petit (moins de 20g)',
-  'Moyen (20-50g)',
-  'Gros (50-100g)',
-  'Très gros (plus de 100g)'
-];
-
-// Après la déclaration de CALIBRES_TEXTE, QUALITES, MATURITES
-const convertirMmEnCalibreTexte = (calibreMm) => {
-  const mapping = {
-    20: 'Petit (moins de 20g)',
-    30: 'Moyen (20-50g)',
-    50: 'Gros (50-100g)',
-    70: 'Très gros (plus de 100g)'
-  };
-  return mapping[calibreMm] || '';
-};
-
-const convertirCalibreTexteEnMm = (calibreTexte) => {
-  const mapping = {
-    'Petit (moins de 20g)': 20,
-    'Moyen (20-50g)': 30,
-    'Gros (50-100g)': 50,
-    'Très gros (plus de 100g)': 70
-  };
-  return mapping[calibreTexte] || null;
-};
-
-
-const QUALITES = ['Extra', '1ère', '2e'];
-const MATURITES = ['Immature', 'À point', 'Mature', 'Très mature'];
-
-// ============================================================
-// COMPOSANTS UI RÉUTILISABLES
-// ============================================================
-
-const StatsCard = ({ label, value, color }) => (
-  <div style={{
-    background: 'white',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    textAlign: 'center'
-  }}>
-    <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px', fontWeight: '600' }}>
-      {label}
-    </div>
-    <div style={{ fontSize: '32px', fontWeight: 'bold', color: color }}>
-      {value}
-    </div>
-  </div>
-);
-
-const StatusBadge = ({ statut, type }) => {
-  const colors = type === 'fournisseur' ? STATUT_FOURNISSEUR_COLORS : STATUT_COMMANDE_COLORS;
-  const style = colors[statut] || { background: '#e0e0e0', color: '#666' };
-  
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '4px 10px',
-      borderRadius: '4px',
-      fontSize: '12px',
-      fontWeight: '600',
-      backgroundColor: style.background,
-      color: style.color
-    }}>
-      {statut}
-    </span>
-  );
-};
 
 // ============================================================
 // COMPOSANT PRINCIPAL
@@ -787,67 +706,14 @@ const handleEditCommande = async (commande) => {
         </div>
       )}
       
-      {/* MODAL DE CONFIRMATION */}
-      {confirmModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '90%'
-          }}>
-            <h3 style={{ marginTop: 0 }}>{confirmModal.title}</h3>
-            <p>{confirmModal.message}</p>
-            <div style={{
-              display: 'flex',
-              gap: '10px',
-              justifyContent: 'flex-end',
-              marginTop: '20px'
-            }}>
-              <button
-                onClick={() => setConfirmModal(null)}
-                style={{
-                  padding: '10px 20px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={isProcessing}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: confirmModal.confirmColor || '#f44336',
-                  color: 'white',
-                  cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  opacity: isProcessing ? 0.7 : 1
-                }}
-              >
-                {isProcessing ? 'Traitement...' : confirmModal.confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
+	 {/* MODAL DE CONFIRMATION */}
+	<ConfirmModal
+	  confirmModal={confirmModal}
+	  onConfirm={handleConfirm}
+	  onCancel={() => setConfirmModal(null)}
+	  isProcessing={isProcessing}
+	/>
+     
       {/* EN-TÊTE */}
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ margin: 0, fontSize: '28px', color: '#333' }}>
