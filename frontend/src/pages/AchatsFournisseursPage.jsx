@@ -572,7 +572,8 @@ const handleEditCommande = async (commande) => {
 	} finally {
 	  setIsProcessing(false);
 	}
-
+	};
+	
   
 	// Fonction helper à ajouter
 	const convertirCalibreEnMm = (calibreTexte) => {
@@ -650,7 +651,7 @@ const handleEditCommande = async (commande) => {
   
   // ==================== MODAL CONFIRMATION ====================
   
-  const handleConfirm = () => {  // ✅ 2 espaces - À L'INTÉRIEUR de la fonction
+  const handleConfirm = () => {
     if (!confirmModal) return;
     if (confirmModal.type === 'delete-fournisseur') {
 		doDeleteFournisseur(confirmModal.item);
