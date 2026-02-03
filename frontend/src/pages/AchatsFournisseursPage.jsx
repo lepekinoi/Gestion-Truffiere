@@ -383,6 +383,7 @@ const handleEditCommande = async (commande) => {
   
   const handleCommandeInputChange = (e) => {
     const { name, value } = e.target;
+	console.log(`🔄 Changement ${name}:`, value); // ← AJOUTER
     setCommandeFormData(prev => ({ ...prev, [name]: value }));
   };
   
@@ -397,7 +398,6 @@ const handleEditCommande = async (commande) => {
       ajouterLigne();
     }
   };
-
   
     const ajouterLigne = () => {
     if (!nouvelleLigne.calibre || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
@@ -488,7 +488,8 @@ const handleEditCommande = async (commande) => {
 		  lignes: lignesConverties
 		};
 		
-		console.log('Envoi des données:', dataToSend);
+		console.log('📤 STATUT ENVOYÉ:', dataToSend.statut); // ← AJOUTER
+		console.log('📦 DATA COMPLÈTE:', dataToSend); // ← AJOUTER
 		
 		if (editingCommande) {
 		  await axios.put(`${API_URL}/commandes-achats/${editingCommande.id}`, dataToSend);
@@ -1820,9 +1821,7 @@ const handleEditCommande = async (commande) => {
 
                 {/* Statut */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>
-                    ⚡ Statut *
-                  </label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>⚡ Statut *</label>
                   <select
                     name="statut"
                     value={commandeFormData.statut}
