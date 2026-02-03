@@ -1,8 +1,8 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.5.3 - BUG FIX COMPLET
+// Version: 2.5.4 - FIX CRITIQUE calibre_mm
 // Date: 3 février 2026
-// Status: ✅ PRODUCTION READY - Fichier complet avec correction calibre_mm
+// Status: ✅ PRODUCTION READY - Utilisation correcte de convertirCalibreTexteEnMm
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -327,7 +327,7 @@ function AchatsFournisseursPage() {
       // ✅ CONVERSION INVERSE: calibre_mm → calibre (texte) pour affichage
       const lignesAvecTexte = (res.data || []).map(ligne => ({
         ...ligne,
-        calibre: ligne.calibre_mm ? `${ligne.calibre_mm}` : ligne.calibre || ''
+        calibre: ligne.calibre_mm ? convertirMmEnCalibreTexte(ligne.calibre_mm) : ligne.calibre || ''
       }));
       setCommandeLignes(lignesAvecTexte);
     } catch (error) {
@@ -359,12 +359,22 @@ function AchatsFournisseursPage() {
     setIsProcessing(true);
     
     try {
-      // ✅ CORRECTION BUG: Conversion calibre (texte) → calibre_mm (nombre)
-      const lignesAvecMm = commandeLignes.map(ligne => ({
-        ...ligne,
-        calibre_mm: parseInt(ligne.calibre), // La valeur est déjà en mm (20, 30, 50, 70)
-        calibre: undefined // Supprimer le champ calibre texte
-      }));
+      // ✅ CORRECTION BUG CRITIQUE: Utilisation de convertirCalibreTexteEnMm
+      const lignesAvecMm = commandeLignes.map(ligne => {
+        const calibreMm = convertirCalibreTexteEnMm(ligne.calibre);
+        
+        console.log('🔄 Conversion:', ligne.calibre, '→', calibreMm);
+        
+        if (!calibreMm) {
+          console.error('❌ Impossible de convertir le calibre:', ligne.calibre);
+        }
+        
+        return {
+          ...ligne,
+          calibre_mm: calibreMm,
+          calibre: undefined // Supprimer le champ calibre texte
+        };
+      });
       
       const dataToSend = {
         ...commandeFormData,
@@ -372,7 +382,7 @@ function AchatsFournisseursPage() {
         montant_total: calculerMontantTotal()
       };
       
-      console.log('📤 Données envoyées:', dataToSend);
+      console.log('📤 Données envoyées:', JSON.stringify(dataToSend, null, 2));
       
       let url = `${API_URL}/commandes-achats`;
       if (editingCommande) {
@@ -1294,7 +1304,7 @@ function AchatsFournisseursPage() {
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Calibre (mm) *</label>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '12px' }}>Calibre *</label>
                       <select
                         name="calibre"
                         value={nouvelleLigne.calibre}
@@ -1310,7 +1320,7 @@ function AchatsFournisseursPage() {
                       >
                         <option value="">Sélectionner</option>
                         {CALIBRES_TEXTE.map(c => (
-                          <option key={c} value={c}>{c}mm</option>
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
                     </div>
@@ -1486,7 +1496,7 @@ function AchatsFournisseursPage() {
                       <tbody>
                         {commandeLignes.map((ligne, idx) => (
                           <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                            <td style={{ padding: '8px' }}>{ligne.calibre}mm</td>
+                            <td style={{ padding: '8px' }}>{ligne.calibre}</td>
                             <td style={{ padding: '8px' }}>{ligne.qualite}</td>
                             <td style={{ padding: '8px', fontSize: '11px', color: '#666' }}>{ligne.maturite}</td>
                             <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>{ligne.quantite_kg}</td>
