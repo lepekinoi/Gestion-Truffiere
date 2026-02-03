@@ -265,6 +265,26 @@ module.exports = (pool, requireWriteAccess) => {
     }
   });
 
+  // ✅ NOUVELLE ROUTE - GET /api/commandes-achats/:id/lignes
+  router.get('/commandes-achats/:id/lignes', async (req, res) => {
+    const { id } = req.params;
+    try {
+      console.log(`📝 Récupération des lignes pour la commande ${id}`);
+      
+      const result = await pool.query(`
+        SELECT * FROM lignes_commande_achat
+        WHERE commande_id = $1
+        ORDER BY id ASC
+      `, [id]);
+
+      console.log(`✅ ${result.rows.length} ligne(s) trouvée(s)`);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('❌ Erreur récupération lignes commande:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
   // POST /api/commandes-achats - Créer une commande
   router.post('/commandes-achats', requireWriteAccess, async (req, res) => {
     console.log('📦 Données reçues:', JSON.stringify(req.body, null, 2));
