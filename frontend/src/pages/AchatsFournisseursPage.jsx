@@ -1,8 +1,8 @@
 // ============================================================
 // AchatsFournisseursPage.jsx - Module Achats et Fournisseurs
-// Version: 2.5.1 - Phase 1 Refactoring
+// Version: 2.5.2 - CORRECTED
 // Date: 3 février 2026
-// Status: ✅ PRODUCTION READY - Composants extraits
+// Status: ✅ PRODUCTION READY - Fichier complet avec tous les handlers
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
@@ -45,7 +45,6 @@ function AchatsFournisseursPage() {
   const [message, setMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
-  // ✅ V7: État pour gérer les confirmations avec force_modify/force_delete
   const [pendingAction, setPendingAction] = useState(null);
   
   // Fournisseurs
@@ -86,20 +85,18 @@ function AchatsFournisseursPage() {
     notes: ''
   });
   
-  // NOUVEAU: Gestion des lignes de commande
+  // Gestion des lignes de commande
   const [commandeLignes, setCommandeLignes] = useState([]);
   const [nouvelleLigne, setNouvelleLigne] = useState({
     calibre: '',
     qualite: '',
-    maturite: 'À point', // Valeur par défaut conforme
+    maturite: 'À point',
     quantite_kg: '',
     prix_achat_kg: '',
     notes: ''
   });
-  // NOUVEAU: État pour l'édition de ligne
   const [editingLigneIndex, setEditingLigneIndex] = useState(null);
 
-  
   // Stock
   const [stock, setStock] = useState([]);
   const [filterCalibre, setFilterCalibre] = useState('all');
@@ -120,7 +117,7 @@ function AchatsFournisseursPage() {
   
   useEffect(() => {
     loadData();
-	loadZonesProduction();
+    loadZonesProduction();
   }, []);
   
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -143,7 +140,6 @@ function AchatsFournisseursPage() {
       setCommandes(Array.isArray(commandesRes.data) ? commandesRes.data : commandesRes.data.data || []);
       setStock(Array.isArray(stockRes.data) ? stockRes.data : stockRes.data.data || []);
       
-      // Charger les marges si disponible
       try {
         const margeRes = await axios.get(`${API_URL}/marge-globale`);
         setMargeData(prev => ({ ...prev, globale: margeRes.data }));
@@ -159,123 +155,255 @@ function AchatsFournisseursPage() {
     }
   };
   
-	const loadZonesProduction = async () => {
-	  try {
-		const res = await axios.get(`${API_URL}/zones-production`);
-		setZonesProduction(res.data);
-		
-		// Extraire les régions uniques
-		const regionsUniques = [...new Set(res.data.map(z => z.region))].filter(Boolean).sort();
-		setRegionsFournisseur(regionsUniques);
-	  } catch (error) {
-		console.warn('Zones non disponibles:', error);
-	  }
-	};
+  const loadZonesProduction = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/zones-production`);
+      setZonesProduction(res.data);
+      
+      const regionsUniques = [...new Set(res.data.map(z => z.region))].filter(Boolean).sort();
+      setRegionsFournisseur(regionsUniques);
+    } catch (error) {
+      console.warn('Zones non disponibles:', error);
+    }
+  };
   
   const getZonesByRegion = (region) => {
-	  if (!region) return [];
-	  return zonesProduction.filter(z => z.region === region);
-	};
-	
-const handleRegionChange = (e) => {
-  const region = e.target.value;
-  setRegionSelectionnee(region);
-  // Réinitialiser la zone de production si la région change
-  setFournisseurFormData(prev => ({ ...prev, zone_production: '' }));
-};	
+    if (!region) return [];
+    return zonesProduction.filter(z => z.region === region);
+  };
 
+  const handleRegionChange = (e) => {
+    const region = e.target.value;
+    setRegionSelectionnee(region);
+    setFournisseurFormData(prev => ({ ...prev, zone_production: '' }));
+  };
   
   const getFournisseurName = (fournisseurId) => {
     const fournisseur = fournisseurs.find(f => f.id === fournisseurId);
     return fournisseur ? fournisseur.nom : '-';
   };
-  
-      {/* ============================================================ */}
-      {/* ONGLET FOURNISSEURS */}
-      {/* ============================================================ */}
-      {activeTab === 'fournisseurs' && (
-        <FournisseursTab
-          statsFournisseurs={statsFournisseurs}
-          fournisseurs={fournisseurs}
-          zonesProduction={zonesProduction}
-          regionsFournisseur={regionsFournisseur}
-          filterRegion={filterRegion}
-          setFilterRegion={setFilterRegion}
-          filterZone={filterZone}
-          setFilterZone={setFilterZone}
-          filterStatutFournisseur={filterStatutFournisseur}
-          setFilterStatutFournisseur={setFilterStatutFournisseur}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          currentPageFournisseurs={currentPageFournisseurs}
-          setCurrentPageFournisseurs={setCurrentPageFournisseurs}
-          filteredFournisseurs={filteredFournisseurs}
-          paginatedFournisseurs={paginatedFournisseurs}
-          itemsPerPage={itemsPerPage}
-          openNewFournisseurModal={openNewFournisseurModal}
-          handleEditFournisseur={handleEditFournisseur}
-          askDeleteFournisseur={askDeleteFournisseur}
-          resetFiltersFournisseurs={resetFiltersFournisseurs}
-          getZonesByRegion={getZonesByRegion}
-        />
-      )}
-      
-      {/* ============================================================ */}
-      {/* ONGLET COMMANDES ACHATS */}
-      {/* ============================================================ */}
-      {activeTab === 'commandes' && (
-        <CommandesAchatsTab
-          statsCommandes={statsCommandes}
-          commandes={commandes}
-          fournisseurs={fournisseurs}
-          filterStatutCommande={filterStatutCommande}
-          setFilterStatutCommande={setFilterStatutCommande}
-          currentPageCommandes={currentPageCommandes}
-          setCurrentPageCommandes={setCurrentPageCommandes}
-          filteredCommandes={filteredCommandes}
-          paginatedCommandes={paginatedCommandes}
-          itemsPerPage={itemsPerPage}
-          openNewCommandeModal={openNewCommandeModal}
-          handleEditCommande={handleEditCommande}
-          askDeleteCommande={askDeleteCommande}
-          getFournisseurName={getFournisseurName}
-        />
-      )}
-      
-      {/* ============================================================ */}
-      {/* ONGLET STOCK */}
-      {/* ============================================================ */}
-      {activeTab === 'stock' && (
-        <StockTab
-          statsStock={statsStock}
-          stock={stock}
-          filterCalibre={filterCalibre}
-          setFilterCalibre={setFilterCalibre}
-          filterQualite={filterQualite}
-          setFilterQualite={setFilterQualite}
-          filteredStock={filteredStock}
-        />
-      )}
-      
-      {/* ============================================================ */}
-      {/* ONGLET MARGE */}
-      {/* ============================================================ */}
-      {activeTab === 'marge' && (
-        <MargeTab />
-      )}
 
+  const convertirCalibreEnMm = (calibreTexte) => {
+    const mapping = {
+      'Petit (moins de 20g)': 20,
+      'Moyen (20-50g)': 30,
+      'Gros (50-100g)': 50,
+      'Très gros (plus de 100g)': 70
+    };
+    return mapping[calibreTexte] || null;
+  };
   
-	// Fonction helper à ajouter
-	const convertirCalibreEnMm = (calibreTexte) => {
-	  const mapping = {
-		'Petit (moins de 20g)': 20,
-		'Moyen (20-50g)': 30,
-		'Gros (50-100g)': 50,
-		'Très gros (plus de 100g)': 70
-	  };
-	  return mapping[calibreTexte] || null;
-	};
-  
+  // ==================== FONCTIONS FOURNISSEURS ====================
+
+  const openNewFournisseurModal = () => {
+    setEditingFournisseur(null);
+    setFournisseurFormData({
+      nom: '',
+      zone_production: '',
+      email: '',
+      telephone: '',
+      adresse: '',
+      code_postal: '',
+      ville: '',
+      pays: 'France',
+      certifications: '',
+      statut: 'Actif',
+      prix_moyen_kg: '',
+      notes: ''
+    });
+    setRegionSelectionnee('');
+    setShowFournisseurModal(true);
+  };
+
+  const handleEditFournisseur = (fournisseur) => {
+    setEditingFournisseur(fournisseur);
+    setFournisseurFormData({
+      nom: fournisseur.nom || '',
+      zone_production: fournisseur.zone_production || '',
+      email: fournisseur.email || '',
+      telephone: fournisseur.telephone || '',
+      adresse: fournisseur.adresse || '',
+      code_postal: fournisseur.code_postal || '',
+      ville: fournisseur.ville || '',
+      pays: fournisseur.pays || 'France',
+      certifications: fournisseur.certifications || '',
+      statut: fournisseur.statut || 'Actif',
+      prix_moyen_kg: fournisseur.prix_moyen_kg || '',
+      notes: fournisseur.notes || ''
+    });
+    
+    if (fournisseur.zone_production) {
+      const zone = zonesProduction.find(z => z.nom === fournisseur.zone_production);
+      if (zone) {
+        setRegionSelectionnee(zone.region);
+      }
+    }
+    
+    setShowFournisseurModal(true);
+  };
+
+  const handleFournisseurInputChange = (e) => {
+    const { name, value } = e.target;
+    setFournisseurFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFournisseurSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    
+    try {
+      if (editingFournisseur) {
+        await axios.put(`${API_URL}/fournisseurs/${editingFournisseur.id}`, fournisseurFormData);
+        showMessage('✅ Fournisseur modifié avec succès', 'success');
+      } else {
+        await axios.post(`${API_URL}/fournisseurs`, fournisseurFormData);
+        showMessage('✅ Fournisseur créé avec succès', 'success');
+      }
+      
+      await loadData();
+      setShowFournisseurModal(false);
+      setEditingFournisseur(null);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde fournisseur:', error);
+      showMessage(error.response?.data?.error || 'Erreur lors de la sauvegarde', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const askDeleteFournisseur = (fournisseur) => {
+    setConfirmModal({
+      type: 'delete-fournisseur',
+      item: fournisseur,
+      title: 'Confirmer la suppression',
+      message: `Êtes-vous sûr de vouloir supprimer le fournisseur "${fournisseur.nom}" ?`,
+      confirmText: 'Supprimer',
+      confirmColor: '#f44336'
+    });
+  };
+
+  const doDeleteFournisseur = async (fournisseur) => {
+    setIsProcessing(true);
+    try {
+      await axios.delete(`${API_URL}/fournisseurs/${fournisseur.id}`);
+      showMessage('✅ Fournisseur supprimé avec succès', 'success');
+      await loadData();
+      setConfirmModal(null);
+    } catch (error) {
+      console.error('❌ Erreur suppression fournisseur:', error);
+      showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
+      setConfirmModal(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ==================== FONCTIONS COMMANDES ====================
+
+  const openNewCommandeModal = () => {
+    setEditingCommande(null);
+    setCommandeFormData({
+      fournisseur_id: '',
+      date_commande: new Date().toISOString().split('T')[0],
+      date_livraison_prevue: '',
+      statut: 'En attente',
+      notes: ''
+    });
+    setCommandeLignes([]);
+    setNouvelleLigne({
+      calibre: '',
+      qualite: '',
+      maturite: 'À point',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+    setEditingLigneIndex(null);
+    setShowCommandeModal(true);
+  };
+
+  const handleEditCommande = async (commande) => {
+    setEditingCommande(commande);
+    setCommandeFormData({
+      fournisseur_id: commande.fournisseur_id || '',
+      date_commande: commande.date_commande ? commande.date_commande.split('T')[0] : '',
+      date_livraison_prevue: commande.date_livraison_prevue ? commande.date_livraison_prevue.split('T')[0] : '',
+      statut: commande.statut || 'En attente',
+      notes: commande.notes || ''
+    });
+    
+    try {
+      const res = await axios.get(`${API_URL}/commandes-achats/${commande.id}/lignes`);
+      setCommandeLignes(res.data || []);
+    } catch (error) {
+      console.warn('Pas de lignes pour cette commande');
+      setCommandeLignes([]);
+    }
+    
+    setNouvelleLigne({
+      calibre: '',
+      qualite: '',
+      maturite: 'À point',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+    setEditingLigneIndex(null);
+    setShowCommandeModal(true);
+  };
+
+  const handleCommandeInputChange = (e) => {
+    const { name, value } = e.target;
+    setCommandeFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCommandeSubmit = async (e, forceModify = false) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    
+    try {
+      const dataToSend = {
+        ...commandeFormData,
+        lignes: commandeLignes,
+        montant_total: calculerMontantTotal()
+      };
+      
+      let url = `${API_URL}/commandes-achats`;
+      if (editingCommande) {
+        url += `/${editingCommande.id}${forceModify ? '?force_modify=true' : ''}`;
+        await axios.put(url, dataToSend);
+        showMessage('✅ Commande modifiée avec succès', 'success');
+      } else {
+        await axios.post(url, dataToSend);
+        showMessage('✅ Commande créée avec succès', 'success');
+      }
+      
+      await loadData();
+      setShowCommandeModal(false);
+      setEditingCommande(null);
+      setCommandeLignes([]);
+      setConfirmModal(null);
+      setPendingAction(null);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde commande:', error);
+      
+      if (error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
+        setPendingAction({ data: { ...commandeFormData, lignes: commandeLignes } });
+        setConfirmModal({
+          type: 'save-commande-force',
+          title: 'Confirmation requise',
+          message: `⚠️ ${error.response.data.message}\n\nÊtes-vous sûr de vouloir continuer ?`,
+          confirmText: 'Oui, enregistrer quand même',
+          confirmColor: '#d32f2f'
+        });
+      } else {
+        showMessage(error.response?.data?.error || 'Erreur lors de la sauvegarde', 'error');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const askDeleteCommande = (commande) => {
     const isStatutSensible = commande?.statut === 'Réceptionnée' || commande?.statut === 'Livrée';
 
@@ -291,39 +419,34 @@ const handleRegionChange = (e) => {
     });
   };
   
-	const doDeleteCommande = async (commande) => {
-	  setIsProcessing(true);
-	  try {
-		await axios.delete(`${API_URL}/commandes-achats/${commande.id}`);
-		showMessage('Commande supprimée avec succès', 'success');
-		await loadData();
-		setConfirmModal(null);
-	  } catch (error) {
-		console.error('❌ Erreur suppression:', error);
+  const doDeleteCommande = async (commande) => {
+    setIsProcessing(true);
+    try {
+      await axios.delete(`${API_URL}/commandes-achats/${commande.id}`);
+      showMessage('Commande supprimée avec succès', 'success');
+      await loadData();
+      setConfirmModal(null);
+    } catch (error) {
+      console.error('❌ Erreur suppression:', error);
 
-		// ✅ V7: Gérer le code 409 (confirmation requise)
-		if (error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
-		  // ✅ IMPORTANT: Ne pas créer un nouveau modal, REMPLACER l'actuel
-		  setConfirmModal({
-			type: 'delete-commande-force',
-			item: commande,
-			title: 'Confirmation requise',
-			message: `⚠️ ${error.response.data.message}\n\nÊtes-vous sûr de vouloir continuer ?`,
-			confirmText: 'Oui, supprimer quand même',
-			confirmColor: '#d32f2f'
-		  });
-		  // ✅ Ne PAS mettre setIsProcessing(false) ici dans le finally
-		  // pour garder le modal ouvert
-		} else {
-		  showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
-		  setConfirmModal(null);
-		}
-	  } finally {
-		setIsProcessing(false); // ✅ Toujours remettre à false
-	  }
-	};
+      if (error.response?.status === 409 && error.response?.data?.error === 'confirmation_required') {
+        setConfirmModal({
+          type: 'delete-commande-force',
+          item: commande,
+          title: 'Confirmation requise',
+          message: `⚠️ ${error.response.data.message}\n\nÊtes-vous sûr de vouloir continuer ?`,
+          confirmText: 'Oui, supprimer quand même',
+          confirmColor: '#d32f2f'
+        });
+      } else {
+        showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
+        setConfirmModal(null);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-  // ✅ V7: Suppression forcée (après confirmation)
   const doDeleteCommandeForce = async (commande) => {
     setIsProcessing(true);
     try {
@@ -338,52 +461,121 @@ const handleRegionChange = (e) => {
       setConfirmModal(null);
     }
   };
+
+  // ==================== FONCTIONS LIGNES COMMANDE ====================
+
+  const handleNouvelleLigneChange = (e) => {
+    const { name, value } = e.target;
+    setNouvelleLigne(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleKeyDownLigne = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      ajouterLigne();
+    }
+  };
+
+  const ajouterLigne = () => {
+    if (!nouvelleLigne.calibre || !nouvelleLigne.qualite || !nouvelleLigne.quantite_kg || !nouvelleLigne.prix_achat_kg) {
+      showMessage('⚠️ Veuillez remplir tous les champs obligatoires', 'error');
+      return;
+    }
+    
+    if (editingLigneIndex !== null) {
+      const updatedLignes = [...commandeLignes];
+      updatedLignes[editingLigneIndex] = nouvelleLigne;
+      setCommandeLignes(updatedLignes);
+      showMessage('✅ Ligne mise à jour', 'success');
+    } else {
+      setCommandeLignes([...commandeLignes, nouvelleLigne]);
+      showMessage('✅ Ligne ajoutée', 'success');
+    }
+    
+    setNouvelleLigne({
+      calibre: '',
+      qualite: '',
+      maturite: 'À point',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+    setEditingLigneIndex(null);
+  };
+
+  const modifierLigne = (index) => {
+    setNouvelleLigne(commandeLignes[index]);
+    setEditingLigneIndex(index);
+  };
+
+  const annulerEditionLigne = () => {
+    setNouvelleLigne({
+      calibre: '',
+      qualite: '',
+      maturite: 'À point',
+      quantite_kg: '',
+      prix_achat_kg: '',
+      notes: ''
+    });
+    setEditingLigneIndex(null);
+  };
+
+  const supprimerLigne = (index) => {
+    const updatedLignes = commandeLignes.filter((_, idx) => idx !== index);
+    setCommandeLignes(updatedLignes);
+    showMessage('✅ Ligne supprimée', 'success');
+    
+    if (editingLigneIndex === index) {
+      annulerEditionLigne();
+    }
+  };
+
+  const calculerMontantTotal = () => {
+    return commandeLignes.reduce((total, ligne) => {
+      return total + (parseFloat(ligne.quantite_kg) * parseFloat(ligne.prix_achat_kg));
+    }, 0);
+  };
   
   // ==================== MODAL CONFIRMATION ====================
   
   const handleConfirm = () => {
     if (!confirmModal) return;
     if (confirmModal.type === 'delete-fournisseur') {
-		doDeleteFournisseur(confirmModal.item);
+      doDeleteFournisseur(confirmModal.item);
     } else if (confirmModal.type === 'delete-commande') {
-		doDeleteCommande(confirmModal.item);
+      doDeleteCommande(confirmModal.item);
     } else if (confirmModal.type === 'delete-commande-force') {
-		// ✅ Pour la suppression forcée, utiliser confirmModal.item
-		doDeleteCommandeForce(confirmModal.item);
+      doDeleteCommandeForce(confirmModal.item);
     } else if (confirmModal.type === 'save-commande-force') {
-		// ✅ Vérifier que pendingAction existe avant de l'utiliser
-		if (pendingAction && pendingAction.data) {
-			  handleCommandeSubmit(pendingAction.data, true);
-			  setPendingAction(null);
-		} else {
-			  showMessage('Erreur: action en attente introuvable', 'error');
-			  setConfirmModal(null);
-		}
+      if (pendingAction && pendingAction.data) {
+        handleCommandeSubmit(pendingAction.data, true);
+        setPendingAction(null);
+      } else {
+        showMessage('Erreur: action en attente introuvable', 'error');
+        setConfirmModal(null);
+      }
     }
-  };  // ✅ 2 espaces
+  };
   
   // ==================== FILTRAGE & PAGINATION ====================
   
-	const filteredFournisseurs = fournisseurs.filter(f => {
-	  // Filtre par région
-	  let matchRegion = filterRegion === 'all';
-	  if (!matchRegion && f.zone_production) {
-		const zone = zonesProduction.find(z => z.nom === f.zone_production);
-		matchRegion = zone && zone.region === filterRegion;
-	  }
-	  
-	  // Filtre par zone (si une région est sélectionnée)
-	  const matchZone = filterZone === 'all' || f.zone_production === filterZone;
-	  
-	  const matchStatut = filterStatutFournisseur === 'all' || f.statut === filterStatutFournisseur;
-	  const searchLower = searchTerm.toLowerCase();
-	  const matchSearch = !searchTerm || 
-		f.nom?.toLowerCase().includes(searchLower) || 
-		f.email?.toLowerCase().includes(searchLower) || 
-		f.ville?.toLowerCase().includes(searchLower);
-	  
-	  return matchRegion && matchZone && matchStatut && matchSearch;
-	});
+  const filteredFournisseurs = fournisseurs.filter(f => {
+    let matchRegion = filterRegion === 'all';
+    if (!matchRegion && f.zone_production) {
+      const zone = zonesProduction.find(z => z.nom === f.zone_production);
+      matchRegion = zone && zone.region === filterRegion;
+    }
+    
+    const matchZone = filterZone === 'all' || f.zone_production === filterZone;
+    const matchStatut = filterStatutFournisseur === 'all' || f.statut === filterStatutFournisseur;
+    const searchLower = searchTerm.toLowerCase();
+    const matchSearch = !searchTerm || 
+      f.nom?.toLowerCase().includes(searchLower) || 
+      f.email?.toLowerCase().includes(searchLower) || 
+      f.ville?.toLowerCase().includes(searchLower);
+    
+    return matchRegion && matchZone && matchStatut && matchSearch;
+  });
   
   const filteredCommandes = commandes.filter(c =>
     filterStatutCommande === 'all' || c.statut === filterStatutCommande
@@ -406,16 +598,14 @@ const handleRegionChange = (e) => {
     currentPageCommandes * itemsPerPage
   );
   
-	// Fonction de réinitialisation des filtres
-	const resetFiltersFournisseurs = () => {
-	  setFilterRegion('all');
-	  setFilterZone('all');
-	  setFilterStatutFournisseur('all');
-	  setSearchTerm('');
-	  setCurrentPageFournisseurs(1);
-	  showMessage('🔄 Filtres réinitialisés', 'info');
-	};
-  
+  const resetFiltersFournisseurs = () => {
+    setFilterRegion('all');
+    setFilterZone('all');
+    setFilterStatutFournisseur('all');
+    setSearchTerm('');
+    setCurrentPageFournisseurs(1);
+    showMessage('🔄 Filtres réinitialisés', 'info');
+  };
   
   // ==================== STATISTIQUES ====================
   
@@ -457,7 +647,6 @@ const handleRegionChange = (e) => {
   
   return (
     <div className="achats-container" style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto' }}>
-      {/* MESSAGE DE NOTIFICATION */}
       {message && (
         <div
           style={{
@@ -477,15 +666,13 @@ const handleRegionChange = (e) => {
         </div>
       )}
       
-	 {/* MODAL DE CONFIRMATION */}
-	<ConfirmModal
-	  confirmModal={confirmModal}
-	  onConfirm={handleConfirm}
-	  onCancel={() => setConfirmModal(null)}
-	  isProcessing={isProcessing}
-	/>
+      <ConfirmModal
+        confirmModal={confirmModal}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmModal(null)}
+        isProcessing={isProcessing}
+      />
      
-      {/* EN-TÊTE */}
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ margin: 0, fontSize: '28px', color: '#333' }}>
           🛒 Gestion des Achats de Truffes
@@ -495,7 +682,6 @@ const handleRegionChange = (e) => {
         </p>
       </div>
       
-      {/* ONGLETS PRINCIPAUX */}
       <div style={{
         display: 'flex',
         gap: '10px',
@@ -569,843 +755,68 @@ const handleRegionChange = (e) => {
         </button>
       </div>
       
-      {/* ============================================================ */}
-      {/* ONGLET FOURNISSEURS */}
-      {/* ============================================================ */}
       {activeTab === 'fournisseurs' && (
-        <div>
-          {/* STATS FOURNISSEURS */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '15px',
-            marginBottom: '30px'
-          }}>
-            <StatsCard
-              label="✅ FOURNISSEURS ACTIFS"
-              value={statsFournisseurs.actifs}
-              color="#28a745"
-            />
-            <StatsCard
-              label="👥 TOUS LES FOURNISSEURS"
-              value={statsFournisseurs.total}
-              color="#2196f3"
-            />
-            <StatsCard 
-			  label="🚀 ORIGINES APPRO" 
-			  value={statsFournisseurs.zones} 
-			  color="#ff9800"
-			  subtitle="Zones géographiques des fournisseurs"
-			/>
-            <StatsCard
-              label="🏆 CERTIFICATIONS"
-              value={statsFournisseurs.certifies}
-              color="#9c27b0"
-            />
-          </div>
-          
-			{/* CONTRÔLES FOURNISSEURS */}
-			<div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-				  <button 
-					onClick={openNewFournisseurModal}
-					style={{ 
-					  padding: '10px 20px', 
-					  background: '#2196f3', 
-					  color: 'white', 
-					  border: 'none', 
-					  borderRadius: '6px', 
-					  cursor: 'pointer', 
-					  fontWeight: 600,
-					  transition: 'background 0.2s'
-					}}
-					onMouseEnter={(e) => e.currentTarget.style.background = '#1976d2'}
-					onMouseLeave={(e) => e.currentTarget.style.background = '#2196f3'}
-				  >
-					➕ Nouveau Fournisseur
-				  </button>
-
-				  {/* ✅ BOUTON RESET */}
-				  <button 
-					onClick={resetFiltersFournisseurs}
-					title="Réinitialiser tous les filtres"
-					style={{ 
-					  padding: '10px 20px', 
-					  background: '#9e9e9e', 
-					  color: 'white', 
-					  border: 'none', 
-					  borderRadius: '6px', 
-					  cursor: 'pointer', 
-					  fontWeight: 600,
-					  transition: 'background 0.2s'
-					}}
-					onMouseEnter={(e) => e.currentTarget.style.background = '#757575'}
-					onMouseLeave={(e) => e.currentTarget.style.background = '#9e9e9e'}
-				  >
-					🔄 Réinitialiser filtres
-				  </button>
-
-				  {/* FILTRE PAR RÉGION */}
-				  <select
-					value={filterRegion}
-					onChange={(e) => {
-					  setFilterRegion(e.target.value);
-					  setFilterZone('all');
-					  setCurrentPageFournisseurs(1);
-					}}
-					style={{ 
-					  padding: '10px 15px', 
-					  border: '1px solid #ddd', 
-					  borderRadius: '6px',
-					  cursor: 'pointer'
-					}}
-				  >
-					<option value="all">🗺️ Toutes les régions</option>
-					{regionsFournisseur.map(region => (
-					  <option key={region} value={region}>{region}</option>
-					))}
-				  </select>
-
-				  {/* FILTRE PAR ZONE */}
-				  <select
-					value={filterZone}
-					onChange={(e) => {
-					  setFilterZone(e.target.value);
-					  setCurrentPageFournisseurs(1);
-					}}
-					disabled={filterRegion === 'all'}
-					style={{ 
-					  padding: '10px 15px', 
-					  border: '1px solid #ddd', 
-					  borderRadius: '6px',
-					  cursor: filterRegion === 'all' ? 'not-allowed' : 'pointer',
-					  backgroundColor: filterRegion === 'all' ? '#f5f5f5' : 'white',
-					  color: filterRegion === 'all' ? '#999' : '#333'
-					}}
-				  >
-					<option value="all">
-					  {filterRegion === 'all' ? '📍 Toutes les zones' : '📍 Toutes zones de la région'}
-					</option>
-					{filterRegion !== 'all' && getZonesByRegion(filterRegion).map(zone => (
-					  <option key={zone.id} value={zone.nom}>
-						{zone.nom}
-					  </option>
-					))}
-				  </select>
-
-				  {/* FILTRE PAR STATUT */}
-				  <select
-					value={filterStatutFournisseur}
-					onChange={(e) => {
-					  setFilterStatutFournisseur(e.target.value);
-					  setCurrentPageFournisseurs(1);
-					}}
-					style={{ 
-					  padding: '10px 15px', 
-					  border: '1px solid #ddd', 
-					  borderRadius: '6px',
-					  cursor: 'pointer'
-					}}
-				  >
-					<option value="all">⚡ Tous les statuts</option>
-					<option value="Actif">✅ Actif</option>
-					<option value="Inactif">❌ Inactif</option>
-					<option value="Suspendu">⏸️ Suspendu</option>
-				  </select>
-
-				  {/* RECHERCHE */}
-				  <input
-					type="text"
-					placeholder="🔍 Rechercher un fournisseur..."
-					value={searchTerm}
-					onChange={(e) => {
-					  setSearchTerm(e.target.value);
-					  setCurrentPageFournisseurs(1);
-					}}
-					style={{ 
-					  padding: '10px 15px', 
-					  border: '1px solid #ddd', 
-					  borderRadius: '6px', 
-					  flex: 1, 
-					  minWidth: '200px',
-					  fontSize: '14px'
-					}}
-				  />
-			  
-				  {/* ✅ INDICATEUR DE FILTRES ACTIFS */}
-				  {(filterRegion !== 'all' || filterZone !== 'all' || filterStatutFournisseur !== 'all' || searchTerm) && (
-					<div style={{ 
-					  padding: '8px 12px', 
-					  background: '#fff3cd', 
-					  border: '1px solid #ffc107',
-					  borderRadius: '6px',
-					  fontSize: '13px',
-					  color: '#856404',
-					  fontWeight: 500
-					}}>
-					  🎯 Filtres actifs
-					</div>
-					)}
-			</div>
-  
-		{/* TABLEAU FOURNISSEURS */}
-		<div style={{ background: 'white', borderRadius: '8px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-		  
-			  {/* ✅ PAGINATION ET INFO AU-DESSUS */}
-			  <div style={{ 
-				display: 'flex', 
-				justifyContent: 'space-between', 
-				alignItems: 'center', 
-				marginBottom: '15px', 
-				paddingBottom: '15px', 
-				borderBottom: '2px solid #e0e0e0' 
-			  }}>
-				<div style={{ color: '#666', fontSize: '14px' }}>
-				  🧑‍🌾 <strong>{filteredFournisseurs.length}</strong> fournisseur(s) trouvé(s)
-				  {filterRegion !== 'all' && ` • 🗺️ ${filterRegion}`}
-				  {filterZone !== 'all' && ` • 📍 ${filterZone}`}
-				</div>
-			
-				<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-				  <button
-					onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
-					disabled={currentPageFournisseurs === 1}
-					style={{
-					  padding: '8px 16px',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  background: currentPageFournisseurs === 1 ? '#f5f5f5' : 'white',
-					  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
-					  opacity: currentPageFournisseurs === 1 ? 0.5 : 1,
-					  fontWeight: 500
-					}}
-				  >
-					← Précédent
-				  </button>
-				  
-				  <span style={{ color: '#666', fontSize: '14px' }}>
-					Page <strong>{currentPageFournisseurs}</strong> / <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
-				  </span>
-				  
-				  <button
-					onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
-					disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
-					style={{
-					  padding: '8px 16px',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  background: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? '#f5f5f5' : 'white',
-					  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-					  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1,
-					  fontWeight: 500
-					}}
-				  >
-					Suivant →
-				  </button>
-				</div>
-			  </div>
-
-			  {/* TABLEAU AVEC TRI */}
-			  <div style={{ overflowX: 'auto' }}>
-				<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-				  <thead>
-					<tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						👤 Nom
-					  </th>
-					  
-					  {/* ✅ NOUVELLE COLONNE RÉGION */}
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						🗺️ Région
-					  </th>
-					  
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						📍 Zone Production
-					  </th>
-					  
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						📞 Contact
-					  </th>
-					  
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						⚡ Statut
-					  </th>
-					  
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						🏆 Certifications
-					  </th>
-					  
-					  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>
-						⚙️ Actions
-					  </th>
-					</tr>
-				  </thead>
-				  <tbody>
-					{paginatedFournisseurs.length === 0 ? (
-					  <tr>
-						<td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-						  😔 Aucun fournisseur trouvé
-						</td>
-					  </tr>
-					) : (
-					  paginatedFournisseurs.map((fournisseur, idx) => {
-						// ✅ Calculer la région depuis la zone
-						const fournisseurRegion = fournisseur.zone_production 
-						  ? (zonesProduction.find(z => z.nom === fournisseur.zone_production)?.region || '-')
-						  : '-';
-						
-						return (
-						  <tr 
-							key={idx} 
-							style={{ 
-							  borderBottom: '1px solid #e0e0e0',
-							  transition: 'background 0.2s'
-							}}
-							onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
-							onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-						  >
-							{/* Nom */}
-							<td style={{ padding: '12px', fontWeight: 600, color: '#333' }}>
-							  {fournisseur.nom}
-							</td>
-							
-							{/* ✅ RÉGION */}
-							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-							  {fournisseurRegion}
-							</td>
-							
-							{/* Zone */}
-							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-							  {fournisseur.zone_production || '-'}
-							</td>
-							
-							{/* Contact */}
-							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-							  {fournisseur.email ? (
-								<a 
-								  href={`mailto:${fournisseur.email}`} 
-								  style={{ color: '#2196f3', textDecoration: 'none', display: 'block' }}
-								>
-								  📧 {fournisseur.email}
-								</a>
-							  ) : (
-								<span style={{ color: '#999' }}>-</span>
-							  )}
-							  {fournisseur.telephone && (
-								<div style={{ marginTop: '4px', color: '#666' }}>
-								  📱 {fournisseur.telephone}
-								</div>
-							  )}
-							</td>
-							
-							{/* Statut */}
-							<td style={{ padding: '12px' }}>
-							  <StatusBadge statut={fournisseur.statut || 'Actif'} type="fournisseur" />
-							</td>
-							
-							{/* Certifications */}
-							<td style={{ padding: '12px', color: '#666', fontSize: '13px' }}>
-							  {fournisseur.certifications ? (
-								<span>🏅 {fournisseur.certifications}</span>
-							  ) : (
-								<span style={{ color: '#999' }}>-</span>
-							  )}
-							</td>
-							
-							{/* Actions */}
-							<td style={{ padding: '12px' }}>
-							  <div style={{ display: 'flex', gap: '8px' }}>
-								<button
-								  onClick={() => handleEditFournisseur(fournisseur)}
-								  title="Modifier le fournisseur"
-								  style={{
-									padding: '6px 12px',
-									background: '#ff9800',
-									color: 'white',
-									border: 'none',
-									borderRadius: '4px',
-									cursor: 'pointer',
-									fontSize: '12px',
-									fontWeight: 500,
-									transition: 'background 0.2s'
-								  }}
-								  onMouseEnter={(e) => e.currentTarget.style.background = '#f57c00'}
-								  onMouseLeave={(e) => e.currentTarget.style.background = '#ff9800'}
-								>
-								  ✏️ Modifier
-								</button>
-								<button
-								  onClick={() => askDeleteFournisseur(fournisseur)}
-								  title="Supprimer le fournisseur"
-								  style={{
-									padding: '6px 12px',
-									background: '#f44336',
-									color: 'white',
-									border: 'none',
-									borderRadius: '4px',
-									cursor: 'pointer',
-									fontSize: '12px',
-									fontWeight: 500,
-									transition: 'background 0.2s'
-								  }}
-								  onMouseEnter={(e) => e.currentTarget.style.background = '#d32f2f'}
-								  onMouseLeave={(e) => e.currentTarget.style.background = '#f44336'}
-								>
-								  🗑️ Supprimer
-								</button>
-							  </div>
-							</td>
-						  </tr>
-						);
-					  })
-					)}
-				  </tbody>
-				</table>
-			  </div>
-		  
-				{/* ✅ PAGINATION EN BAS AUSSI (optionnel) */}
-				{filteredFournisseurs.length > itemsPerPage && (
-				<div style={{ 
-				  display: 'flex', 
-				  justifyContent: 'center', 
-				  alignItems: 'center', 
-				  gap: '10px', 
-				  marginTop: '20px',
-				  paddingTop: '15px',
-				  borderTop: '1px solid #e0e0e0'
-				}}>
-				  <button
-					onClick={() => setCurrentPageFournisseurs(prev => Math.max(1, prev - 1))}
-					disabled={currentPageFournisseurs === 1}
-					style={{
-					  padding: '8px 16px',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  background: 'white',
-					  cursor: currentPageFournisseurs === 1 ? 'not-allowed' : 'pointer',
-					  opacity: currentPageFournisseurs === 1 ? 0.5 : 1
-					}}
-				  >
-					⬅️ Précédent
-				  </button>
-				  
-				  <span style={{ color: '#666' }}>
-					Page <strong>{currentPageFournisseurs}</strong> sur <strong>{Math.ceil(filteredFournisseurs.length / itemsPerPage) || 1}</strong>
-				  </span>
-				  
-				  <button
-					onClick={() => setCurrentPageFournisseurs(prev => prev + 1)}
-					disabled={currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage)}
-					style={{
-					  padding: '8px 16px',
-					  border: '1px solid #ddd',
-					  borderRadius: '4px',
-					  background: 'white',
-					  cursor: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-					  opacity: currentPageFournisseurs >= Math.ceil(filteredFournisseurs.length / itemsPerPage) ? 0.5 : 1
-					}}
-				  >
-					Suivant ➡️
-				  </button>
-				</div>
-			)}
-		</div>
-	</div>
-	)}
+        <FournisseursTab
+          statsFournisseurs={statsFournisseurs}
+          fournisseurs={fournisseurs}
+          zonesProduction={zonesProduction}
+          regionsFournisseur={regionsFournisseur}
+          filterRegion={filterRegion}
+          setFilterRegion={setFilterRegion}
+          filterZone={filterZone}
+          setFilterZone={setFilterZone}
+          filterStatutFournisseur={filterStatutFournisseur}
+          setFilterStatutFournisseur={setFilterStatutFournisseur}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          currentPageFournisseurs={currentPageFournisseurs}
+          setCurrentPageFournisseurs={setCurrentPageFournisseurs}
+          filteredFournisseurs={filteredFournisseurs}
+          paginatedFournisseurs={paginatedFournisseurs}
+          itemsPerPage={itemsPerPage}
+          openNewFournisseurModal={openNewFournisseurModal}
+          handleEditFournisseur={handleEditFournisseur}
+          askDeleteFournisseur={askDeleteFournisseur}
+          resetFiltersFournisseurs={resetFiltersFournisseurs}
+          getZonesByRegion={getZonesByRegion}
+        />
+      )}
       
-      {/* ============================================================ */}
-      {/* ONGLET COMMANDES */}
-      {/* ============================================================ */}
       {activeTab === 'commandes' && (
-        <div>
-          {/* STATS COMMANDES */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '15px',
-            marginBottom: '30px'
-          }}>
-            <StatsCard
-              label="TOTAL"
-              value={statsCommandes.total}
-              color="#2196f3"
-            />
-            <StatsCard
-              label="EN ATTENTE"
-              value={statsCommandes.enAttente}
-              color="#ff9800"
-            />
-            <StatsCard
-              label="LIVRÉES"
-              value={statsCommandes.livrees}
-              color="#4caf50"
-            />
-            <StatsCard
-              label="MONTANT TOTAL"
-              value={`${statsCommandes.montantTotal.toFixed(2)} €`}
-              color="#9c27b0"
-            />
-          </div>
-          
-          {/* CONTRÔLES COMMANDES */}
-          <div style={{
-            display: 'flex',
-            gap: '15px',
-            marginBottom: '20px',
-            flexWrap: 'wrap',
-            alignItems: 'center'
-          }}>
-            <button
-              onClick={openNewCommandeModal}
-              style={{
-                padding: '10px 20px',
-                background: '#2196f3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
-            >
-              ➕ Nouvelle Commande
-            </button>
-            
-            <select
-              value={filterStatutCommande}
-              onChange={(e) => {
-                setFilterStatutCommande(e.target.value);
-                setCurrentPageCommandes(1);
-              }}
-              style={{
-                padding: '10px 15px',
-                border: '1px solid #ddd',
-                borderRadius: '6px'
-              }}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="En attente">En attente</option>
-              <option value="Confirmée">Confirmée</option>
-              <option value="Expédiée">Expédiée</option>
-              <option value="Livrée">Livrée</option>
-              <option value="Réceptionnée">Réceptionnée</option>
-              <option value="Annulée">Annulée</option>
-            </select>
-          </div>
-          
-          {/* TABLEAU COMMANDES */}
-          <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: '20px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            overflowX: 'auto'
-          }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '14px'
-            }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>N° Commande</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Fournisseur</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Livraison prévue</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Montant</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Statut</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedCommandes.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                      Aucune commande
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedCommandes.map((commande, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                      <td style={{ padding: '12px', fontWeight: '500' }}>
-                        {commande.numero_commande}
-                      </td>
-                      <td style={{ padding: '12px', color: '#666' }}>
-                        {getFournisseurName(commande.fournisseur_id)}
-                      </td>
-                      <td style={{ padding: '12px', color: '#666' }}>
-                        {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : '-'}
-                      </td>
-                      <td style={{ padding: '12px', color: '#666' }}>
-                        {commande.date_livraison_prevue ? new Date(commande.date_livraison_prevue).toLocaleDateString('fr-FR') : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontWeight: '600' }}>
-                        {parseFloat(commande.montant_total || 0).toFixed(2)} €
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <StatusBadge statut={commande.statut} type="commande" />
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <button
-                          onClick={() => handleEditCommande(commande)}
-                          style={{
-                            marginRight: '10px',
-                            padding: '6px 12px',
-                            background: '#ff9800',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => askDeleteCommande(commande)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Supprimer
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* PAGINATION */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '10px',
-            marginTop: '20px'
-          }}>
-            <button
-              onClick={() => setCurrentPageCommandes(prev => Math.max(1, prev - 1))}
-              disabled={currentPageCommandes === 1}
-              style={{
-                padding: '8px 16px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                background: 'white',
-                cursor: currentPageCommandes === 1 ? 'not-allowed' : 'pointer',
-                opacity: currentPageCommandes === 1 ? 0.5 : 1
-              }}
-            >
-              ← Précédent
-            </button>
-            <span style={{ color: '#666' }}>
-              Page {currentPageCommandes} sur {Math.ceil(filteredCommandes.length / itemsPerPage) || 1}
-            </span>
-            <button
-              onClick={() => setCurrentPageCommandes(prev => prev + 1)}
-              disabled={currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage)}
-              style={{
-                padding: '8px 16px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                background: 'white',
-                cursor: currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-                opacity: currentPageCommandes >= Math.ceil(filteredCommandes.length / itemsPerPage) ? 0.5 : 1
-              }}
-            >
-              Suivant →
-            </button>
-          </div>
-        </div>
+        <CommandesAchatsTab
+          statsCommandes={statsCommandes}
+          commandes={commandes}
+          fournisseurs={fournisseurs}
+          filterStatutCommande={filterStatutCommande}
+          setFilterStatutCommande={setFilterStatutCommande}
+          currentPageCommandes={currentPageCommandes}
+          setCurrentPageCommandes={setCurrentPageCommandes}
+          filteredCommandes={filteredCommandes}
+          paginatedCommandes={paginatedCommandes}
+          itemsPerPage={itemsPerPage}
+          openNewCommandeModal={openNewCommandeModal}
+          handleEditCommande={handleEditCommande}
+          askDeleteCommande={askDeleteCommande}
+          getFournisseurName={getFournisseurName}
+        />
       )}
       
-      {/* ============================================================ */}
-      {/* ONGLET STOCK */}
-      {/* ============================================================ */}
       {activeTab === 'stock' && (
-        <div>
-          {/* STATS STOCK */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '15px',
-            marginBottom: '30px'
-          }}>
-            <StatsCard
-              label="STOCK TOTAL"
-              value={`${statsStock.totalKg.toFixed(1)} kg`}
-              color="#2196f3"
-            />
-            <StatsCard
-              label="NOMBRE DE LOTS"
-              value={statsStock.nbLots}
-              color="#4caf50"
-            />
-            <StatsCard
-              label="⚠️ ALERTES"
-              value={statsStock.alertes}
-              color="#f44336"
-            />
-          </div>
-          
-          {/* CONTRÔLES STOCK */}
-          <div style={{
-            display: 'flex',
-            gap: '15px',
-            marginBottom: '20px',
-            flexWrap: 'wrap',
-            alignItems: 'center'
-          }}>
-            <select
-              value={filterCalibre}
-              onChange={(e) => setFilterCalibre(e.target.value)}
-              style={{
-                padding: '10px 15px',
-                border: '1px solid #ddd',
-                borderRadius: '6px'
-              }}
-            >
-              <option value="all">Tous calibres</option>
-              <option value="20">Extra (20-30mm)</option>
-              <option value="30">1ère (30-50mm)</option>
-              <option value="50">2e (>50mm)</option>
-            </select>
-            
-            <select
-              value={filterQualite}
-              onChange={(e) => setFilterQualite(e.target.value)}
-              style={{
-                padding: '10px 15px',
-                border: '1px solid #ddd',
-                borderRadius: '6px'
-              }}
-            >
-              <option value="all">Toutes qualités</option>
-              <option value="Extra">Extra</option>
-              <option value="1ère">1ère</option>
-              <option value="2e">2e</option>
-            </select>
-          </div>
-          
-          {/* TABLEAU STOCK */}
-          <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: '20px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            overflowX: 'auto'
-          }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '14px'
-            }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#f8f8f8' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Calibre</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Qualité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>🌱 Maturité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Quantité</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Conservation</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Localisation</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Limite consommation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStock.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                      Aucun stock disponible
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStock.map((item, idx) => {
-                    const jours = item.date_limite_consommation
-                      ? Math.floor((new Date(item.date_limite_consommation) - new Date()) / (1000 * 60 * 60 * 24))
-                      : null;
-                    const isAlerte = jours !== null && jours <= 7;
-                    
-                    return (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0', background: isAlerte ? '#fff3cd' : 'white' }}>
-                        <td style={{ padding: '12px', fontWeight: '500' }}>
-                          {item.calibre}
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {item.qualite}
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {item.maturite || '-'}
-                        </td>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>
-                          {parseFloat(item.quantite_kg_stock || 0).toFixed(2)} kg
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {item.conservation || '-'}
-                        </td>
-                        <td style={{ padding: '12px', color: '#666' }}>
-                          {item.localisation_storage || '-'}
-                        </td>
-                        <td style={{ padding: '12px', color: isAlerte ? '#f44336' : '#666', fontWeight: isAlerte ? '600' : '400' }}>
-                          {item.date_limite_consommation
-                            ? `${new Date(item.date_limite_consommation).toLocaleDateString('fr-FR')}${isAlerte ? ` (${jours}j)` : ''}`
-                            : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* ALERTES */}
-          {statsStock.alertes > 0 && (
-            <div style={{
-              marginTop: '20px',
-              padding: '15px',
-              background: '#fff3cd',
-              border: '1px solid #ffc107',
-              borderRadius: '6px',
-              color: '#856404'
-            }}>
-              <strong>⚠️ Attention :</strong> {statsStock.alertes} lot(s) avec une date limite de consommation approchant (≤ 7 jours)
-            </div>
-          )}
-        </div>
+        <StockTab
+          statsStock={statsStock}
+          stock={stock}
+          filterCalibre={filterCalibre}
+          setFilterCalibre={setFilterCalibre}
+          filterQualite={filterQualite}
+          setFilterQualite={setFilterQualite}
+          filteredStock={filteredStock}
+        />
       )}
       
-      {/* ============================================================ */}
-      {/* ONGLET MARGE */}
-      {/* ============================================================ */}
       {activeTab === 'marge' && (
-        <div>
-          <h2 style={{ marginTop: 0 }}>💰 Analyse de Marge & Rentabilité</h2>
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            textAlign: 'center',
-            color: '#999'
-          }}>
-            <p>Fonctionnalité d'analyse de marge en cours de développement</p>
-            <p style={{ fontSize: '12px' }}>
-              Les calculs de marge nécessitent des données complémentaires sur les achats et les ventes
-            </p>
-          </div>
-        </div>
+        <MargeTab />
       )}
-      
-      {/* ============================================================ */}
-      {/* MODALS */}
-      {/* ============================================================ */}
-      
-      {/* MODAL FOURNISSEUR */}
+
       {showFournisseurModal && (
         <div style={{
           position: 'fixed',
@@ -1436,7 +847,6 @@ const handleRegionChange = (e) => {
             </h2>
             
             <form onSubmit={handleFournisseurSubmit}>
-              {/* Nom */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🏢 Nom *</label>
                 <input
@@ -1455,92 +865,87 @@ const handleRegionChange = (e) => {
                 />
               </div>
               
-		{/* Zone Email */}
-		<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-		  {/* ✅ NOUVELLE VERSION - 2 SELECTS */}
-		  <div>
-			<label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
-			  Région
-			</label>
-			<select
-			  value={regionSelectionnee}
-			  onChange={handleRegionChange}
-			  style={{
-				width: '100%',
-				padding: '10px',
-				border: '1px solid #ddd',
-				borderRadius: '6px',
-				fontSize: '14px'
-			  }}
-			>
-			  <option value="">Sélectionner une région...</option>
-			  {regionsFournisseur.map(region => (
-				<option key={region} value={region}>
-				  {region}
-				</option>
-			  ))}
-			</select>
-		  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                    Région
+                  </label>
+                  <select
+                    value={regionSelectionnee}
+                    onChange={handleRegionChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">Sélectionner une région...</option>
+                    {regionsFournisseur.map(region => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-		  <div>
-			<label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
-			  Zone de production
-			</label>
-			<select
-			  name="zone_production"
-			  value={fournisseurFormData.zone_production}
-			  onChange={handleFournisseurInputChange}
-			  disabled={!regionSelectionnee}
-			  size="8"
-			  style={{
-				width: '100%',
-				padding: '10px',
-				border: '1px solid #ddd',
-				borderRadius: '6px',
-				fontSize: '14px',
-				height: '200px',
-				overflowY: 'auto',
-				cursor: !regionSelectionnee ? 'not-allowed' : 'pointer',
-				backgroundColor: !regionSelectionnee ? '#f5f5f5' : 'white'
-			  }}
-			>
-			  <option value="">Sélectionner...</option>
-			  {getZonesByRegion(regionSelectionnee).map(zone => (
-				<option key={zone.id} value={zone.nom}>
-				  {zone.nom} ({zone.departements || zone.departement})
-				</option>
-			  ))}
-			</select>
-			{!regionSelectionnee && (
-			  <small style={{ color: '#999', fontSize: '12px' }}>
-				⬆️ Sélectionnez d'abord une région
-			  </small>
-			)}
-		  </div>
-		</div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                    Zone de production
+                  </label>
+                  <select
+                    name="zone_production"
+                    value={fournisseurFormData.zone_production}
+                    onChange={handleFournisseurInputChange}
+                    disabled={!regionSelectionnee}
+                    size="8"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      height: '200px',
+                      overflowY: 'auto',
+                      cursor: !regionSelectionnee ? 'not-allowed' : 'pointer',
+                      backgroundColor: !regionSelectionnee ? '#f5f5f5' : 'white'
+                    }}
+                  >
+                    <option value="">Sélectionner...</option>
+                    {getZonesByRegion(regionSelectionnee).map(zone => (
+                      <option key={zone.id} value={zone.nom}>
+                        {zone.nom} ({zone.departements || zone.departement})
+                      </option>
+                    ))}
+                  </select>
+                  {!regionSelectionnee && (
+                    <small style={{ color: '#999', fontSize: '12px' }}>
+                      ⬆️ Sélectionnez d'abord une région
+                    </small>
+                  )}
+                </div>
+              </div>
 
-		{/* Email (déplacé seul sur la ligne suivante) */}
-		<div style={{ marginBottom: '20px' }}>
-		  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
-			Email
-		  </label>
-		  <input
-			type="email"
-			name="email"
-			value={fournisseurFormData.email}
-			onChange={handleFournisseurInputChange}
-			style={{
-			  width: '100%',
-			  padding: '10px',
-			  border: '1px solid #ddd',
-			  borderRadius: '6px',
-			  fontSize: '14px'
-			}}
-		  />
-		</div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={fournisseurFormData.email}
+                  onChange={handleFournisseurInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
 
-              
-              {/* Téléphone & Statut */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📱 Téléphone</label>
@@ -1579,7 +984,6 @@ const handleRegionChange = (e) => {
                 </div>
               </div>
               
-              {/* Adresse */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📍 Adresse</label>
                 <input
@@ -1597,7 +1001,6 @@ const handleRegionChange = (e) => {
                 />
               </div>
               
-              {/* Code postal, Ville, Pays */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📮 Code postal</label>
@@ -1649,7 +1052,6 @@ const handleRegionChange = (e) => {
                 </div>
               </div>
               
-              {/* Certifications */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🏆 Certifications</label>
                 <input
@@ -1668,7 +1070,6 @@ const handleRegionChange = (e) => {
                 />
               </div>
               
-              {/* Notes */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📝 Notes</label>
                 <textarea
@@ -1687,7 +1088,6 @@ const handleRegionChange = (e) => {
                 />
               </div>
               
-              {/* Boutons */}
               <div style={{
                 display: 'flex',
                 gap: '10px',
@@ -1731,7 +1131,6 @@ const handleRegionChange = (e) => {
         </div>
       )}
       
-      {/* MODAL COMMANDE AVEC GESTION DES LIGNES */}
       {showCommandeModal && (
         <div style={{
           position: 'fixed',
@@ -1762,7 +1161,6 @@ const handleRegionChange = (e) => {
             </h2>
             
             <form onSubmit={handleCommandeSubmit}>
-              {/* SECTION 1: Informations générales */}
               <div style={{
                 background: '#f5f5f5',
                 padding: '15px',
@@ -1771,7 +1169,6 @@ const handleRegionChange = (e) => {
               }}>
                 <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>📄 Informations générales</h3>
                 
-                {/* Fournisseur */}
                 <div style={{ marginBottom: '15px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>👤 Fournisseur *</label>
                   <select
@@ -1794,7 +1191,6 @@ const handleRegionChange = (e) => {
                   </select>
                 </div>
                 
-                {/* Dates */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>📅 Date commande *</label>
@@ -1831,7 +1227,6 @@ const handleRegionChange = (e) => {
                   </div>
                 </div>
 
-                {/* Statut */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>⚡ Statut *</label>
                   <select
@@ -1856,7 +1251,6 @@ const handleRegionChange = (e) => {
                   </select>
                 </div>
                 
-                {/* Notes */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 600, fontSize: '14px' }}>📝 Notes</label>
                   <textarea
@@ -1876,7 +1270,6 @@ const handleRegionChange = (e) => {
                 </div>
               </div>
               
-              {/* SECTION 2: Lignes de commande */}
               <div style={{
                 border: '2px solid #2196f3',
                 borderRadius: '8px',
@@ -1885,7 +1278,6 @@ const handleRegionChange = (e) => {
               }}>
                 <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#2196f3' }}>📋 Lignes de commande ({commandeLignes.length})</h3>
                 
-                {/* Formulaire d'ajout de ligne */}
                 <div style={{
                   background: '#e3f2fd',
                   padding: '15px',
@@ -2016,31 +1408,13 @@ const handleRegionChange = (e) => {
                   </div>
                   
                   <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={ajouterLigne}
-                    style={{
-                      flex: editingLigneIndex === null ? 1 : 2,
-                      padding: '12px',
-                      background: editingLigneIndex === null ? '#2196f3' : '#ff9800',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 600
-                    }}
-                  >
-                    {editingLigneIndex === null ? '➕ Ajouter la ligne' : '✏️ Mettre à jour la ligne'}
-                  </button>
-                  {editingLigneIndex !== null && (
                     <button
                       type="button"
-                      onClick={annulerEditionLigne}
+                      onClick={ajouterLigne}
                       style={{
-                        flex: 1,
+                        flex: editingLigneIndex === null ? 1 : 2,
                         padding: '12px',
-                        background: '#9e9e9e',
+                        background: editingLigneIndex === null ? '#2196f3' : '#ff9800',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
@@ -2049,13 +1423,30 @@ const handleRegionChange = (e) => {
                         fontWeight: 600
                       }}
                     >
-                      ❌ Annuler
+                      {editingLigneIndex === null ? '➕ Ajouter la ligne' : '✏️ Mettre à jour la ligne'}
                     </button>
-                  )}
-                </div>
+                    {editingLigneIndex !== null && (
+                      <button
+                        type="button"
+                        onClick={annulerEditionLigne}
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          background: '#9e9e9e',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: 600
+                        }}
+                      >
+                        ❌ Annuler
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Liste des lignes ajoutées */}
                 {commandeLignes.length === 0 ? (
                   <div style={{
                     textAlign: 'center',
@@ -2145,7 +1536,6 @@ const handleRegionChange = (e) => {
                 )}
               </div>
               
-              {/* Boutons */}
               <div style={{
                 display: 'flex',
                 gap: '10px',
@@ -2168,17 +1558,14 @@ const handleRegionChange = (e) => {
                 </button>
                 <button
                   type="submit"
-                  // disabled={isProcessing || commandeLignes.length === 0}
-				  disabled={isProcessing}
+                  disabled={isProcessing}
                   style={{
                     padding: '12px 24px',
                     border: 'none',
                     borderRadius: '6px',
-                    // background: commandeLignes.length === 0 ? '#ccc' : '#2196f3',
-					background: isProcessing ? '#ccc' : '#2196f3',
+                    background: isProcessing ? '#ccc' : '#2196f3',
                     color: 'white',
-                    // cursor: (isProcessing || commandeLignes.length === 0) ? 'not-allowed' : 'pointer',
-					cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
                     fontSize: '14px',
                     fontWeight: 600,
                     opacity: (isProcessing || commandeLignes.length === 0) ? 0.7 : 1
