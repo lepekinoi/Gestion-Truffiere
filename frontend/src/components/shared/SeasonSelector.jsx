@@ -33,44 +33,53 @@ function SeasonSelector({
     ? (Array.isArray(value) ? value : [value]).filter(Boolean)
     : [value].filter(Boolean);
 
-  // Simple sélection : dropdown classique
-  if (!multiple) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        {label && (
-          <label style={{ 
-            fontSize: '0.85rem', 
-            color: '#666', 
-            fontWeight: '500' 
-          }}>
-            {label}
-          </label>
-        )}
-        <select 
-          value={value || 'all'} 
-          onChange={(e) => onChange(e.target.value === 'all' ? null : e.target.value)}
-          style={{ 
-            padding: '0.75rem', 
-            borderRadius: '8px', 
-            border: value ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
-            background: value ? '#e8f5e9' : 'white',
-            fontSize: '1rem',
-            cursor: 'pointer'
-          }}
-        >
-          {showAll && <option value="all">✨ Toutes les saisons</option>}
-          {availableSeasons.map(season => {
-            const completeness = detectIncompleteSeason(season, recoltesData);
-            return (
-              <option key={season} value={season}>
-                {formatSeasonLabel(season, completeness)}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-    );
-  }
+ // Simple sélection : dropdown classique
+if (!multiple) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      <label style={{ 
+        fontSize: '0.85rem', 
+        fontWeight: '500', 
+        color: '#2c5f2d',
+        display: 'block'
+      }}>
+        {label}
+      </label>
+      <select
+        value={value || 'all'}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '0.75rem',
+          border: '1px solid #ddd',
+          borderRadius: '6px',
+          fontSize: '0.95rem',
+          background: value && value !== 'all' ? '#e8f5e9' : 'white',
+          cursor: 'pointer',
+          outline: 'none'
+        }}
+      >
+        {showAll && <option value="all">✨ Toutes les saisons</option>}
+        {availableSeasons.map(season => {
+          const completeness = detectIncompleteSeason(season, recoltesData);
+          const monthNames = { 1:'Jan', 2:'Fév', 3:'Mar', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Déc' };
+          
+          // Affichage détaillé dans les options du dropdown
+          const fullLabel = completeness.isComplete 
+            ? season 
+            : `${season} ⚠️ (${completeness.coverage}% - ${completeness.monthsPresent.map(m => monthNames[m]).join(', ')})`;
+          
+          return (
+            <option key={season} value={season}>
+              {fullLabel}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  );
+}
+
 
   // Multi-sélection : checkboxes avec badges
   const handleToggle = (season) => {
@@ -280,4 +289,5 @@ function SeasonSelector({
   );
 }
 
+// ✅ Export explicite (correction ESLint)
 export default SeasonSelector;
