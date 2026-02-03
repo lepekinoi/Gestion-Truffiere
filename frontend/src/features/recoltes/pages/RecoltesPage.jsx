@@ -425,7 +425,7 @@ function RecoltesPage() {
   const filteredRecoltes = recoltes.filter(r => {
 	// CHANGEMENT: Filtre par saison au lieu d'année
 	if (filterSeason && filterSeason !== 'all') {
-	  const recolteSeason = getSeasonForDate(r.date_recolte);
+	  const recolteSeason = getSeasonForDate(new Date(r.date_recolte));
 	  if (recolteSeason !== filterSeason) return false;
 	}
     
@@ -1022,100 +1022,105 @@ function RecoltesPage() {
         </div>
       )}
 
-      {/* Barre de recherche et filtres */}
-      <div style={{ 
-        background: 'white', 
-        padding: '1rem', 
-        borderRadius: '12px', 
-        marginBottom: '1rem',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="Rechercher par arbre, parcelle, caveur, chien, notes..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
-            />
-            {filters.search && (
-              <button
-                onClick={() => handleFilterChange('search', '')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  color: '#999'
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+		 {/* Barre de recherche et filtres */}
+		<div style={{ background: 'white', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+		  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+			
+			{/* Input de recherche */}
+			<div style={{ flex: '1 1 300px', minWidth: '250px', position: 'relative' }}>
+			  <input
+				type="text"
+				placeholder="Rechercher par arbre, parcelle, caveur, chien, notes..."
+				value={filters.search}
+				onChange={(e) => handleFilterChange('search', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.75rem 1rem', 
+				  border: '2px solid #e0e0e0', 
+				  borderRadius: '8px', 
+				  fontSize: '1rem' 
+				}}
+			  />
+			  {filters.search && (
+				<button 
+				  onClick={() => handleFilterChange('search', '')}
+				  style={{ 
+					position: 'absolute', 
+					right: '10px', 
+					top: '50%', 
+					transform: 'translateY(-50%)', 
+					background: 'none', 
+					border: 'none', 
+					cursor: 'pointer', 
+					fontSize: '1.2rem', 
+					color: '#999' 
+				  }}
+				>
+				  ✕
+				</button>
+			  )}
+			</div>
 
-          {/* CHANGEMENT: Remplacement du select année par SeasonSelector */}
-          <SeasonSelector
-            selectedSeason={filterSeason}
-            onSeasonChange={(season) => {
-              setFilterSeason(season);
-              setCurrentPage(1);
-            }}
-            recoltes={recoltes}
-          />
+			{/* SeasonSelector avec largeur fixe */}
+			<div style={{ width: '320px', flexShrink: 0 }}>
+			  <SeasonSelector 
+				recoltesData={recoltes}
+				value={filterSeason}
+				onChange={(season) => {
+				  setFilterSeason(season);
+				  setCurrentPage(1);
+				}}
+				showAll={true}
+				label="🍃 Saison"
+			  />
+			</div>
 
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            style={{
-              padding: '0.75rem 1.25rem',
-              border: hasActiveFilters ? '2px solid #2c5f2d' : '2px solid #e0e0e0',
-              borderRadius: '8px',
-              background: hasActiveFilters ? '#e8f5e9' : 'white',
-              color: hasActiveFilters ? '#2c5f2d' : '#666',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontWeight: hasActiveFilters ? 'bold' : 'normal'
-            }}
-          >
-            🔍 Filtres
-            {hasActiveFilters && (
-              <span style={{ fontSize: '0.8rem' }}>
-                ({Object.values(filters).filter(v => v !== '').length + (filterSeason ? 1 : 0)})
-              </span>
-            )}
-            <span>{showFilters ? '▲' : '▼'}</span>
-          </button>
+			{/* Bouton Filtres */}
+			<button
+			  onClick={() => setShowFilters(!showFilters)}
+			  style={{ 
+				padding: '0.75rem 1.25rem', 
+				border: hasActiveFilters ? '2px solid #2c5f2d' : '2px solid #e0e0e0', 
+				borderRadius: '8px', 
+				background: hasActiveFilters ? '#e8f5e9' : 'white', 
+				color: hasActiveFilters ? '#2c5f2d' : '#666', 
+				cursor: 'pointer', 
+				display: 'flex', 
+				alignItems: 'center', 
+				gap: '0.5rem', 
+				fontWeight: hasActiveFilters ? 'bold' : 'normal',
+				whiteSpace: 'nowrap'
+			  }}
+			>
+			  🔍 Filtres
+			  {hasActiveFilters && (
+				<span style={{ fontSize: '0.8rem' }}>
+				  ({Object.values(filters).filter(v => v !== '').length + ((filterSeason !== 'all' && filterSeason !== null) ? 1 : 0)})
+				</span>
+			  )}
+			  <span>{showFilters ? '▲' : '▼'}</span>
+			</button>
 
-          {hasActiveFilters && (
-            <button
-              onClick={resetFilters}
-              style={{
-                padding: '0.75rem 1rem',
-                border: 'none',
-                borderRadius: '8px',
-                background: '#ffebee',
-                color: '#c62828',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              ✕ Réinitialiser
-            </button>
-          )}
-        </div>
+			{/* Bouton Réinitialiser (si filtres actifs) */}
+			{hasActiveFilters && (
+			  <button
+				onClick={resetFilters}
+				style={{ 
+				  padding: '0.75rem 1rem', 
+				  border: 'none', 
+				  borderRadius: '8px', 
+				  background: '#ffebee', 
+				  color: '#c62828', 
+				  cursor: 'pointer', 
+				  fontWeight: '500',
+				  whiteSpace: 'nowrap'
+				}}
+			  >
+				↺ Réinitialiser
+			  </button>
+			)}
+		  </div>
+
 
         {/* Panneau de filtres avancés */}
         {showFilters && (
