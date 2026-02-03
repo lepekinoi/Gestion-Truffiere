@@ -1122,217 +1122,220 @@ function RecoltesPage() {
 		  </div>
 
 
-        {/* Panneau de filtres avancés */}
-        {showFilters && (
-          <div style={{
-            marginTop: '1rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid #eee',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '1rem'
-          }}>
-            {/* Filtre Parcelle */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Parcelle
-              </label>
-              <select
-                value={filters.parcelle}
-                onChange={(e) => handleFilterChange('parcelle', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.parcelle ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Toutes</option>
-                {parcelles.map(p => (
-                  <option key={p.id} value={p.id}>{p.nom}</option>
-                ))}
-              </select>
-            </div>
+		{/* Panneau de filtres avancés */}
+		{showFilters && (
+		  <div style={{ 
+			marginTop: '1rem', 
+			paddingTop: '1rem', 
+			borderTop: '1px solid #eee', 
+			display: 'grid', 
+			gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+			gap: '1rem' 
+		  }}>
+			
+			{/* Filtre Parcelle */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>🏞️</span> Parcelle
+			  </label>
+			  <select
+				value={filters.parcelle}
+				onChange={(e) => handleFilterChange('parcelle', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.parcelle ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Toutes</option>
+				{parcelles.map(p => (
+				  <option key={p.id} value={p.id}>{p.nom}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Qualité */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Qualité
-              </label>
-              <select
-                value={filters.qualite}
-                onChange={(e) => handleFilterChange('qualite', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.qualite ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Toutes</option>
-                <option value="Extra">Extra</option>
-                <option value="Première catégorie">Première</option>
-                <option value="Deuxième catégorie">Deuxième</option>
-                <option value="Pourrie">Pourrie</option>
-              </select>
-            </div>
+			{/* Filtre Qualité */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>⭐</span> Qualité
+			  </label>
+			  <select
+				value={filters.qualite}
+				onChange={(e) => handleFilterChange('qualite', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.qualite ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Toutes</option>
+				<option value="Extra">Extra</option>
+				<option value="Première catégorie">Première</option>
+				<option value="Deuxième catégorie">Deuxième</option>
+				<option value="Pourrie">Pourrie</option>
+			  </select>
+			</div>
 
-            {/* Filtre Calibre */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Calibre
-              </label>
-              <select
-                value={filters.calibre}
-                onChange={(e) => handleFilterChange('calibre', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.calibre ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Tous</option>
-                {filterOptions.calibres.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+			{/* Filtre Calibre */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>📏</span> Calibre
+			  </label>
+			  <select
+				value={filters.calibre}
+				onChange={(e) => handleFilterChange('calibre', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.calibre ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Tous</option>
+				{filterOptions.calibres.map(c => (
+				  <option key={c} value={c}>{c}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Maturité */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Maturité
-              </label>
-              <select
-                value={filters.maturite}
-                onChange={(e) => handleFilterChange('maturite', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.maturite ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Toutes</option>
-                {filterOptions.maturites.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
+			{/* Filtre Maturité */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>🌱</span> Maturité
+			  </label>
+			  <select
+				value={filters.maturite}
+				onChange={(e) => handleFilterChange('maturite', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.maturite ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Toutes</option>
+				{filterOptions.maturites.map(m => (
+				  <option key={m} value={m}>{m}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Caveur */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Caveur
-              </label>
-              <select
-                value={filters.caveur}
-                onChange={(e) => handleFilterChange('caveur', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.caveur ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Tous</option>
-                {filterOptions.caveurs.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+			{/* Filtre Caveur */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>👤</span> Caveur
+			  </label>
+			  <select
+				value={filters.caveur}
+				onChange={(e) => handleFilterChange('caveur', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.caveur ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Tous</option>
+				{filterOptions.caveurs.map(c => (
+				  <option key={c} value={c}>{c}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Chien */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Chien
-              </label>
-              <select
-                value={filters.chien}
-                onChange={(e) => handleFilterChange('chien', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.chien ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Tous</option>
-                {filterOptions.chiens.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+			{/* Filtre Chien */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>🐕</span> Chien
+			  </label>
+			  <select
+				value={filters.chien}
+				onChange={(e) => handleFilterChange('chien', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.chien ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Tous</option>
+				{filterOptions.chiens.map(c => (
+				  <option key={c} value={c}>{c}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Exposition */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Exposition
-              </label>
-              <select
-                value={filters.exposition}
-                onChange={(e) => handleFilterChange('exposition', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.exposition ? '#e8f5e9' : 'white'
-                }}
-              >
-                <option value="">Toutes</option>
-                {EXPOSITIONS.map(e => (
-                  <option key={e.value} value={e.value}>{e.label}</option>
-                ))}
-              </select>
-            </div>
+			{/* Filtre Exposition */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>🧭</span> Exposition
+			  </label>
+			  <select
+				value={filters.exposition}
+				onChange={(e) => handleFilterChange('exposition', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.exposition ? '#e8f5e9' : 'white'
+				}}
+			  >
+				<option value="">Toutes</option>
+				{EXPOSITIONS.map(e => (
+				  <option key={e.value} value={e.value}>{e.label}</option>
+				))}
+			  </select>
+			</div>
 
-            {/* Filtre Date début */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Date début
-              </label>
-              <input
-                type="date"
-                value={filters.dateDebut}
-                onChange={(e) => handleFilterChange('dateDebut', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.dateDebut ? '#e8f5e9' : 'white'
-                }}
-              />
-            </div>
+			{/* Filtre Date début */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>📅</span> Date début
+			  </label>
+			  <input
+				type="date"
+				value={filters.dateDebut}
+				onChange={(e) => handleFilterChange('dateDebut', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.dateDebut ? '#e8f5e9' : 'white'
+				}}
+			  />
+			</div>
 
-            {/* Filtre Date fin */}
-            <div>
-              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'block' }}>
-                Date fin
-              </label>
-              <input
-                type="date"
-                value={filters.dateFin}
-                onChange={(e) => handleFilterChange('dateFin', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: filters.dateFin ? '#e8f5e9' : 'white'
-                }}
-              />
-            </div>
-          </div>
-        )}
+			{/* Filtre Date fin */}
+			<div>
+			  <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+				<span>📅</span> Date fin
+			  </label>
+			  <input
+				type="date"
+				value={filters.dateFin}
+				onChange={(e) => handleFilterChange('dateFin', e.target.value)}
+				style={{ 
+				  width: '100%', 
+				  padding: '0.5rem', 
+				  border: '1px solid #ddd', 
+				  borderRadius: '6px',
+				  background: filters.dateFin ? '#e8f5e9' : 'white'
+				}}
+			  />
+			</div>
+
+		  </div>
+		)}
+
 
         {/* Résumé des résultats */}
         {hasActiveFilters && (
