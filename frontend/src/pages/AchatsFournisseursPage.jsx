@@ -182,11 +182,14 @@ function AchatsFournisseursPage() {
     parCalibre: [],
     parFournisseur: []
   });
+
+  const [zonesProduction, setZonesProduction] = useState([]);
   
   // ==================== EFFECTS ====================
   
   useEffect(() => {
     loadData();
+	loadZonesProduction();
   }, []);
   
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -224,6 +227,15 @@ function AchatsFournisseursPage() {
       setLoading(false);
     }
   };
+  
+	const loadZonesProduction = async () => {
+	  try {
+		const res = await axios.get(`${API_URL}/zones-production`);
+		setZonesProduction(res.data);
+	  } catch (error) {
+		console.warn('Zones non disponibles:', error);
+	  }
+	};
   
   const getFournisseurName = (fournisseurId) => {
     const fournisseur = fournisseurs.find(f => f.id === fournisseurId);
@@ -1491,24 +1503,25 @@ const handleEditCommande = async (commande) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>🗺️ Zone production</label>
-                  <select
-                    name="zone_production"
-                    value={fournisseurFormData.zone_production}
-                    onChange={handleFournisseurInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="">Sélectionner...</option>
-                    <option value="Drôme">Drôme</option>
-                    <option value="Vaucluse">Vaucluse</option>
-                    <option value="Var">Var</option>
-                    <option value="Alpes-de-Haute-Provence">Alpes-de-Haute-Provence</option>
-                  </select>
+					<select
+					  name="zone_production"
+					  value={fournisseurFormData.zone_production}
+					  onChange={handleFournisseurInputChange}
+					  style={{
+						width: '100%',
+						padding: '10px',
+						border: '1px solid #ddd',
+						borderRadius: '6px',
+						fontSize: '14px'
+					  }}
+					>
+					  <option value="">Sélectionner...</option>
+					  {zonesProduction.map(zone => (
+						<option key={zone.id} value={zone.nom}>
+						  {zone.nom} ({zone.departements || zone.departement})
+						</option>
+					  ))}
+					</select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>📧 Email</label>
