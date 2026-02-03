@@ -5,7 +5,8 @@ import { validateRecoltesCSV } from '../../../utils/csvImport';
 import CSVImportModal from '../../../components/CSVImportModal';
 import { useColumnSettings, COLONNES_CONFIG } from '../../../hooks/useColumnSettings';
 import SeasonSelector from '../../../components/shared/SeasonSelector';
-import { filterRecoltesBySeason } from '../../../utils/seasonUtils';
+// import { filterRecoltesBySeason } from '../../../utils/seasonUtils';
+import { filterRecoltesBySeason, getSeasonForDate } from '../../../utils/seasonUtils';
 import { EXPOSITIONS, PAGINATION_OPTIONS, QUALITES_VENDABLES, QUALITES_NON_VENDABLES } from '../../../constants';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -400,33 +401,33 @@ function RecoltesPage() {
   };
 
   // Réinitialiser tous les filtres
-  const resetFilters = () => {
-    setFilters({
-      search: '',
-      parcelle: '',
-      qualite: '',
-      calibre: '',
-      maturite: '',
-      caveur: '',
-      chien: '',
-      exposition: '',
-      dateDebut: '',
-      dateFin: ''
-    });
-    setFilterSeason(null); // CHANGEMENT: Reset de la saison
-    setCurrentPage(1);
-  };
+	const resetFilters = () => {
+	  setFilters({
+		search: '',
+		parcelle: '',
+		qualite: '',
+		calibre: '',
+		maturite: '',
+		caveur: '',
+		chien: '',
+		exposition: '',
+		dateDebut: '',
+		dateFin: ''
+	  });
+	  setFilterSeason('all'); // CHANGEMENT: Reset de la saison à 'all'
+	  setCurrentPage(1);
+	};
 
   // Vérifier si des filtres sont actifs
-  const hasActiveFilters = Object.values(filters).some(v => v !== '') || filterSeason !== null; // CHANGEMENT
+  const hasActiveFilters = Object.values(filters).some(v => v !== '') || (filterSeason !== 'all' && filterSeason !== null); // CHANGEMENT
 
   // Filtrage avancé des récoltes
   const filteredRecoltes = recoltes.filter(r => {
-    // CHANGEMENT: Filtre par saison au lieu d'année
-    if (filterSeason) {
-      const seasonRecoltes = filterRecoltesBySeason(recoltes, filterSeason);
-      if (!seasonRecoltes.find(sr => sr.id === r.id)) return false;
-    }
+	// CHANGEMENT: Filtre par saison au lieu d'année
+	if (filterSeason && filterSeason !== 'all') {
+	  const recolteSeason = getSeasonForDate(r.date_recolte);
+	  if (recolteSeason !== filterSeason) return false;
+	}
     
     // Filtre recherche textuelle
     if (filters.search) {
