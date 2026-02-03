@@ -308,6 +308,13 @@ app.use('/api/especes', (req, res, next) => {
   next();
 }, especesRoutes(pool));
 
+// Zones de production
+const zonesProductionRoutes = require('./routes/zones-production.routes');
+app.use('/api/zones-production', (req, res, next) => {
+  req.pool = pool;
+  next();
+}, zonesProductionRoutes(pool));
+
 // Types d'intervention
 const typesInterventionRoutes = require('./routes/types-intervention.routes');
 app.use('/api/types-intervention', (req, res, next) => {
