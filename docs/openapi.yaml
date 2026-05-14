@@ -1,0 +1,2109 @@
+openapi: 3.1.0
+
+info:
+  title: Gestion-Truffiere API
+  version: 8.0.0
+  description: |
+    API REST de la plateforme de gestion pour exploitations truffières.
+    Authentification par JWT (access token 15 min) avec refresh token à rotation.
+    Toutes les routes (sauf /auth/login et /auth/refresh) requièrent un Bearer token valide.
+  contact:
+    url: https://github.com/lepekinoi/Gestion-Truffiere
+
+servers:
+  - url: https://m-a-truffes.sytes.net/api
+    description: Production
+  - url: http://localhost:3001/api
+    description: Développement local
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token JWT (expiration 15 min). Obtenu via POST /auth/login.
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Identifiant numérique de la ressource
+
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+      description: Numéro de page (pagination)
+
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+      description: Nombre de résultats par page
+
+  responses:
+    Unauthorized:
+      description: Token absent, expiré ou invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "AUTH_TOKEN_INVALID"
+            message: "Token invalide ou expiré"
+
+    Forbidden:
+      description: Permissions insuffisantes (rôle admin requis)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "AUTH_ADMIN_REQUIRED"
+            message: "Accès administrateur requis"
+
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Erreur de validation des données entrantes
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    TooManyRequests:
+      description: Trop de tentatives — rate limiting actif
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "RATE_LIMIT_EXCEEDED"
+            message: "Trop de tentatives. Réessayez dans 15 minutes."
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Code d'erreur standardisé (85+ codes définis)
+        message:
+          type: string
+        details:
+          type: object
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserMe'
+        expiresIn:
+          type: integer
+          description: Durée de validité de l'access token en secondes (900)
+
+    UserMe:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, readonly]
+
+    UserCreate:
+      type: object
+      required: [email, password, nom, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        nom:
+          type: string
+        prenom:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, readonly]
+
+    Parcelle:
+      type: object
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        surface:
+          type: number
+          format: float
+          description: Surface en hectares
+        commune:
+          type: string
+        coordonnees:
+          type: object
+          description: GeoJSON ou coordonnées Leaflet
+        actif:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Arbre:
+      type: object
+      properties:
+        id:
+          type: integer
+        parcelle_id:
+          type: integer
+        espece_id:
+          type: integer
+        num_arbre:
+          type: string
+        annee_plantation:
+          type: integer
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+        statut:
+          type: string
+          enum: [actif, supprime]
+        notes:
+          type: string
+
+    Recolte:
+      type: object
+      properties:
+        id:
+          type: integer
+        arbre_id:
+          type: integer
+        date_recolte:
+          type: string
+          format: date
+        poids_kg:
+          type: number
+          format: float
+        qualite:
+          type: string
+          enum: [extra, premier_choix, second_choix, brisures]
+        notes:
+          type: string
+
+    Intervention:
+      type: object
+      properties:
+        id:
+          type: integer
+        parcelle_id:
+          type: integer
+        arbre_id:
+          type: integer
+        type_intervention_id:
+          type: integer
+        date_intervention:
+          type: string
+          format: date
+        description:
+          type: string
+        operateur:
+          type: string
+        statut:
+          type: string
+          enum: [planifiee, en_cours, terminee, annulee]
+
+    Vente:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_id:
+          type: integer
+        date_vente:
+          type: string
+          format: date
+        poids_kg:
+          type: number
+          format: float
+        prix_kg:
+          type: number
+          format: float
+        montant_total:
+          type: number
+          format: float
+        statut:
+          type: string
+          enum: [en_attente, validee, annulee]
+
+    Commande:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_id:
+          type: integer
+        date_commande:
+          type: string
+          format: date
+        date_livraison_souhaitee:
+          type: string
+          format: date
+        poids_kg:
+          type: number
+          format: float
+        statut:
+          type: string
+          enum: [en_attente, confirmee, livree, annulee]
+        notes:
+          type: string
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        type_client:
+          type: string
+          enum: [particulier, restaurateur, grossiste, epicerie]
+        email:
+          type: string
+          format: email
+        telephone:
+          type: string
+        adresse:
+          type: string
+        actif:
+          type: boolean
+
+paths:
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authentification
+      description: |
+        Retourne un access token (15 min) et un refresh token.
+        Après 5 échecs consécutifs, le compte est verrouillé 15 min.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentification réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Identifiants incorrects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "AUTH_INVALID_CREDENTIALS"
+                message: "Email ou mot de passe incorrect"
+        '423':
+          description: Compte verrouillé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "AUTH_ACCOUNT_LOCKED"
+                message: "Compte temporairement verrouillé"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Renouvellement du token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Tokens renouvelés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Déconnexion (session courante)
+      responses:
+        '200':
+          description: Déconnexion effectuée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Déconnexion toutes sessions
+      responses:
+        '200':
+          description: Toutes les sessions révoquées
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Profil utilisateur courant
+      responses:
+        '200':
+          description: Profil retourné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Changement de mot de passe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Mot de passe modifié
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      summary: Liste des sessions actives
+      responses:
+        '200':
+          description: Sessions actives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    ip:
+                      type: string
+                    user_agent:
+                      type: string
+
+  /auth/sessions/{id}:
+    delete:
+      tags: [Auth]
+      summary: Révoquer une session spécifique
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Session révoquée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Créer un utilisateur (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Utilisateur créé
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /auth/users:
+    get:
+      tags: [Auth]
+      summary: Liste des utilisateurs (admin)
+      responses:
+        '200':
+          description: Liste retournée
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserMe'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /auth/users/{id}:
+    get:
+      tags: [Auth]
+      summary: Détail d'un utilisateur (admin)
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Utilisateur retourné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Auth]
+      summary: Modifier un utilisateur (admin)
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: Utilisateur modifié
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Auth]
+      summary: Supprimer un utilisateur (admin)
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Utilisateur supprimé
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/users/{id}/reset-password:
+    post:
+      tags: [Auth]
+      summary: Réinitialiser le mot de passe (admin)
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Mot de passe réinitialisé
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /auth/users/{id}/unlock:
+    post:
+      tags: [Auth]
+      summary: Déverrouiller un compte (admin)
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Compte déverrouillé
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /parcelles:
+    get:
+      tags: [Parcelles]
+      summary: Lister toutes les parcelles
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Liste des parcelles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Parcelle'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Parcelles]
+      summary: Créer une parcelle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Parcelle'
+      responses:
+        '201':
+          description: Parcelle créée
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /parcelles/{id}:
+    get:
+      tags: [Parcelles]
+      summary: Détail d'une parcelle
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Parcelle retournée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcelle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Parcelles]
+      summary: Modifier une parcelle
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Parcelle'
+      responses:
+        '200':
+          description: Parcelle modifiée
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Parcelles]
+      summary: Supprimer une parcelle
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Parcelle supprimée
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /arbres:
+    get:
+      tags: [Arbres]
+      summary: Lister les arbres actifs
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: parcelle_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des arbres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Arbre'
+    post:
+      tags: [Arbres]
+      summary: Créer un arbre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Arbre'
+      responses:
+        '201':
+          description: Arbre créé
+
+  /arbres/{id}:
+    put:
+      tags: [Arbres]
+      summary: Modifier un arbre
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Arbre'
+      responses:
+        '200':
+          description: Arbre modifié
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Arbres]
+      summary: Mettre à la corbeille
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Arbre mis à la corbeille
+
+  /arbres/corbeille:
+    get:
+      tags: [Arbres]
+      summary: Lister les arbres en corbeille
+      responses:
+        '200':
+          description: Arbres supprimés
+    delete:
+      tags: [Arbres]
+      summary: Vider la corbeille
+      responses:
+        '200':
+          description: Corbeille vidée
+
+  /arbres/corbeille/{id}:
+    delete:
+      tags: [Arbres]
+      summary: Suppression définitive d'un arbre
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Arbre supprimé définitivement
+
+  /arbres/corbeille/{id}/restaurer:
+    post:
+      tags: [Arbres]
+      summary: Restaurer un arbre depuis la corbeille
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Arbre restauré
+
+  /recoltes:
+    get:
+      tags: [Récoltes]
+      summary: Lister les récoltes
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: annee
+          in: query
+          schema:
+            type: integer
+        - name: arbre_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des récoltes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recolte'
+    post:
+      tags: [Récoltes]
+      summary: Enregistrer une récolte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recolte'
+      responses:
+        '201':
+          description: Récolte enregistrée
+
+  /recoltes/{id}:
+    put:
+      tags: [Récoltes]
+      summary: Modifier une récolte
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recolte'
+      responses:
+        '200':
+          description: Récolte modifiée
+    delete:
+      tags: [Récoltes]
+      summary: Supprimer une récolte
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Récolte supprimée
+
+  /interventions:
+    get:
+      tags: [Interventions]
+      summary: Lister les interventions
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: parcelle_id
+          in: query
+          schema:
+            type: integer
+        - name: statut
+          in: query
+          schema:
+            type: string
+            enum: [planifiee, en_cours, terminee, annulee]
+      responses:
+        '200':
+          description: Liste des interventions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Intervention'
+    post:
+      tags: [Interventions]
+      summary: Créer une intervention
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Intervention'
+      responses:
+        '201':
+          description: Intervention créée
+
+  /interventions/check-doublon:
+    get:
+      tags: [Interventions]
+      summary: Vérifier les doublons
+      parameters:
+        - name: parcelle_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: type_intervention_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: date_intervention
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Résultat de vérification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doublon:
+                    type: boolean
+                  intervention_id:
+                    type: integer
+
+  /interventions/stats:
+    get:
+      tags: [Interventions]
+      summary: Statistiques globales des interventions
+      responses:
+        '200':
+          description: Stats retournées
+
+  /interventions/stats/eau:
+    get:
+      tags: [Interventions]
+      summary: Statistiques consommation eau
+      responses:
+        '200':
+          description: Données eau retournées
+
+  /interventions/stats/traitements:
+    get:
+      tags: [Interventions]
+      summary: Statistiques traitements phytosanitaires
+      responses:
+        '200':
+          description: Données traitements retournées
+
+  /interventions/export:
+    get:
+      tags: [Interventions]
+      summary: Export des interventions
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
+      responses:
+        '200':
+          description: Fichier exporté
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+
+  /interventions/{id}:
+    put:
+      tags: [Interventions]
+      summary: Modifier une intervention
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Intervention'
+      responses:
+        '200':
+          description: Intervention modifiée
+    delete:
+      tags: [Interventions]
+      summary: Supprimer une intervention
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Intervention supprimée
+
+  /interventions/{id}/details:
+    get:
+      tags: [Interventions]
+      summary: Détail complet d'une intervention
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Détail retourné
+    post:
+      tags: [Interventions]
+      summary: Ajouter un détail
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Détail ajouté
+    delete:
+      tags: [Interventions]
+      summary: Supprimer les détails
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Détails supprimés
+
+  /ventes:
+    get:
+      tags: [Ventes]
+      summary: Lister les ventes
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: client_id
+          in: query
+          schema:
+            type: integer
+        - name: annee
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des ventes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vente'
+    post:
+      tags: [Ventes]
+      summary: Créer une vente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vente'
+      responses:
+        '201':
+          description: Vente créée
+
+  /ventes/{id}:
+    put:
+      tags: [Ventes]
+      summary: Modifier une vente
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vente'
+      responses:
+        '200':
+          description: Vente modifiée
+    delete:
+      tags: [Ventes]
+      summary: Supprimer une vente
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Vente supprimée
+
+  /commandes:
+    get:
+      tags: [Commandes]
+      summary: Lister les commandes clients
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: statut
+          in: query
+          schema:
+            type: string
+            enum: [en_attente, confirmee, livree, annulee]
+      responses:
+        '200':
+          description: Liste des commandes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Commande'
+    post:
+      tags: [Commandes]
+      summary: Créer une commande
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Commande'
+      responses:
+        '201':
+          description: Commande créée
+
+  /commandes/{id}:
+    get:
+      tags: [Commandes]
+      summary: Détail d'une commande
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Commande retournée
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Commandes]
+      summary: Modifier une commande
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Commande'
+      responses:
+        '200':
+          description: Commande modifiée
+    delete:
+      tags: [Commandes]
+      summary: Supprimer une commande
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Commande supprimée
+
+  /commandes/{id}/creer-vente:
+    post:
+      tags: [Commandes]
+      summary: Convertir une commande en vente
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '201':
+          description: Vente créée depuis la commande
+        '400':
+          description: Commande non éligible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients:
+    get:
+      tags: [Clients]
+      summary: Lister les clients
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: type_client
+          in: query
+          schema:
+            type: string
+            enum: [particulier, restaurateur, grossiste, epicerie]
+      responses:
+        '200':
+          description: Liste des clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Client'
+    post:
+      tags: [Clients]
+      summary: Créer un client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Client'
+      responses:
+        '201':
+          description: Client créé
+
+  /clients/{id}:
+    put:
+      tags: [Clients]
+      summary: Modifier un client
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Client'
+      responses:
+        '200':
+          description: Client modifié
+    delete:
+      tags: [Clients]
+      summary: Supprimer un client
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Client supprimé
+
+  /clients/{id}/stats:
+    get:
+      tags: [Clients]
+      summary: Statistiques d'un client
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Stats client retournées
+
+  /clients/stats/by-type:
+    get:
+      tags: [Clients]
+      summary: Statistiques par type de client
+      responses:
+        '200':
+          description: Stats retournées
+
+  /achats/fournisseurs:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Lister les fournisseurs
+      responses:
+        '200':
+          description: Liste retournée
+    post:
+      tags: [Achats & Fournisseurs]
+      summary: Créer un fournisseur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Fournisseur créé
+
+  /achats/fournisseurs/{id}:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Détail d'un fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Fournisseur retourné
+    put:
+      tags: [Achats & Fournisseurs]
+      summary: Modifier un fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Fournisseur modifié
+    delete:
+      tags: [Achats & Fournisseurs]
+      summary: Supprimer un fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Fournisseur supprimé
+
+  /achats/fournisseurs/{id}/statistiques:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Statistiques d'un fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Stats retournées
+
+  /achats/fournisseurs/{id}/evaluations:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Évaluations d'un fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Évaluations retournées
+    post:
+      tags: [Achats & Fournisseurs]
+      summary: Ajouter une évaluation fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                commentaire:
+                  type: string
+      responses:
+        '201':
+          description: Évaluation enregistrée
+
+  /achats/commandes-achats:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Lister les commandes fournisseurs
+      responses:
+        '200':
+          description: Liste retournée
+    post:
+      tags: [Achats & Fournisseurs]
+      summary: Créer une commande fournisseur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Commande fournisseur créée
+
+  /achats/commandes-achats/{id}:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Détail d'une commande fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Commande retournée
+    put:
+      tags: [Achats & Fournisseurs]
+      summary: Modifier une commande fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Commande modifiée
+    delete:
+      tags: [Achats & Fournisseurs]
+      summary: Supprimer une commande fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Commande supprimée
+
+  /achats/commandes-achats/{id}/lignes:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Lignes d'une commande fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Lignes retournées
+
+  /achats/commandes-achats/{id}/statut:
+    put:
+      tags: [Achats & Fournisseurs]
+      summary: Changer le statut d'une commande fournisseur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statut]
+              properties:
+                statut:
+                  type: string
+                  enum: [en_attente, confirmee, expediee, recue, annulee]
+      responses:
+        '200':
+          description: Statut mis à jour
+
+  /achats/commandes-achats/{id}/reception:
+    post:
+      tags: [Achats & Fournisseurs]
+      summary: Enregistrer la réception
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Réception enregistrée
+
+  /achats/factures-achats:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Lister les factures fournisseurs
+      responses:
+        '200':
+          description: Factures retournées
+    post:
+      tags: [Achats & Fournisseurs]
+      summary: Créer une facture fournisseur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Facture créée
+
+  /achats/factures-achats/{id}/paiement:
+    put:
+      tags: [Achats & Fournisseurs]
+      summary: Enregistrer le paiement d'une facture
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date_paiement:
+                  type: string
+                  format: date
+                mode_paiement:
+                  type: string
+      responses:
+        '200':
+          description: Paiement enregistré
+
+  /achats/stock-disponible:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Stock disponible global
+      responses:
+        '200':
+          description: Stock retourné
+
+  /achats/stock-disponible/details:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Détail du stock par produit
+      responses:
+        '200':
+          description: Détail retourné
+
+  /achats/stock-disponible/alertes:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Alertes de stock bas
+      responses:
+        '200':
+          description: Alertes retournées
+
+  /achats/historique-prix:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Historique des prix d'achat
+      responses:
+        '200':
+          description: Historique retourné
+
+  /achats/marge-globale:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Marge globale achat/vente
+      responses:
+        '200':
+          description: Marge retournée
+
+  /achats/marge-globale/details:
+    get:
+      tags: [Achats & Fournisseurs]
+      summary: Détail de la marge par produit/période
+      responses:
+        '200':
+          description: Détail retourné
+
+  /stock:
+    get:
+      tags: [Stock]
+      summary: État global du stock de truffes
+      responses:
+        '200':
+          description: Stock retourné
+
+  /stock/recolte/{id}:
+    get:
+      tags: [Stock]
+      summary: Stock issu d'une récolte spécifique
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Stock retourné
+
+  /dashboard/full:
+    get:
+      tags: [Dashboard]
+      summary: Données complètes du tableau de bord
+      description: |
+        Retourne en une seule requête toutes les métriques du dashboard :
+        KPIs saison en cours, alertes, dernières interventions,
+        récoltes récentes, commandes en attente, top clients.
+      responses:
+        '200':
+          description: Données dashboard retournées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kpis:
+                    type: object
+                  alertes:
+                    type: array
+                  interventions_recentes:
+                    type: array
+                  recoltes_recentes:
+                    type: array
+                  commandes_en_attente:
+                    type: array
+
+  /stats/dashboard:
+    get:
+      tags: [Statistiques]
+      summary: KPIs statistiques
+      responses:
+        '200':
+          description: KPIs retournés
+
+  /stats/recoltes-annuelles:
+    get:
+      tags: [Statistiques]
+      summary: Récoltes agrégées par année
+      parameters:
+        - name: annees
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Données annuelles retournées
+
+  /stats/recoltes-mensuelles:
+    get:
+      tags: [Statistiques]
+      summary: Récoltes agrégées par mois
+      parameters:
+        - name: annee
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Données mensuelles retournées
+
+  /historique:
+    get:
+      tags: [Historique]
+      summary: Journal d'audit complet
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: table_name
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: date_debut
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_fin
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Journal retourné
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        table_name:
+                          type: string
+                        action:
+                          type: string
+                          enum: [INSERT, UPDATE, DELETE]
+                        record_id:
+                          type: integer
+                        user_id:
+                          type: integer
+                        changed_at:
+                          type: string
+                          format: date-time
+                        old_values:
+                          type: object
+                        new_values:
+                          type: object
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /historique/stats:
+    get:
+      tags: [Historique]
+      summary: Statistiques du journal d'audit
+      responses:
+        '200':
+          description: Stats retournées
+
+  /historique/purge:
+    delete:
+      tags: [Historique]
+      summary: Purger le journal d'audit (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [avant_le]
+              properties:
+                avant_le:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Purge effectuée
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /parametres:
+    get:
+      tags: [Paramètres]
+      summary: Lister tous les paramètres
+      responses:
+        '200':
+          description: Paramètres retournés
+    post:
+      tags: [Paramètres]
+      summary: Créer un paramètre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cle, valeur]
+              properties:
+                cle:
+                  type: string
+                valeur:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Paramètre créé
+
+  /parametres/{cle}:
+    get:
+      tags: [Paramètres]
+      summary: Lire un paramètre par clé
+      parameters:
+        - name: cle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paramètre retourné
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Paramètres]
+      summary: Modifier un paramètre par clé
+      parameters:
+        - name: cle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                valeur:
+                  type: string
+      responses:
+        '200':
+          description: Paramètre modifié
+
+  /parametres/{id}:
+    put:
+      tags: [Paramètres]
+      summary: Modifier un paramètre par ID
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Paramètre modifié
+    delete:
+      tags: [Paramètres]
+      summary: Supprimer un paramètre par ID
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Paramètre supprimé
+
+  /parametres/reset:
+    post:
+      tags: [Paramètres]
+      summary: Réinitialiser aux valeurs par défaut
+      responses:
+        '200':
+          description: Paramètres réinitialisés
+
+  /preferences:
+    get:
+      tags: [Préférences]
+      summary: Lire les préférences utilisateur
+      responses:
+        '200':
+          description: Préférences retournées
+    put:
+      tags: [Préférences]
+      summary: Mettre à jour les préférences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Préférences mises à jour
+
+  /preferences/reset:
+    post:
+      tags: [Préférences]
+      summary: Réinitialiser les préférences
+      responses:
+        '200':
+          description: Préférences réinitialisées
+
+  /especes:
+    get:
+      tags: [Référentiels]
+      summary: Lister les espèces
+      responses:
+        '200':
+          description: Espèces retournées
+
+  /especes/{id}:
+    get:
+      tags: [Référentiels]
+      summary: Détail d'une espèce
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Espèce retournée
+
+  /especes/groupes/list:
+    get:
+      tags: [Référentiels]
+      summary: Liste des groupes d'espèces
+      responses:
+        '200':
+          description: Groupes retournés
+
+  /especes/stats/overview:
+    get:
+      tags: [Référentiels]
+      summary: Vue d'ensemble statistique des espèces
+      responses:
+        '200':
+          description: Stats retournées
+
+  /caveurs:
+    get:
+      tags: [Référentiels]
+      summary: Lister les caveurs
+      responses:
+        '200':
+          description: Caveurs retournés
+    post:
+      tags: [Référentiels]
+      summary: Créer un caveur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nom]
+              properties:
+                nom:
+                  type: string
+                prenom:
+                  type: string
+                actif:
+                  type: boolean
+      responses:
+        '201':
+          description: Caveur créé
+
+  /caveurs/{id}:
+    put:
+      tags: [Référentiels]
+      summary: Modifier un caveur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Caveur modifié
+    delete:
+      tags: [Référentiels]
+      summary: Supprimer un caveur
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Caveur supprimé
+
+  /chiens:
+    get:
+      tags: [Référentiels]
+      summary: Lister les chiens
+      responses:
+        '200':
+          description: Chiens retournés
+    post:
+      tags: [Référentiels]
+      summary: Enregistrer un chien
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nom]
+              properties:
+                nom:
+                  type: string
+                race:
+                  type: string
+                actif:
+                  type: boolean
+      responses:
+        '201':
+          description: Chien enregistré
+
+  /chiens/{id}:
+    put:
+      tags: [Référentiels]
+      summary: Modifier un chien
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Chien modifié
+    delete:
+      tags: [Référentiels]
+      summary: Supprimer un chien
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Chien supprimé
+
+  /amendements-ref:
+    get:
+      tags: [Référentiels]
+      summary: Lister les amendements de référence
+      responses:
+        '200':
+          description: Amendements retournés
+    post:
+      tags: [Référentiels]
+      summary: Créer un amendement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Amendement créé
+
+  /amendements-ref/{id}:
+    put:
+      tags: [Référentiels]
+      summary: Modifier un amendement
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Amendement modifié
+    delete:
+      tags: [Référentiels]
+      summary: Supprimer un amendement
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Amendement supprimé
+
+  /produits-phyto:
+    get:
+      tags: [Référentiels]
+      summary: Lister les produits phytosanitaires
+      responses:
+        '200':
+          description: Produits retournés
+    post:
+      tags: [Référentiels]
+      summary: Créer un produit phytosanitaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Produit créé
+
+  /produits-phyto/{id}:
+    put:
+      tags: [Référentiels]
+      summary: Modifier un produit phytosanitaire
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Produit modifié
+    delete:
+      tags: [Référentiels]
+      summary: Supprimer un produit phytosanitaire
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Produit supprimé
+
+  /types-intervention:
+    get:
+      tags: [Référentiels]
+      summary: Lister les types d'intervention
+      responses:
+        '200':
+          description: Types retournés
+
+  /zones-production:
+    get:
+      tags: [Référentiels]
+      summary: Lister les zones de production
+      responses:
+        '200':
+          description: Zones retournées
+
+  /zones-production/par-region:
+    get:
+      tags: [Référentiels]
+      summary: Zones par région
+      responses:
+        '200':
+          description: Zones par région retournées
+
+tags:
+  - name: Auth
+    description: Authentification, sessions et gestion des utilisateurs
+  - name: Parcelles
+    description: Gestion des parcelles truffières
+  - name: Arbres
+    description: Gestion des arbres avec corbeille (soft delete)
+  - name: Récoltes
+    description: Enregistrement et suivi des récoltes
+  - name: Interventions
+    description: Interventions terrain (traitements, taille, irrigation, etc.)
+  - name: Ventes
+    description: Ventes directes de truffes
+  - name: Commandes
+    description: Commandes clients avec conversion en vente
+  - name: Clients
+    description: Gestion du fichier clients
+  - name: Achats & Fournisseurs
+    description: Module complet — fournisseurs, commandes, réception, facturation, stock, marges
+  - name: Stock
+    description: Stock de truffes disponibles à la vente
+  - name: Dashboard
+    description: Données agrégées du tableau de bord principal
+  - name: Statistiques
+    description: Statistiques de récolte annuelles et mensuelles
+  - name: Historique
+    description: Journal d'audit complet (audit trail PostgreSQL)
+  - name: Paramètres
+    description: Configuration applicative par clé/valeur
+  - name: Préférences
+    description: Préférences UI de l'utilisateur connecté
+  - name: Référentiels
+    description: Tables de référence — espèces, caveurs, chiens, amendements, produits phyto, types d'intervention, zones
