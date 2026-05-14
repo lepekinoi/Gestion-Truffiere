@@ -7,6 +7,24 @@ et ce projet adhère à [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.0.2] - 2026-05-14
+
+### 🐛 Corrigé
+
+#### `frontend/src/components/Commercial.js`
+
+- **[HOISTING] `Cannot access 'sortedClients' before initialization`** — Le bloc de filtrage/tri/pagination (`filteredClients`, `filteredCommandes`, `filteredVentes`, `sortedClients`, `sortedCommandes`, `sortedVentes`, `paginatedClients`, `paginatedCommandes`, `paginatedVentes`) était déclaré **après** le bloc `STATISTIQUES`, provoquant une ReferenceError au rendu. Correction : déplacement du bloc `FILTRAGE` (~ligne 1050-1070) **avant** le bloc `STATISTIQUES` (~ligne 1020) pour respecter l'ordre d'initialisation.
+
+- **[JSX] `Adjacent JSX elements must be wrapped in an enclosing tag` (ligne 847-920)** — Présence d'un fragment JSX orphelin résidu d'une ancienne définition inline de `PaginationControls` : un `>` solitaire suivi d'une implémentation dupliquée (~70 lignes) coexistait avec le composant `PaginationControlsComponent` importé. Correction : suppression complète du bloc orphelin, la pagination clients restant fonctionnelle via `PaginationControlsComponent`.
+
+### 📚 Documentation
+
+- Suppression des fichiers résiduels V7 à la racine : `README_V7-SAISON.md`, `QUICKSTART_V7-SAISON.md`, `STATUS_V7-SAISON.md`
+- Suppression des notes de correction ponctuelles absorbées dans ce CHANGELOG : `CORRECTION_COMMERCIAL_L847.md`, `CORRECTION_HOISTING.md`
+- Ajout d'un `QUICKSTART.md` dédié V8
+
+---
+
 ## [2.0.1] - 2026-01-28
 
 ### 🎉 **REFACTORING BACKEND COMPLET**
@@ -74,8 +92,8 @@ Refonte complète de l'architecture backend avec standardisation et amélioratio
 
 **Batch 5 - Finals (3 fichiers)**
 17. ✅ `dashboard.routes.js` - 1 route
-18. ✅ `stock.routes.js` - 2 routes
-19. ✅ `parametres.routes.js` - 7 routes
+18. ✅ `parametres.routes.js` - 7 routes
+19. ✅ `stock.routes.js` - 2 routes
 
 **Batch 6 - Auth (1 fichier)**
 20. ✅ `auth.js` - 15 routes + audit complet
@@ -258,7 +276,7 @@ if (error.response.data.code === 'ACCOUNT_LOCKED') {
 
 ## 👥 Contributeurs
 
-- **lepekinoi** - Refactoring backend v2.0.1
+- **lepekinoi** - Refactoring backend v2.0.1, corrections Commercial.js
 - **Équipe Gestion Truffière** - Développement initial
 
 ---
@@ -275,4 +293,4 @@ Pour toute question ou problème :
 
 ---
 
-**Dernière mise à jour** : 28 janvier 2026
+**Dernière mise à jour** : 14 mai 2026
