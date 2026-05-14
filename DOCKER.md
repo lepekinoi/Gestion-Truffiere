@@ -1,718 +1,429 @@
-# 🐳 Docker Guide - Gestion-Truffière
+# 🐳 Docker — Gestion-Truffière v8
 
-> Guide complet pour utiliser Docker avec Gestion-Truffière v6
+> Guide complet Docker et Docker Compose pour Gestion-Truffière V8
+
+→ Démarrage rapide en 4 étapes : voir [QUICKSTART.md](QUICKSTART.md)  
+→ Installation sans Docker : voir [SETUP.md](SETUP.md)
 
 ---
 
 ## 📋 Table des matières
 
 1. [Prérequis](#-prérequis)
-2. [Démarrage rapide](#-démarrage-rapide)
-3. [Build des images](#-build-des-images)
-4. [Lancer les containers](#-lancer-les-containers)
-5. [Docker Compose](#-docker-compose)
-6. [Déploiement Production](#-déploiement-production)
-7. [Troubleshooting](#-troubleshooting)
+2. [Structure Docker](#-structure-docker)
+3. [Variables d'environnement](#-variables-denvironnement)
+4. [Commandes essentielles](#-commandes-essentielles)
+5. [Environnement de développement](#-environnement-de-développement)
+6. [Environnement de production](#-environnement-de-production)
+7. [Base de données PostgreSQL](#-base-de-données-postgresql)
+8. [Logs & monitoring](#-logs--monitoring)
+9. [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## ✅ Prérequis
 
 ```bash
-# Vérifier installation
-✓ Docker >= 20.10
-  $ docker --version
-  Docker version 20.10.12
-
-✓ Docker Compose >= 1.29
-  $ docker-compose --version
-  docker-compose version 1.29.2
-
-✓ Git
-  $ git --version
-  git version 2.34.1
-
-✓ Port 3000 & 5000 disponibles
-  $ sudo lsof -i :3000
-  $ sudo lsof -i :5000
+docker --version          # >= 24.x
+docker compose version    # >= 2.x (plugin intégré)
+git --version             # >= 2.x
 ```
 
-**Installation Docker** :
-- [Windows](https://docs.docker.com/desktop/install/windows-install/)
-- [macOS](https://docs.docker.com/desktop/install/mac-install/)
-- [Linux](https://docs.docker.com/engine/install/)
+Installation :
+- **Linux** : [docs.docker.com/engine/install](https://docs.docker.com/engine/install/)
+- **macOS / Windows** : [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ---
 
-## ⚡ Démarrage rapide
+## 📁 Structure Docker
+
+```
+Gestion-Truffiere/
+├── docker-compose.yml          ← orchestration complète
+├── Dockerfile                  ← image racine (si utilisée)
+├── .env.exemple                ← template variables
+│
+├── backend/
+│   └── Dockerfile              ← image Node.js 18 Alpine
+│
+├── frontend/
+│   └── Dockerfile              ← image Node.js 18 Alpine (build)
+│
+└── database/
+    └── init_database.sql       ← schéma + seed, exécuté au premier démarrage
+```
+
+---
+
+## 🔧 Variables d'environnement
 
 ```bash
-# 1. Cloner le repo
+# Copier et éditer le fichier d'environnement
+cp .env.exemple backend/.env
+```
+
+Variables **obligatoires** avant tout démarrage :
+
+```env
+# PostgreSQL — pas MySQL
+DATABASE_HOST=db
+DATABASE_PORT=5432
+DATABASE_NAME=gestion_truffiere
+DATABASE_USER=truffiere
+DATABASE_PASSWORD=<mot_de_passe_fort>
+
+# JWT — valeurs IMMUABLES (politique sécurité V8)
+JWT_SECRET=<64_octets_hex>          # node -e "require('crypto').randomBytes(64).toString('hex')"
+JWT_REFRESH_SECRET=<64_octets_hex>
+JWT_EXPIRATION=15m                  # NE PAS CHANGER — access token 15 min
+JWT_REFRESH_EXPIRATION=7d
+
+# CORS
+CORS_ORIGIN=http://localhost:3000   # ou https://votre-domaine.com en prod
+
+# Serveur
+PORT=5000
+NODE_ENV=production
+```
+
+> ⚠️ `JWT_EXPIRATION=15m` est intentionnel et ne doit jamais être augmenté.  
+> La sécurité V8 repose sur des access tokens courts + refresh tokens avec rotation.
+
+---
+
+## ⚡ Commandes essentielles
+
+### Démarrage
+
+```bash
+# Premier démarrage (build + lancement)
+docker compose up -d --build
+
+# Démarrage sans rebuild
+docker compose up -d
+
+# Vérifier l'état des conteneurs
+docker compose ps
+
+# Santé de l'API
+curl http://localhost:5000/api/health
+```
+
+### Arrêt
+
+```bash
+# Arrêter les conteneurs (données conservées)
+docker compose down
+
+# Arrêter ET supprimer les volumes (⚠️ données perdues)
+docker compose down -v
+```
+
+### Rebuild
+
+```bash
+# Rebuild complet sans cache
+docker compose build --no-cache
+docker compose up -d
+
+# Rebuild d'un seul service
+docker compose build --no-cache backend
+docker compose up -d backend
+```
+
+### Maintenance
+
+```bash
+# Redémarrer un service
+docker compose restart backend
+
+# Exécuter une commande dans un conteneur
+docker compose exec backend sh
+docker compose exec db psql -U truffiere -d gestion_truffiere
+
+# Supprimer les images inutilisées
+docker image prune -f
+docker system prune -f
+```
+
+---
+
+## 🛠️ Environnement de développement
+
+```bash
+# Cloner et basculer sur V8
 git clone https://github.com/lepekinoi/Gestion-Truffiere.git
 cd Gestion-Truffiere
-git checkout V6
-
-# 2. Configurer
-cp backend/.env.example backend/.env
-
-# 3. Éditer .env avec vos paramètres
-vim backend/.env
-# Important : 
-n#   - DATABASE_HOST=db (nom du service)
-#   - JWT_SECRET=votre_clé_aléatoire_min_32_chars
-#   - CORS_ORIGIN=http://localhost:3000
-
-# 4. Lancer
-docker-compose up -d
-
-# 5. Vérifier
-docker-compose ps
-docker-compose logs -f
-
-# 6. Accéder
-# Frontend: http://localhost:3000
-# Backend: http://localhost:5000
-# Swagger (si implémenté): http://localhost:5000/api/docs
-```
-
-**Logs en temps réel** :
-```bash
-docker-compose logs -f backend      # Logs backend
-docker-compose logs -f frontend     # Logs frontend
-docker-compose logs -f db           # Logs database
-```
-
----
-
-## 🐳 Build des images
-
-### Build backend
-
-```bash
-# Build image
-docker build -t gestion-truffiere:backend-v6 ./backend
-
-# Options avancées
-docker build \
-  -t gestion-truffiere:backend-v6 \
-  --build-arg NODE_ENV=production \
-  --no-cache \
-  ./backend
-
-# Vérifier
-docker images | grep gestion-truffiere
-```
-
-### Build frontend
-
-```bash
-# Build image
-docker build -t gestion-truffiere:frontend-v6 ./frontend
-
-# Build optimisé
-docker build \
-  -t gestion-truffiere:frontend-v6 \
-  --build-arg REACT_APP_API_URL=http://api.example.com \
-  --no-cache \
-  ./frontend
-
-# Vérifier
-docker images | grep gestion-truffiere
-```
-
-### Dockerfiles détaillés
-
-**backend/Dockerfile** :
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-
-EXPOSE 5000
-CMD ["npm", "start"]
-```
-
-**frontend/Dockerfile** :
-```dockerfile
-# Build stage
-FROM node:18-alpine as builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine
-COPY --from=builder /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 3000
-CMD ["nginx", "-g", "daemon off;"]
-```
-
----
-
-## 🚁 Lancer les containers
-
-### Backend seul
-
-```bash
-# Run basique
-docker run -d \
-  --name truffiere-backend \
-  -p 5000:5000 \
-  -e DATABASE_HOST=localhost \
-  -e DATABASE_PORT=3306 \
-  -e DATABASE_NAME=gestion_truffiere \
-  -e DATABASE_USER=root \
-  -e DATABASE_PASSWORD=root \
-  -e JWT_SECRET=your_secret_min_32_chars \
-  gestion-truffiere:backend-v6
-
-# Vérifier
-docker ps
-docker logs -f truffiere-backend
-
-# Stopper
-docker stop truffiere-backend
-docker rm truffiere-backend
-```
-
-### Frontend seul
-
-```bash
-# Run basique
-docker run -d \
-  --name truffiere-frontend \
-  -p 3000:3000 \
-  -e REACT_APP_API_URL=http://localhost:5000/api \
-  gestion-truffiere:frontend-v6
-
-# Vérifier
-docker ps
-docker logs -f truffiere-frontend
-
-# Stopper
-docker stop truffiere-frontend
-docker rm truffiere-frontend
-```
-
-### Accéder au shell
-
-```bash
-# Shell backend
-docker exec -it truffiere-backend sh
-
-# Shell frontend
-docker exec -it truffiere-frontend sh
-
-# Exécuter commande
-docker exec truffiere-backend npm run test
-```
-
----
-
-## 🐳 Docker Compose
-
-### Vue d'ensemble
-
-```yaml
-version: '3.8'
-
-services:
-  # Frontend React
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
-    depends_on:
-      - backend
-    networks:
-      - truffiere-network
-
-  # Backend Express
-  backend:
-    build: ./backend
-    ports:
-      - "5000:5000"
-    environment:
-      - DATABASE_HOST=db
-      - DATABASE_PORT=3306
-      - DATABASE_NAME=gestion_truffiere
-      - DATABASE_USER=truffiere
-      - DATABASE_PASSWORD=secure_password
-      - JWT_SECRET=your_secret_min_32_chars
-    depends_on:
-      - db
-    networks:
-      - truffiere-network
-
-  # Database MySQL
-  db:
-    image: mysql:8
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=root_password
-      - MYSQL_DATABASE=gestion_truffiere
-      - MYSQL_USER=truffiere
-      - MYSQL_PASSWORD=secure_password
-    volumes:
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
-      - db_data:/var/lib/mysql
-    networks:
-      - truffiere-network
-
-volumes:
-  db_data:
-
-networks:
-  truffiere-network:
-    driver: bridge
-```
-
-### Commandes courantes
-
-```bash
-# === LIFECYCLE ===
-
-# Démarrer
-docker-compose up -d
-
-# Démarrer avec rebuild
-docker-compose up -d --build
-
-# Démarrer un service spécifique
-docker-compose up -d backend
-
-# Arrêter
-docker-compose down
-
-# Arrêter avec suppression volumes
-docker-compose down -v
-
-# Restart
-docker-compose restart backend
-
-# === STATUS ===
-
-# Status containers
-docker-compose ps
-
-# Logs
-docker-compose logs -f
-docker-compose logs -f backend
-
-# Stats
-docker-compose stats
-
-# === MAINTENANCE ===
-
-# Accéder au shell
-docker-compose exec backend sh
-docker-compose exec frontend sh
-docker-compose exec db mysql -u root -p
-
-# Lancer commande
-docker-compose exec backend npm run test
-
-# Vérifier logs de la dernière heure
-docker-compose logs --since 1h
-
-# === NETTOYAGE ===
-
-# Supprimer containers
-docker-compose rm
-
-# Supprimer images
-docker rmi $(docker images -q 'gestion-truffiere*')
-
-# Prúneage complet (attention!)
-docker system prune -a --volumes
-```
-
----
-
-## 📦 Déploiement Production
-
-### Configuration Production
-
-**docker-compose.prod.yml** :
-```yaml
-version: '3.8'
-
-services:
-  frontend:
-    image: gestion-truffiere:frontend-v6
-    ports:
-      - "80:3000"
-    environment:
-      - REACT_APP_API_URL=https://api.example.com
-      - REACT_APP_ENV=production
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  backend:
-    image: gestion-truffiere:backend-v6
-    ports:
-      - "5000:5000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_HOST=db.production.com
-      - DATABASE_PORT=3306
-      - DATABASE_NAME=gestion_truffiere_prod
-      - DATABASE_USER=prod_user
-      - DATABASE_PASSWORD=${DB_PASSWORD}  # À partir de fichier .env
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=https://app.example.com
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Nginx Reverse Proxy (optionnel)
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-```
-
-### Lancer en production
-
-```bash
-# Build et push images
-docker build -t myregistry/gestion-truffiere:backend-v6 ./backend
-docker build -t myregistry/gestion-truffiere:frontend-v6 ./frontend
-
-docker push myregistry/gestion-truffiere:backend-v6
-docker push myregistry/gestion-truffiere:frontend-v6
-
-# Sur serveur production
-cat > .env.production << EOF
-DB_PASSWORD=SecurePassword123!@#
-JWT_SECRET=GeneratedKeyMin32CharsRandom!@#$%^&*
-EOF
+git checkout V8
+
+# Préparer l'environnement
+cp .env.exemple backend/.env
+# Éditer backend/.env avec NODE_ENV=development
 
 # Lancer
-docker-compose -f docker-compose.prod.yml up -d
-
-# Voir logs
-docker-compose -f docker-compose.prod.yml logs -f
-
-# Health check
-curl https://app.example.com/api/health
-```
-
-### Nginx config (optionnel)
-
-```nginx
-upstream backend {
-  server backend:5000;
-}
-
-upstream frontend {
-  server frontend:3000;
-}
-
-server {
-  listen 80;
-  server_name api.example.com;
-  return 301 https://$server_name$request_uri;
-}
-
-server {
-  listen 443 ssl http2;
-  server_name api.example.com;
-
-  ssl_certificate /etc/nginx/certs/api.example.com.crt;
-  ssl_certificate_key /etc/nginx/certs/api.example.com.key;
-  ssl_protocols TLSv1.2 TLSv1.3;
-
-  location / {
-    proxy_pass http://backend;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
-
-server {
-  listen 80;
-  server_name app.example.com;
-  return 301 https://$server_name$request_uri;
-}
-
-server {
-  listen 443 ssl http2;
-  server_name app.example.com;
-
-  ssl_certificate /etc/nginx/certs/app.example.com.crt;
-  ssl_certificate_key /etc/nginx/certs/app.example.com.key;
-
-  location / {
-    proxy_pass http://frontend;
-    proxy_set_header Host $host;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Upgrade $http_upgrade;
-  }
-}
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Container ne démarre pas
-
-```bash
-# Vérifier logs
-docker-compose logs backend
-
-# Étape 1: Port déjà occupé
-lsof -i :5000      # Voir qui utilise le port
-sudo kill -9 <PID> # Tuer le processus
-
-# Étape 2: Problème configuration .env
-cat backend/.env
-# Vérifier que DATABASE_HOST=db (pas localhost avec Docker Compose)
-
-# Étape 3: Erreur build
-docker-compose build --no-cache
-
-# Étape 4: Volumes corrompu
-docker-compose down -v  # Supprime volumes
-docker-compose up -d --build
-```
-
-### Backend ne se connecte pas à la BD
-
-```bash
-# Vérifier logs backend
-docker-compose logs -f backend | grep -i "database\|error\|mysql"
-
-# Tester connexion BD directement
-docker-compose exec db mysql -u root -p gestion_truffiere -e "SHOW TABLES;"
-
-# Vérifier variables d'environnement
-docker-compose exec backend env | grep DATABASE
-
-# Vérifier l'ordre de démarrage
-docker-compose ps
-# db doit être "Up" avant backend
-
-# Forcer restart
-docker-compose restart backend
-```
-
-### Frontend blanc ou ne charge pas
-
-```bash
-# Vérifier logs frontend
-docker-compose logs -f frontend
-
-# Vérifier REACT_APP_API_URL
-docker-compose exec frontend env | grep REACT_APP
-
-# Vérifier en localhost
-curl http://localhost:3000
-
-# Vider cache navigateur
-# Ouvrir DevTools (F12)
-# Application > Clear all
-# Rafraîchir page
-```
-
-### Erreurs mémoire
-
-```bash
-# Voir utilisation
-docker stats
-
-# Limiter mémoire
-docker run -m 1024m -d gestion-truffiere:backend-v6
-
-# Ou dans docker-compose.yml
-services:
-  backend:
-    mem_limit: 1024m
-    memswap_limit: 2048m
-```
-
-### Network issues
-
-```bash
-# Vérifier network
-docker network ls
-docker network inspect truffiere-network
-
-# Tester connectivité entre containers
-docker-compose exec backend ping db
-docker-compose exec frontend ping backend
-
-# Recréer network
-docker-compose down
-docker network rm truffiere-network
-docker-compose up -d
-```
-
-### Permissions volumes
-
-```bash
-# Problème: "Permission denied"
-
-# Solution 1: Changer owner du volume
-sudo chown -R $USER:$USER ./data
-
-# Solution 2: Utiliser volumes nommés
-volumes:
-  db_data:
-    driver: local
-
-# Solution 3: Dans docker-compose
-services:
-  db:
-    user: "1000:1000"
-```
-
----
-
-## 📊 Images & Registry
-
-### Push à Docker Hub
-
-```bash
-# Login
-docker login
-
-# Tag
-docker tag gestion-truffiere:backend-v6 myusername/gestion-truffiere:backend-v6
-docker tag gestion-truffiere:frontend-v6 myusername/gestion-truffiere:frontend-v6
-
-# Push
-docker push myusername/gestion-truffiere:backend-v6
-docker push myusername/gestion-truffiere:frontend-v6
+docker compose up -d --build
 
 # Vérifier
-docker images myusername/gestion-truffiere
+docker compose ps
+curl http://localhost:5000/api/health   # {"status":"ok"}
+# Frontend : http://localhost:3000
 ```
 
-### Pull depuis Registry
-
-```bash
-docker pull myregistry/gestion-truffiere:backend-v6
-docker run -d -p 5000:5000 myregistry/gestion-truffiere:backend-v6
-```
+En développement, les logs détaillés sont activés via `NODE_ENV=development`  
+(les `details` des erreurs API sont exposés).
 
 ---
 
-## 📃 Bonnes pratiques
+## 🚀 Environnement de production
 
-### 🔐 Sécurité
-
-- ??? Pas de secrets en dur dans Dockerfiles
-- ??? Pas d'exécution en root
-- ??? Multi-stage builds pour réduire taille images
-- ??? Scanner images : `docker scan myimage`
-- ??? Secrets séparés dans .env
-
-### 📊 Taille images
-
-```dockerfile
-# ❌ MAUVAIS (gros)
-FROM ubuntu:20.04
-RUN apt-get update && apt-get install -y nodejs npm
-
-# ✅ BON (petit)
-FROM node:18-alpine
-```
-
-Comparer tailles :
-```bash
-docker images
-REPOSITORY    TAG      SIZE
-ubuntu        latest   77MB
-node          18-alpine 170MB
-alpine        latest   7.05MB
-```
-
-### 📄 Nommage
-
-```bash
-# ❌ Mauvais
-my_app:latest
-backend:v1
-
-# ✅ Bon
-gestion-truffiere:backend-v6
-gestion-truffiere:frontend-v6
-myregistry/gestion-truffiere:backend-v6.0.1
-```
-
-### 🗓️ Health checks
+### docker-compose.yml de référence
 
 ```yaml
 services:
-  backend:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DATABASE_NAME}
+      POSTGRES_USER:     ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/init_database.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV:              production
+      PORT:                  5000
+      DATABASE_HOST:         db
+      DATABASE_PORT:         5432
+      DATABASE_NAME:         ${DATABASE_NAME}
+      DATABASE_USER:         ${DATABASE_USER}
+      DATABASE_PASSWORD:     ${DATABASE_PASSWORD}
+      JWT_SECRET:            ${JWT_SECRET}
+      JWT_REFRESH_SECRET:    ${JWT_REFRESH_SECRET}
+      JWT_EXPIRATION:        15m
+      JWT_REFRESH_EXPIRATION: 7d
+      CORS_ORIGIN:           ${FRONTEND_URL}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: ${BACKEND_URL}/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+```
+
+### Nginx reverse proxy (recommandé en prod)
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name m-a-truffes.sytes.net;
+
+    # TLS Let's Encrypt
+    ssl_certificate     /etc/letsencrypt/live/m-a-truffes.sytes.net/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/m-a-truffes.sytes.net/privkey.pem;
+
+    # Frontend
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # API
+    location /api/ {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# Redirection HTTP → HTTPS
+server {
+    listen 80;
+    server_name m-a-truffes.sytes.net;
+    return 301 https://$host$request_uri;
+}
 ```
 
 ---
 
-## 🖭️ Orchestration avancée
+## 🗄️ Base de données PostgreSQL
 
-### Kubernetes (optionnel)
+### Accès direct
 
-Pour production scaleée (hors scope de ce guide):
-- StatefulSets pour BD
-- Deployments pour services
-- Services pour networking
-- ConfigMaps pour config
-- Secrets pour securé
-
-Voir : [Kubernetes Docker Guide](https://kubernetes.io/docs/)
-
-### Swarm (optionnel)
-
-Pour cluster basique :
 ```bash
-docker swarm init
-docker stack deploy -c docker-compose.yml truffiere
+# Console psql dans le conteneur db
+docker compose exec db psql -U truffiere -d gestion_truffiere
+
+# Depuis l'hôte (si port 5432 exposé)
+psql -h localhost -p 5432 -U truffiere -d gestion_truffiere
+
+# Commandes psql utiles
+\dt          # lister les tables
+\d parcelles # décrire une table
+\q           # quitter
+```
+
+### Backup & restore
+
+```bash
+# Backup manuel
+docker compose exec db pg_dump -U truffiere gestion_truffiere > backup_$(date +%Y%m%d).sql
+
+# Backup automatique (script intégré)
+bash backup-db.sh
+
+# Restaurer une sauvegarde
+docker compose exec -T db psql -U truffiere -d gestion_truffiere < backup_20260514.sql
+```
+
+### Réinitialiser la base (⚠️ développement uniquement)
+
+```bash
+# Supprimer et recréer
+docker compose down -v
+docker compose up -d --build
+# init_database.sql est rejoué automatiquement au premier démarrage
 ```
 
 ---
 
-## 📚 Ressources
+## 📊 Logs & monitoring
 
-- [Docker Documentation](https://docs.docker.com/)
-- [Docker Compose Docs](https://docs.docker.com/compose/)
-- [Best Practices](https://docs.docker.com/develop/dev-best-practices/)
-- [Docker Hub](https://hub.docker.com/)
+```bash
+# Logs en temps réel — tous les services
+docker compose logs -f
+
+# Logs par service
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
+
+# 100 dernières lignes du backend
+docker compose logs --tail=100 backend
+
+# Stats ressources
+docker stats
+
+# Santé de l'API
+curl http://localhost:5000/api/health
+# Réponse : {"status":"ok","timestamp":"..."}
+
+# Audit trail (dernières actions)
+docker compose exec db psql -U truffiere -d gestion_truffiere \
+  -c "SELECT user_id, action, table_name, timestamp FROM audit_trail ORDER BY timestamp DESC LIMIT 20;"
+```
 
 ---
 
-*Dernière mise à jour : 24 janvier 2026*
+## 🆘 Troubleshooting
+
+### Conteneur qui ne démarre pas
+
+```bash
+# Voir les erreurs au démarrage
+docker compose logs backend
+docker compose logs db
+
+# Vérifier les variables d'environnement
+docker compose exec backend env | grep -E 'DATABASE|JWT|NODE_ENV'
+```
+
+### Erreur de connexion à la base
+
+```bash
+# Vérifier que le conteneur db est healthy
+docker compose ps
+# La colonne STATUS doit indiquer : healthy
+
+# Tester la connexion depuis le backend
+docker compose exec backend node -e "
+  const { Pool } = require('pg');
+  const p = new Pool({ host: 'db', user: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PASSWORD, database: process.env.DATABASE_NAME });
+  p.query('SELECT 1').then(() => console.log('OK')).catch(console.error);
+"
+
+# Forcer la recréation du conteneur db
+docker compose rm -sf db
+docker compose up -d db
+```
+
+### Port déjà utilisé
+
+```bash
+# Identifier le processus
+lsof -i :5000
+lsof -i :3000
+
+# Arrêter l'occupant ou changer le port dans .env
+# PORT=5001 dans backend/.env
+```
+
+### Frontend blanc / erreur CORS
+
+```bash
+# Vérifier CORS_ORIGIN dans backend/.env
+grep CORS_ORIGIN backend/.env
+# Doit correspondre exactement à l'URL du frontend
+
+# Vérifier l'URL API dans le frontend
+docker compose exec frontend env | grep REACT_APP_API_URL
+
+# Rebuild si les variables ont changé
+docker compose down
+docker compose up -d --build
+```
+
+### Données manquantes après redémarrage
+
+```bash
+# Vérifier que le volume est bien présent
+docker volume ls | grep db_data
+
+# NE PAS utiliser 'docker compose down -v' en production
+# (supprime les volumes = perte de données)
+```
+
+### Rebuild après modification du code
+
+```bash
+# Backend modifié
+docker compose build --no-cache backend
+docker compose up -d backend
+
+# Frontend modifié
+docker compose build --no-cache frontend
+docker compose up -d frontend
+
+# Tout rebuilder proprement
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+---
+
+*Dernière mise à jour : mai 2026 — V8*
