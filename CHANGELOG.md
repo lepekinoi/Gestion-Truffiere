@@ -5,10 +5,29 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
+## [2.0.3] — 2026-05-14
+
+### Documentation
+- **`database/README.md`** : refonte complète alignée sur V8
+  - Titre et version corrigés (V7 → V8)
+  - Noms de tables corrigés en snake_case (alignés sur `init_database.sql` réel)
+  - Ajout section critique : rôle PostgreSQL `unstuffed1004` — problème d'import sur environnement neuf et procédure de contournement
+  - Ajout section extensions PostGIS : `tiger`/`topology` non utilisées, `postgis` seul actif
+  - Ajout section dette technique et roadmap : absence de système de migrations, duplication `intervention_details`/tables spécialisées, vues dupliquées camelCase/snake_case
+  - Tableau complet des fonctions PLpgSQL avec leur rôle
+  - Suppression de la référence au dump daté `truffiere_20260129_220424.sql`
+
+### Roadmap ajoutée
+- **Système de migrations de schéma** : absence identifiée comme dette technique — cible `database/migrations/` + table `schema_migrations` + script `migrate.js` ou node-pg-migrate
+- **Unification des patterns détails interventions** : `intervention_details` (monolithique) vs tables spécialisées — à converger vers les tables spécialisées
+- **Nettoyage des vues dupliquées** : doublons snake_case/camelCase avec comportements divergents sur filtres de date
+
+---
+
 ## [2.0.2] — 2026-05-14
 
 ### Documentation
-- Réécriture complète de `API.md` : endpoints réels V8, JWT 15 min, modules Commercial/Stock/Historique/Dashboard/Stats, codes d'erreur standardisés, exemples cURL
+- Réécriture complète de `API.md` : endpoints réels V8, JWT 15 min, modules Commercial/Stock/Historique/Dashboard/Stats, codes d’erreur standardisés, exemples cURL
 - Correction de `SETUP.md` : suppression des références MySQL/SQLite (projet 100% PostgreSQL), correction `JWT_EXPIRATION` → 15m, branche V8, script `database/init_database.sql`, identifiants de développement corrects
 - Nettoyage de la racine du dépôt : suppression des fichiers V7 (`README_V7-SAISON.md`, `QUICKSTART_V7-SAISON.md`, `STATUS_V7-SAISON.md`) et des notes ponctuelles (`CORRECTION_COMMERCIAL_L847.md`, `CORRECTION_HOISTING.md`)
 - Création d'un `QUICKSTART.md` dédié V8 basé sur Docker (4 étapes, < 5 min)
