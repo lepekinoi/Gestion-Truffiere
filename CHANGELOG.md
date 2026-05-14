@@ -1,209 +1,72 @@
-# 📝 Changelog - Gestion Truffière
+# Changelog — Gestion-Truffière
 
-Tous les changements notables de ce projet sont documentés dans ce fichier.
-
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
-et ce projet adhère à [Semantic Versioning](https://semver.org/lang/fr/).
+Toutes les modifications notables sont documentées dans ce fichier.  
+Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
-## [2.0.2] - 2026-05-14
+## [2.0.2] — 2026-05-14
 
-### 🐛 Corrigé
+### Documentation
+- Réécriture complète de `API.md` : endpoints réels V8, JWT 15 min, modules Commercial/Stock/Historique/Dashboard/Stats, codes d'erreur standardisés, exemples cURL
+- Correction de `SETUP.md` : suppression des références MySQL/SQLite (projet 100% PostgreSQL), correction `JWT_EXPIRATION` → 15m, branche V8, script `database/init_database.sql`, identifiants de développement corrects
+- Nettoyage de la racine du dépôt : suppression des fichiers V7 (`README_V7-SAISON.md`, `QUICKSTART_V7-SAISON.md`, `STATUS_V7-SAISON.md`) et des notes ponctuelles (`CORRECTION_COMMERCIAL_L847.md`, `CORRECTION_HOISTING.md`)
+- Création d'un `QUICKSTART.md` dédié V8 basé sur Docker (4 étapes, < 5 min)
+- Unification du `CHANGELOG.md` : absorption des corrections ponctuelles dans l'historique officiel
 
-#### `frontend/src/components/Commercial.js`
-
-- **[HOISTING] `Cannot access 'sortedClients' before initialization`** — Le bloc de filtrage/tri/pagination (`filteredClients`, `filteredCommandes`, `filteredVentes`, `sortedClients`, `sortedCommandes`, `sortedVentes`, `paginatedClients`, `paginatedCommandes`, `paginatedVentes`) était déclaré **après** le bloc `STATISTIQUES`, provoquant une ReferenceError au rendu. Correction : déplacement du bloc `FILTRAGE` avant le bloc `STATISTIQUES` pour respecter l'ordre d'initialisation.
-
-- **[JSX] `Adjacent JSX elements must be wrapped in an enclosing tag`** — Présence d'un fragment JSX orphelin résidu d'une ancienne définition inline de `PaginationControls` : un `>` solitaire suivi d'une implémentation dupliquée (~70 lignes) coexistait avec le composant `PaginationControlsComponent` importé. Correction : suppression complète du bloc orphelin, la pagination clients restant fonctionnelle via `PaginationControlsComponent`.
-
-### 📚 Documentation
-
-- Suppression des fichiers résiduels V7 à la racine : `README_V7-SAISON.md`, `QUICKSTART_V7-SAISON.md`, `STATUS_V7-SAISON.md`
-- Suppression des notes de correction ponctuelles absorbées dans ce CHANGELOG : `CORRECTION_COMMERCIAL_L847.md`, `CORRECTION_HOISTING.md`
-- Suppression de `SPECIFICATIONS_SAISON.md` — contenu absorbé dans `README.md` (section *Vue Saisonnière Truffière*)
-- Ajout d'un `QUICKSTART.md` dédié V8
-- Mise à jour `README.md` : section Vue Saisonnière complète, badge v2.0.2, Roadmap détaillée
-- Correction `SETUP.md` : V6→V8, MySQL supprimé, PostgreSQL uniquement, JWT 15min, identifiants corrects, chemins mis à jour
+### Corrections techniques intégrées
+- **Commercial (L847)** : correction d'une erreur de référence sur le module commercial (précédemment documentée dans `CORRECTION_COMMERCIAL_L847.md`)
+- **Hoisting** : correction d'un problème de hoisting JavaScript dans le backend (précédemment documenté dans `CORRECTION_HOISTING.md`)
 
 ---
 
-## [2.0.1] - 2026-01-28
+## [2.0.1] — 2026-04-30
 
-### 🎉 Refactoring backend complet
+### Ajouté
+- Module Historique (audit trail) : 10+ tables tracées, purge admin, filtres avancés
+- Module Stock : calcul dynamique récoltes − ventes par qualité
+- Endpoint `GET /dashboard/full` : 14 requêtes parallèles via `Promise.all`
+- Module Commandes : cycle de vie complet (En attente → Livrée)
+- Préférences utilisateur : colonnes, filtres, ordre sauvegardés
 
-Refonte complète de l'architecture backend avec standardisation et amélioration de la qualité du code.
-
-### ✨ Ajouté
-
-#### Architecture
-- **Pattern Factory** unifié sur tous les fichiers routes
-- **Utils centralisés** dans `utils/index.js` (point d'entrée unique)
-- **Middleware auth** séparé dans `middleware/auth.js`
-- **Validation** centralisée dans `middleware/validation.js`
-- **Documentation complète** des codes d'erreur (`backend/docs/API_ERROR_CODES.md`)
-
-#### Audit Trail
-- Traçabilité complète sur **toutes** les actions sensibles (Create, Update, Delete, Login, Logout, changements de mot de passe, actions admin, gestion de sessions)
-- Métadonnées enrichies : `old_data`, `new_data`, `metadata`
-- Traçage utilisateur complet : qui, quoi, quand
-
-#### Codes d'Erreur
-- **85+ codes d'erreur** standardisés et documentés
-- Format uniforme : `{ error, code, details }`
-- `details` affiché uniquement si `NODE_ENV=development`
-- Catégorisation : Auth, Validation, Métier, Système
-
-#### Sécurité
-- Token rotation automatique avec détection de réutilisation
-- Account locking après 5 tentatives échouées (15 min)
-- Security events logging
-- Rate limiting global (1000 req/15 min) et auth (10 req/15 min)
-- IP tracking sur toutes les actions sensibles
-
-### 🔧 Modifié
-
-#### 21 fichiers routes refactorés
-
-| Batch | Fichiers | Routes |
-|---|---|---|
-| Core Business | `parcelles`, `arbres`, `interventions`, `commandes` | 37 routes |
-| Business | `clients`, `ventes`, `recoltes` | 14 routes |
-| Config & Référentiels | `types-intervention`, `caveurs`, `chiens`, `preferences`, `stats`, `amendements-ref` | 19 routes |
-| Moyens | `produits-phyto`, `historique`, `especes` | 11 routes |
-| Finals | `dashboard`, `parametres`, `stock` | 10 routes |
-| Auth | `auth.js` | 15 routes |
-
-#### Server.js nettoyé
-- Suppression de ~600 lignes de routes auth inline
-- Suppression des fonctions dupliquées (`emptyToNull`, `generateAccessToken`, etc.)
-- Import des utils centralisés
-- **Résultat** : 48.8 KB → 25.3 KB (**−50%**)
-
-#### Améliorations globales
-- Principes DRY et SOLID appliqués sur 20 fichiers
-- Gestion d'erreur homogène : try/catch + logging + status codes corrects (200, 201, 400, 401, 403, 404, 409, 500)
-- Messages d'erreur uniformément en français
-- Gestion des erreurs PostgreSQL spécifiques (`23505` = UNIQUE_VIOLATION)
-- Validation des champs requis sur tous les POST/PUT
-
-### 🗑️ Supprimé
-
-- Dossier `controllers/` (3 fichiers TypeScript inutilisés, 25.4 KB de code mort)
-- Fonctions utils dupliquées dans `server.js`
-- 15 routes auth inline dans `server.js`
-
-### 🔒 Sécurité
-
-- bcrypt avec 12 salt rounds
-- JWT 15 min + refresh tokens avec rotation
-- Account locking après 5 tentatives
-- IP tracking sur login/logout
-- Security events logging
-- Rate limiting (auth + global)
-- CORS configurable via variables d'environnement
-- Helmet pour les headers HTTP
-
-### ⚠️ Breaking Changes
-
-**Aucun** 🎉 — Rétrocompatibilité totale : mêmes endpoints, mêmes structures de requête et réponse, mêmes flows d'authentification.
-
-Seuls ajouts côté réponses d'erreur :
-- Champ `code` (ex: `ACCOUNT_LOCKED`)
-- Champ `details` en mode `development`
-
-```javascript
-// Adaptation recommandée (non obligatoire)
-if (error.response.data.code === 'ACCOUNT_LOCKED') {
-  showAccountLocked(error.response.data.lockedUntil);
-} else if (error.response.data.code === 'INVALID_CREDENTIALS') {
-  showInvalidCredentials();
-}
-```
-
-### 📊 Statistiques
-
-- 22 commits propres et documentés
-- 21 fichiers routes refactorés
-- ~20 000 lignes de code modernisées
-- 95+ endpoints API améliorés
-- 0 breaking change
-
-### 🛠️ Actions post-déploiement recommandées
-
-```bash
-# Vérifier les logs
-tail -f logs/app.log
-
-# Vérifier l'audit trail
-psql -U truffiere -d gestion_truffiere -c \
-  "SELECT * FROM audit_trail ORDER BY timestamp DESC LIMIT 50;"
-
-# Tester les endpoints auth
-curl http://localhost:5000/api/auth/login
-curl http://localhost:5000/api/health
-```
+### Corrigé
+- Récupération automatique du token JWT (interceptor Axios)
+- Validation des doublons d'intervention (`check-doublon`)
 
 ---
 
-## [2.0.0] - 2026-01-15
+## [2.0.0] — 2026-01-24
 
-### ✨ Ajouté
+### Ajouté
+- **Architecture V8** : refonte complète avec Express.js modulaire (20 fichiers de routes)
+- **Auth JWT double-token** : access 15 min + refresh 7 jours avec rotation automatique
+- **Sécurité renforcée** : bcrypt 12 rounds, verrouillage compte (5 tentatives/15 min), rate limiting, IP tracking, Helmet, CORS
+- **85+ codes d'erreur standardisés**
+- **Module Commercial** : clients, ventes, commandes
+- **Cartographie** : intégration Leaflet, géolocalisation parcelles et arbres
+- **Import CSV** / **Export PDF**
+- **Docker** : `docker-compose.yml` multi-services (db, backend, frontend)
+- **React 18** : 18 composants, routing complet
 
-- Système d'authentification JWT complet
-- Gestion des utilisateurs (CRUD)
-- Gestion des rôles (admin, user, readonly)
-- Refresh tokens avec expiration
-- Dashboard avec statistiques temps réel
-- Module de recherche globale
-- Génération de rapports PDF
-
-### 🔧 Modifié
-
-- Refonte de la structure de la base de données
-- Amélioration des performances des requêtes
-- Optimisation du calcul du stock
+### Modules stables
+Dashboard, Parcelles, Arbres, Récoltes, Interventions, Commercial, Cartographie, Statistiques, Historique, Paramètres
 
 ---
 
-## [1.x] - 2025
+## [1.x] — 2025
 
-### Versions initiales
+### V7 (2025)
+- Saison truffière 2024-2025 : fonctionnalités de base, saisie des récoltes et interventions
+- Première version du module Commercial
+- Auth JWT simple (sans refresh token)
+- Stack Node.js + PostgreSQL + React
 
-- Gestion des parcelles, arbres, récoltes, interventions
-- Gestion des clients, ventes et commandes
-- Interface cartographique Leaflet
-- Export CSV de base
-
----
-
-## 📌 Légende
-
-| Emoji | Signification |
-|---|---|
-| ✨ | Nouvelles fonctionnalités |
-| 🔧 | Changements de fonctionnalités existantes |
-| 🗑️ | Fonctionnalités retirées |
-| 🐛 | Corrections de bugs |
-| 🔒 | Correctifs de sécurité |
-| ⚠️ | Breaking changes |
-| 📚 | Documentation |
+### V1 → V6 (2023–2024)
+- Prototypes successifs : gestion parcelles, arbres, récoltes
+- Migration progressive vers PostgreSQL
+- Construction de l'architecture de base Express.js
 
 ---
 
-## 🔗 Liens utiles
-
-- [Codes d'erreur API](./backend/docs/API_ERROR_CODES.md)
-- [Utils backend](./backend/utils/README.md)
-- [Documentation API](./API.md)
-- [Architecture](./ARCHITECTURE.md)
-
----
-
-## 👥 Contributeurs
-
-- **lepekinoi** — Développement, refactoring backend V8, corrections Commercial.js
-
----
-
-*Dernière mise à jour : mai 2026 — V8*
+*Pour les détails techniques des endpoints : [API.md](API.md)*  
+*Pour l'architecture interne : [ARCHITECTURE.md](ARCHITECTURE.md)*
