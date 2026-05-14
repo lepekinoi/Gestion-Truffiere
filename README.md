@@ -4,11 +4,11 @@
 > Stack moderne React + Express.js | Architecture modulaire | Docker ready | Production-ready
 
 [![Status](https://img.shields.io/badge/Status-Production-2ECC71?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere)
-[![Version](https://img.shields.io/badge/Version-2.0.1-4ECDC4?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.0.2-4ECDC4?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/CHANGELOG.md)
 [![Branch](https://img.shields.io/badge/Branch-V8-9B59B6?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/tree/V8)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=flat-square&logo=javascript)](https://www.javascript.com/)
 [![License](https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/LICENSE)
-[![Last Update](https://img.shields.io/badge/Last%20Update-Fév%202026-3498DB?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/commits/V8)
+[![Last Update](https://img.shields.io/badge/Last%20Update-Mai%202026-3498DB?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/commits/V8)
 [![Code Quality](https://img.shields.io/badge/Code%20Quality-Refactoré-9B5CB6?style=flat-square)](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8)
 
 ---
@@ -17,6 +17,7 @@
 
 - [Aperçu rapide](#-aperçu-rapide)
 - [Fonctionnalités](#-fonctionnalités-complètes)
+- [Vue Saisonnière](#-vue-saisonnière-truffière)
 - [Architecture V8](#️-architecture-v8)
 - [Démarrage rapide](#-démarrage-rapide)
 - [Identifiants par défaut](#-identifiants-par-défaut)
@@ -48,6 +49,7 @@
 │  📤 Import CSV / Export PDF            │
 │  🔐 Auth JWT sécurisée (bcrypt x12)   │
 │  🏗️  Architecture modulaire (21 routes)│
+│  🍂 Vue saisonnière truffière          │
 │                                         │
 └─────────────────────────────────────────┘
 ```
@@ -83,6 +85,74 @@
 | **⚙️ Paramètres** | Colonnes configurables, préférences utilisateur | ✅ Production |
 | **📜 Historique** | Audit trail complet (old_data/new_data), purge sélective | ✅ Production |
 | **🔔 Sécurité** | 85+ codes d'erreur, account locking, rate limiting | ✅ Production |
+| **🍂 Vue Saisonnière** | Cycle truffier sep→mars, comparaison inter-saisons, `seasonUtils.js` | 🔧 En cours |
+
+---
+
+## 🍂 Vue Saisonnière Truffière
+
+> Feature en cours d'intégration — `frontend/src/utils/seasonUtils.js` disponible (fév. 2026)
+
+### Objectif
+
+Adapter l'affichage selon le **cycle naturel de la truffe** (septembre → mars) plutôt que l'année civile, pour comparer les performances d'une saison à l'autre (ex : `2024-2025` vs `2023-2024`).
+
+### Composants prévus
+
+| Composant | Description |
+|---|---|
+| **Toggle mode** | Basculer entre *Année civile* et *Saison truffière*, persisté en `localStorage` |
+| **Widget Saison en cours** | Production totale, nb récoltes, progression %, comparaison même période saison précédente |
+| **Widget Hors Saison** | Actif en avril–août : résumé dernière saison + compte à rebours prochain septembre |
+| **Graphique multi-saisons** | Courbes comparatives par saison (Sep→Mars en axe X) via Recharts |
+| **Onglet Saisons** | Nouvel onglet dans Statistiques.js avec tableau récapitulatif toutes saisons |
+| **KPIs saisonniers** | Production, moyenne/récolte, meilleur mois, comparaison même période |
+| **Détection incomplète** | Marquage visuel des saisons à données partielles (taux de couverture %) |
+
+### Logique de calcul (`seasonUtils.js`)
+
+```javascript
+// Nomenclature : YYYY-YYYY (sep année N → mars année N+1)
+// Sep–Déc  → saison year-(year+1)
+// Jan–Mar  → saison (year-1)-year
+// Avr–Aoû  → hors saison
+
+const getCurrentSeason = () => {
+  const month = new Date().getMonth() + 1;
+  const year  = new Date().getFullYear();
+  if (month >= 9)            return `${year}-${year + 1}`;
+  if (month <= 3)            return `${year - 1}-${year}`;
+  return `${year}-${year + 1}`; // hors saison → prochaine
+};
+
+export const isOffSeason = () => {
+  const month = new Date().getMonth() + 1;
+  return month >= 4 && month <= 8;
+};
+```
+
+### Fonctions clés (`seasonUtils.js` — 20 fonctions)
+
+- `getCurrentSeason()` — saison active
+- `getAvailableSeasons(recoltesData)` — liste des saisons avec données
+- `isOffSeason()` — détection période creuse
+- `getDaysUntilNextSeason()` — compte à rebours
+- `getLastCompleteSeason()` — dernière saison terminée
+- `compareSeasonsSamePeriod(data, current, previous)` — comparaison équitable jusqu'au même point d'avancement
+- `detectIncompleteSeason(season, data)` — taux de couverture + mois manquants
+- `calculateSeasonProgress()` — % d'avancement dans la saison
+- `getDaysIntoSeason(date)` — jours écoulés depuis le 1er septembre
+- `formatSeasonLabel(season, completenessInfo)` — label avec indicateur ⚠️ si données partielles
+
+### État d'avancement
+
+- ✅ `seasonUtils.js` créé et testé
+- ✅ `getCurrentSeason()` et `getAvailableSeasons()` opérationnels
+- 🔧 Intégration `Dashboard.js` — toggle + widget saison en cours
+- 🔧 Intégration `Statistiques.js` — onglet Saisons
+- ⏳ Tests Jest pour `seasonUtils.js`
+- ⏳ `OffSeasonWidget` composant React
+- ⏳ Graphique multi-saisons Recharts
 
 ---
 
@@ -151,7 +221,7 @@ backend/
 - **`utils/index.js`** : pattern Factory unifié, point d'entrée unique pour tous les helpers
 - **`middleware/auth.js`** + **`middleware/validation.js`** : séparés de server.js
 - **`backend/docs/API_ERROR_CODES.md`** : référence complète 85+ codes d'erreur au format `{ error, code, details }`
-- **`frontend/src/utils/seasonUtils.js`** : 20 fonctions utilitaires pour la gestion des saisons truffières (feature branch `V7-Saison`, fév. 2026)
+- **`frontend/src/utils/seasonUtils.js`** : 20 fonctions utilitaires pour la gestion des saisons truffières — voir section [Vue Saisonnière](#-vue-saisonnière-truffière)
 - **Audit trail enrichi** : `old_data`, `new_data`, `metadata` sur toutes les actions sensibles
 - **Suppression** du dossier `controllers/` (3 fichiers TypeScript inutilisés, 25.4 KB de code mort)
 
@@ -194,6 +264,7 @@ docker-compose up -d
 # API      : http://localhost:5000
 ```
 
+→ Voir [QUICKSTART.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/QUICKSTART.md) pour un démarrage en 4 étapes.  
 → Voir [DOCKER.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/DOCKER.md) pour build, volumes, troubleshoot, production.
 
 ### 📝 Sans Docker (développement local)
@@ -230,6 +301,7 @@ Mot de passe : admin123
 
 | Document | Description | Audience |
 |---|---|---|
+| **[⚡ QUICKSTART.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/QUICKSTART.md)** | Démarrage en 4 étapes, dépannage rapide | Tous |
 | **[📡 API.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/API.md)** | 95+ endpoints REST, exemples, auth | Développeurs |
 | **[🏗️ ARCHITECTURE.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/ARCHITECTURE.md)** | Architecture système, diagrammes, stack | Tous |
 | **[🔴 API_ERROR_CODES.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/backend/docs/API_ERROR_CODES.md)** | 85+ codes d'erreur standardisés | Développeurs |
@@ -293,6 +365,7 @@ Gestion-Truffiere/                    (branche V8)
 ├── .env.exemple
 │
 ├── README.md                         # Ce fichier
+├── QUICKSTART.md                     # 🆕 Démarrage rapide V8
 ├── API.md                            # Documentation API complète
 ├── ARCHITECTURE.md                   # Architecture technique
 ├── CHANGELOG.md                      # Historique versions (Keep a Changelog)
@@ -315,12 +388,15 @@ Gestion-Truffiere/                    (branche V8)
 | Codes d'erreur incohérents | 85+ codes standardisés, format uniforme |
 | Audit trail incomplet | Traçabilité sur toutes les entités (old/new data) |
 | Code mort TypeScript | `controllers/` supprimé (25.4 KB) |
+| [HOISTING] `Cannot access 'sortedClients' before initialization` | Bloc filtrage déplacé avant bloc STATISTIQUES dans `Commercial.js` |
+| [JSX] Fragment orphelin ligne 847 dans `Commercial.js` | Suppression bloc dupliqué `PaginationControls` |
 
 ### 🟡 À améliorer (moyen terme)
 
 | Problème | Impact | Priorité |
 |---|---|---|
 | Tests automatisés absents | Qualité, régressions | 🔴 Haute |
+| Vue Saisonnière non intégrée dans Dashboard/Stats | Feature incomplète | 🔴 Haute |
 | UX mobile non optimisée | Terrain, usabilité | 🟡 Moyenne |
 | Pas de documentation Swagger/OpenAPI | Onboarding devs | 🟡 Moyenne |
 | Rapports PDF basiques | Livrables clients | 🟢 Basse |
@@ -329,14 +405,21 @@ Gestion-Truffiere/                    (branche V8)
 
 ## 💡 Roadmap
 
-### v8.1 — Q1 2026 (En cours)
+### v8.1 — Q1/Q2 2026 (En cours)
 
+- [ ] **Vue Saisonnière** — Intégration complète dans `Dashboard.js` et `Statistiques.js`
+  - [ ] Toggle *Année civile* ↔ *Saison truffière* (persisté localStorage)
+  - [ ] `SeasonWidget` — production, progression %, comparaison même période
+  - [ ] `OffSeasonWidget` — résumé + compte à rebours (actif avr–août)
+  - [ ] Graphique Recharts multi-saisons (axe X : Sep→Mar)
+  - [ ] Onglet *Saisons* dans `Statistiques.js`
+  - [ ] Détection et marquage des saisons incomplètes
+  - [ ] Tests Jest pour `seasonUtils.js`
 - [ ] Tests automatisés — Jest + React Testing Library
 - [ ] PWA & mode offline (Service Worker, sync)
 - [ ] Documentation Swagger/OpenAPI auto-générée
-- [ ] **`seasonUtils.js`** — intégration Dashboard & Statistiques (branche `V7-Saison`)
 
-### v8.5 — Q2 2026
+### v8.5 — Q3 2026
 
 - [ ] Système d'alertes intelligentes (maladies, météo, rappels)
 - [ ] Rapports PDF professionnels (graphiques, traçabilité)
