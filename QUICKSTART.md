@@ -1,23 +1,56 @@
-# 🚀 Quickstart — Gestion-Truffière V8
+# Gestion-Truffiere V8 — Quickstart
 
-Guide de démarrage rapide. Pour la documentation complète, voir [`README.md`](./README.md), [`SETUP.md`](./SETUP.md) et [`DOCKER.md`](./DOCKER.md).
+Guide de démarrage rapide pour la branche **V8** de la plateforme de gestion d'exploitations truffières.
 
 **Production** : [https://m-a-truffes.sytes.net/](https://m-a-truffes.sytes.net/)
 
 ---
 
+## Stack technique
+
+| Composant | Technologie |
+|---|---|
+| Frontend | React 18 + Leaflet |
+| Backend | Express.js modulaire (20 fichiers routes) |
+| Base de données | PostgreSQL + PL/pgSQL |
+| Authentification | JWT 15min + refresh tokens avec rotation |
+| Infrastructure | Docker / Docker Compose |
+
+---
+
+## Modules applicatifs
+
+- Dashboard
+- Parcelles
+- Arbres
+- Récoltes
+- Interventions
+- Commercial
+- Cartographie
+- Statistiques
+- Historique (audit trail)
+- Paramètres
+- Import CSV / Export PDF
+
+---
+
 ## Prérequis
 
-- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
+**Obligatoires :**
 - Git
+- Docker
+- Docker Compose
 
-> En développement hors Docker : Node.js LTS, npm, PostgreSQL 14+
+**Optionnels (hors conteneurs) :**
+- Node.js LTS
+- npm
+- PostgreSQL 14+
 
 ---
 
 ## Démarrage en 4 étapes
 
-### 1. Cloner et basculer sur V8
+### 1. Cloner le dépôt
 
 ```bash
 git clone https://github.com/lepekinoi/Gestion-Truffiere.git
@@ -31,25 +64,19 @@ git checkout V8
 cp .env.exemple .env
 ```
 
-Éditer `.env` et renseigner au minimum :
+Renseigner dans `.env` :
+- Paramètres PostgreSQL (`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`)
+- Secrets JWT (`JWT_SECRET`, `JWT_REFRESH_SECRET`)
+- URLs frontend/backend
+- Configuration CORS
 
-| Variable | Description |
-|---|---|
-| `DB_*` | Paramètres PostgreSQL (host, port, user, password, name) |
-| `JWT_SECRET` | Secret de signature JWT |
-| `JWT_REFRESH_SECRET` | Secret refresh token |
-| `FRONTEND_URL` | URL d'accès au frontend (CORS) |
-| `NODE_ENV` | `development` ou `production` |
-
-> ⚠️ Ne jamais committer `.env` — il est dans `.gitignore`.
-
-### 3. Démarrer la stack
+### 3. Lancer la stack
 
 ```bash
 docker compose up -d --build
 ```
 
-### 4. Vérifier
+### 4. Vérifier les services
 
 ```bash
 docker compose ps
@@ -58,68 +85,57 @@ docker compose logs -f
 
 ---
 
-## Architecture de la stack
-
-| Conteneur | Rôle | Technologie |
-|---|---|---|
-| `frontend` | Interface utilisateur | React 18, Leaflet |
-| `backend` | API REST | Express.js modulaire |
-| `db` | Base de données | PostgreSQL + PLpgSQL |
-
----
-
-## Commandes courantes
+## Commandes utiles
 
 ```bash
+# Redémarrer
+docker compose restart
+
 # Arrêter
 docker compose down
 
-# Rebuild complet (après modification du code)
+# Rebuild complet
 docker compose down && docker compose up -d --build
 
-# Logs en temps réel
+# Logs backend
 docker compose logs -f backend
+
+# Logs frontend
 docker compose logs -f frontend
-
-# Rebuild sans cache
-docker compose build --no-cache
-
-# Accéder à la BDD
-docker compose exec db psql -U <DB_USER> -d <DB_NAME>
 ```
 
 ---
 
-## Modules disponibles
+## Base de données
 
-| Module | Description |
-|---|---|
-| Dashboard | Synthèse et indicateurs clés |
-| Parcelles | Gestion des parcelles truffières |
-| Arbres | Suivi individuel des arbres |
-| Récoltes | Saisie et historique des récoltes |
-| Interventions | Traitements, arrosages, travaux |
-| Commercial | Clients, commandes, ventes |
-| Cartographie | Visualisation Leaflet des parcelles |
-| Statistiques | Analyses et graphiques |
-| Historique | Audit trail complet |
-| Paramètres | Configuration de l'exploitation |
-| Import / Export | Import CSV, export PDF |
+Avant le premier usage en environnement neuf :
+
+1. Vérifier la création de la base
+2. Exécuter les scripts SQL du dossier `database/`
+3. Vérifier la cohérence des variables d'environnement PostgreSQL
+
+Sauvegarde manuelle :
+
+```bash
+bash backup-db.sh
+```
 
 ---
 
 ## Sécurité intégrée
 
-La stack embarque nativement :
+Le projet embarque nativement :
 
-- **bcrypt** (12 rounds) pour les mots de passe
-- **JWT** 15 min + refresh tokens avec rotation
-- **Account locking** : verrouillage après 5 tentatives / 15 min
+- **bcrypt** (12 salt rounds)
+- **Verrouillage de compte** après 5 tentatives échouées (15 min)
 - **Rate limiting** : global (1000 req/15min) + auth (10 req/15min)
-- **IP tracking**, **Helmet**, **CORS** configurables
+- **IP tracking** sur les actions sensibles
+- **Helmet** (headers HTTP sécurisés)
+- **CORS** configurable
+- **JWT** courts (15 min) + refresh tokens avec rotation
 - **85+ codes d'erreur** standardisés
 
-> Ne jamais désactiver ces mécanismes pour simplifier un setup local.
+> ⚠️ Ne jamais désactiver ces mécanismes, y compris en environnement local.
 
 ---
 
@@ -127,11 +143,11 @@ La stack embarque nativement :
 
 | Symptôme | Vérification |
 |---|---|
-| Stack ne démarre pas | `docker compose logs -f` → vérifier `.env` |
-| Erreur de connexion BDD | Variables `DB_*` dans `.env`, PostgreSQL accessible |
-| Erreur CORS / 401 | `FRONTEND_URL` et secrets JWT dans `.env` |
-| Build frontend échoue | `docker compose build --no-cache frontend` |
-| Refresh token invalide | Vider les cookies / localStorage et se reconnecter |
+| Stack ne démarre pas | `.env` complet ? PostgreSQL accessible ? `docker compose logs -f` |
+| Erreur CORS | URLs frontend/backend dans `.env` ? |
+| Erreur d'authentification | Secrets JWT définis ? Token expiré ? |
+| Frontend vide | Rebuild sans cache : `docker compose build --no-cache frontend` |
+| Backend 500 | Connexion BDD ? `docker compose logs -f backend` |
 
 ---
 
@@ -139,13 +155,20 @@ La stack embarque nativement :
 
 | Fichier | Contenu |
 |---|---|
-| [`README.md`](./README.md) | Vue d'ensemble du projet |
-| [`SETUP.md`](./SETUP.md) | Installation détaillée |
-| [`DOCKER.md`](./DOCKER.md) | Configuration Docker avancée |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Architecture technique complète |
-| [`API.md`](./API.md) | Documentation des endpoints API |
-| [`CHANGELOG.md`](./CHANGELOG.md) | Historique des versions |
+| `README.md` | Vue d'ensemble du projet |
+| `SETUP.md` | Installation détaillée |
+| `DOCKER.md` | Configuration Docker avancée |
+| `ARCHITECTURE.md` | Architecture technique complète |
+| `API.md` | Référence des endpoints |
+| `CHANGELOG.md` | Historique des versions |
 
 ---
 
-*Dernière mise à jour : mai 2026 — branche V8*
+## Roadmap V8
+
+Orientations en cours :
+- Tests Jest / React Testing Library
+- PWA offline
+- Swagger / OpenAPI
+- Alertes intelligentes
+- PDF avancés
