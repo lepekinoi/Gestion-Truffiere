@@ -1,23 +1,17 @@
 # 📡 API Documentation — Gestion-Truffière v8
 
-> Documentation complète de l'API REST — 95+ endpoints, authentification JWT, codes d'erreur standardisés
+> Documentation complète de l'API REST — branche V8 (v2.0.2)  
+> Base URL de production : `https://m-a-truffes.sytes.net/api`
 
-**Base URL**
-
-```
-Production  : https://m-a-truffes.sytes.net/api
-Développement : http://localhost:5000/api
-```
-
-→ Référence des 85+ codes d'erreur : [backend/docs/API_ERROR_CODES.md](backend/docs/API_ERROR_CODES.md)  
-→ Architecture modulaire : [ARCHITECTURE.md](ARCHITECTURE.md)
+→ Codes d'erreur complets : [`backend/docs/API_ERROR_CODES.md`](backend/docs/API_ERROR_CODES.md)  
+→ Architecture : [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ---
 
-## 📋 Table des matières
+## 📋 Sommaire
 
-1. [Protocole & Format](#protocole--format)
-2. [Authentification JWT](#authentification-jwt)
+1. [Vue d'ensemble](#vue-densemble)
+2. [Authentification](#authentification)
 3. [Gestion des erreurs](#gestion-des-erreurs)
 4. [Index des endpoints](#index-des-endpoints)
 5. [Auth](#auth)
@@ -25,106 +19,108 @@ Développement : http://localhost:5000/api
 7. [Arbres](#arbres)
 8. [Récoltes](#récoltes)
 9. [Interventions](#interventions)
-10. [Commercial — Clients, Ventes, Commandes](#commercial--clients-ventes-commandes)
-11. [Stock](#stock)
-12. [Dashboard & Statistiques](#dashboard--statistiques)
-13. [Historique (Audit Trail)](#historique-audit-trail)
-14. [Paramètres & Préférences](#paramètres--préférences)
-15. [Référentiels](#référentiels)
-16. [Import / Export](#import--export)
-17. [Rate Limiting](#rate-limiting)
+10. [Commercial — Clients](#clients)
+11. [Commercial — Ventes](#ventes)
+12. [Commercial — Commandes](#commandes)
+13. [Stock](#stock)
+14. [Dashboard](#dashboard)
+15. [Statistiques](#statistiques)
+16. [Historique (Audit trail)](#historique)
+17. [Paramètres & Préférences](#paramètres--préférences)
+18. [Référentiels](#référentiels)
+19. [Utilisateurs (Admin)](#utilisateurs)
+20. [Système](#système)
 
 ---
 
-## Protocole & Format
+## Vue d'ensemble
 
-| Propriété | Valeur |
-|---|---|
-| Protocole | HTTPS (production), HTTP (dev) |
-| Format | JSON |
-| Charset | UTF-8 |
-| Timeout | 30 secondes |
-| Version API | `X-API-Version: 8.0` |
-| Build | `X-API-Build: 2.0.2` |
+### Base URL
 
-### Format de réponse (succès)
-
-```json
-{
-  "id": 1,
-  "nom": "Parcelle Nord",
-  "surface_ha": 2.5
-}
+```
+Production :   https://m-a-truffes.sytes.net/api
+Développement: http://localhost:5000/api
 ```
 
-Les endpoints retournent directement l'objet ou le tableau, sans enveloppe `{ status, data }`.
+### Protocole
 
-### Format de réponse (erreur)
+- **Format** : JSON
+- **Charset** : UTF-8
+- **Auth** : JWT Bearer Token
+- **HTTPS** : obligatoire en production
 
-```json
-{
-  "error": "Description de l'erreur",
-  "code": "CODE_ERREUR_STANDARDISE",
-  "details": "Stack ou détail technique (mode development uniquement)"
-}
-```
-
----
-
-## Authentification JWT
-
-Le projet utilise un système JWT à deux tokens avec rotation automatique.
-
-| Token | Durée | Renouvellement |
-|---|---|---|
-| `accessToken` | **15 minutes** | Via `POST /auth/refresh` |
-| `refreshToken` | 7 jours | Rotation à chaque usage |
-
-> ⚠️ La durée de 15 minutes est intentionnelle — politique de sécurité V8. Ne pas modifier `JWT_EXPIRATION`.
-
-### Inclure le token dans les requêtes
+### Version
 
 ```http
-Authorization: Bearer <accessToken>
+X-API-Version: 8.0
+X-API-Build: 2.0.2
 ```
 
-### Payload du token
+### Format de réponse standard
+
+Les endpoints retournent directement les données (tableaux ou objets) :
 
 ```json
+// Liste
+[ { "id": 1, "nom": "Parcelle A", ... }, ... ]
+
+// Objet unique
+{ "id": 1, "nom": "Parcelle A", ... }
+
+// Message de confirmation
+{ "message": "Ressource supprimée", "code": "RESOURCE_DELETED" }
+```
+
+---
+
+## Authentification
+
+### JWT Bearer Token
+
+L'API utilise JWT avec rotation des refresh tokens.
+
+**Durées :**
+- Access token : **15 minutes** (non modifiable — politique sécurité V8)
+- Refresh token : **7 jours** avec rotation automatique
+
+#### Flux d'authentification
+
+1. `POST /api/auth/login` → reçoit `accessToken` + `refreshToken`
+2. Inclure l'access token dans chaque requête :
+   ```http
+   Authorization: Bearer <accessToken>
+   ```
+3. Quand le token expire (401), appeler `POST /api/auth/refresh`
+4. En cas de réutilisation d'un refresh token révoqué → tous les tokens de la session sont invalidés (détection de vol)
+
+#### Payload du token
+
+```javascript
+// Access Token (15 min)
 {
   "userId": 1,
   "email": "admin@truffiere.local",
-  "role": "admin",
-  "iat": 1747220000,
-  "exp": 1747220900
+  "role": "admin",      // admin | user | readonly
+  "iat": 1747820000,
+  "exp": 1747820900     // +900 secondes
+}
+
+// Refresh Token (7 jours)
+{
+  "userId": 1,
+  "type": "refresh",
+  "iat": 1747820000,
+  "exp": 1748424800
 }
 ```
 
-### Rôles disponibles
+#### Rôles et droits
 
-| Rôle | Droits |
-|---|---|
-| `admin` | Lecture + écriture + gestion utilisateurs + purge audit |
-| `user` | Lecture + écriture |
-| `readonly` | Lecture seule |
-
-### Renouvellement automatique (Axios interceptor)
-
-```javascript
-axiosInstance.interceptors.response.use(
-  response => response,
-  async error => {
-    if (error.response?.status === 401 && !error.config._retry) {
-      error.config._retry = true;
-      const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-      localStorage.setItem('accessToken', data.accessToken);
-      error.config.headers['Authorization'] = `Bearer ${data.accessToken}`;
-      return axiosInstance.request(error.config);
-    }
-    return Promise.reject(error);
-  }
-);
-```
+| Rôle | Lecture | Écriture | Admin |
+|------|---------|----------|-------|
+| `admin` | ✅ | ✅ | ✅ |
+| `user` | ✅ | ✅ | ❌ |
+| `readonly` | ✅ | ❌ | ❌ |
 
 ---
 
@@ -133,152 +129,170 @@ axiosInstance.interceptors.response.use(
 ### Codes HTTP utilisés
 
 | Code | Signification |
-|---|---|
-| 200 | Succès |
-| 201 | Ressource créée |
-| 400 | Données invalides / champ manquant |
-| 401 | Token absent, expiré ou invalide |
-| 403 | Permission insuffisante (rôle) |
+|------|---------------|
+| 200 | OK |
+| 201 | Créé |
+| 400 | Requête invalide (validation) |
+| 401 | Non authentifié |
+| 403 | Accès refusé (droits insuffisants) |
 | 404 | Ressource introuvable |
-| 409 | Conflit (doublon, contrainte unique) |
-| 429 | Rate limit dépassé |
-| 500 | Erreur serveur interne |
+| 409 | Conflit (doublon) |
+| 429 | Trop de requêtes (rate limiting) |
+| 500 | Erreur serveur |
 
-### Codes d'erreur standardisés (sélection)
+### Format d'erreur
 
-```
-AUTH
-  INVALID_CREDENTIALS         Email ou mot de passe incorrect
-  ACCOUNT_LOCKED              5 tentatives échouées — verrouillé 15 min
-  TOKEN_EXPIRED               Access token expiré
-  TOKEN_INVALID               Token malformé ou signature invalide
-  REFRESH_TOKEN_REUSED        Détection de réutilisation du refresh token
-  UNAUTHORIZED                Token absent
-
-VALIDATION
-  REQUIRED_FIELD              Champ obligatoire manquant
-  INVALID_FORMAT              Format invalide (date, email…)
-  DUPLICATE_ENTRY             Violation contrainte UNIQUE (code PostgreSQL 23505)
-
-MÉTIER
-  INTERVENTION_NOT_FOUND      Intervention introuvable
-  PARCELLE_NOT_FOUND          Parcelle introuvable
-  ARBRE_NOT_FOUND             Arbre introuvable
-  CLIENT_NOT_FOUND            Client introuvable
-  COMMANDE_NOT_FOUND          Commande introuvable
-  STOCK_INSUFFISANT           Stock insuffisant pour la vente
-  ADMIN_REQUIRED              Action réservée au rôle admin
+```json
+{
+  "error": "Message lisible",
+  "code": "ERROR_CODE_STANDARDISE",
+  "details": "Stack ou info technique (uniquement en NODE_ENV=development)"
+}
 ```
 
-Référence complète : [`backend/docs/API_ERROR_CODES.md`](backend/docs/API_ERROR_CODES.md)
+### Rate limiting
+
+- **Global** : 1 000 requêtes / 15 minutes
+- **Auth** (`/auth/login`, `/auth/refresh`) : 10 requêtes / 15 minutes
+- **Account locking** : 5 tentatives de connexion échouées → verrouillage 15 min
+
+### Exemple de gestion Axios
+
+```javascript
+axios.interceptors.response.use(
+  res => res,
+  async err => {
+    if (err.response?.status === 401 && !err.config._retry) {
+      err.config._retry = true;
+      const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+      setAccessToken(data.accessToken);
+      err.config.headers['Authorization'] = `Bearer ${data.accessToken}`;
+      return axios(err.config);
+    }
+    if (err.response?.data?.code === 'ACCOUNT_LOCKED') {
+      showLockedUntil(err.response.data.lockedUntil);
+    }
+    return Promise.reject(err);
+  }
+);
+```
 
 ---
 
 ## Index des endpoints
 
 ```
-Auth
-  POST   /auth/login
-  POST   /auth/refresh
-  POST   /auth/logout
-  POST   /auth/change-password
-  GET    /auth/me
-  GET    /auth/users             (admin)
-  POST   /auth/users             (admin)
-  PUT    /auth/users/:id         (admin)
-  DELETE /auth/users/:id         (admin)
+# Authentification
+POST   /auth/login                        Connexion
+POST   /auth/logout                       Déconnexion
+POST   /auth/refresh                      Renouvellement du token
+POST   /auth/change-password              Changement de mot de passe
+GET    /auth/me                           Profil de l'utilisateur connecté
+GET    /auth/sessions                     Sessions actives
+DELETE /auth/sessions/:id                 Révoquer une session
+GET    /auth/security-events             Journal des événements de sécurité (admin)
 
-Parcelles
-  GET    /parcelles
-  GET    /parcelles/:id
-  GET    /parcelles/:id/arbres
-  GET    /parcelles/corbeille
-  POST   /parcelles
-  PUT    /parcelles/:id
-  DELETE /parcelles/:id
-  PUT    /parcelles/:id/restore
+# Parcelles
+GET    /parcelles                         Lister toutes les parcelles
+GET    /parcelles/corbeille               Parcelles supprimées (soft delete)
+GET    /parcelles/:id                     Détail d'une parcelle
+POST   /parcelles                         Créer une parcelle
+PUT    /parcelles/:id                     Modifier une parcelle
+DELETE /parcelles/:id                     Supprimer (soft delete)
+PUT    /parcelles/:id/restaurer           Restaurer depuis la corbeille
 
-Arbres
-  GET    /arbres
-  GET    /arbres/:id
-  GET    /arbres/corbeille
-  POST   /arbres
-  PUT    /arbres/:id
-  DELETE /arbres/:id
-  PUT    /arbres/:id/restore
+# Arbres
+GET    /arbres                            Lister les arbres
+GET    /arbres/corbeille                  Arbres supprimés
+GET    /arbres/:id                        Détail d'un arbre
+POST   /arbres                            Créer un arbre
+PUT    /arbres/:id                        Modifier un arbre
+DELETE /arbres/:id                        Supprimer (soft delete)
+PUT    /arbres/:id/restaurer              Restaurer
 
-Récoltes
-  GET    /recoltes
-  GET    /recoltes/:id
-  POST   /recoltes
-  PUT    /recoltes/:id
-  DELETE /recoltes/:id
+# Récoltes
+GET    /recoltes                          Lister les récoltes
+GET    /recoltes/:id                      Détail d'une récolte
+POST   /recoltes                          Enregistrer une récolte
+PUT    /recoltes/:id                      Modifier une récolte
+DELETE /recoltes/:id                      Supprimer une récolte
 
-Interventions
-  GET    /interventions
-  GET    /interventions/stats
-  GET    /interventions/stats/eau
-  GET    /interventions/stats/traitements
-  GET    /interventions/export
-  GET    /interventions/check-doublon
-  POST   /interventions
-  PUT    /interventions/:id
-  DELETE /interventions/:id
-  GET    /interventions/:id/details
-  POST   /interventions/:id/details
-  DELETE /interventions/:id/details
+# Interventions
+GET    /interventions                     Lister les interventions
+GET    /interventions/stats               Statistiques par type
+GET    /interventions/stats/eau           Consommation d'eau
+GET    /interventions/stats/traitements   Traçabilité phytosanitaire
+GET    /interventions/export              Export complet avec détails
+GET    /interventions/check-doublon       Vérifier doublon
+GET    /interventions/:id                 Détail d'une intervention
+GET    /interventions/:id/details         Détails spécifiques (irrigation/traitement)
+POST   /interventions                     Créer une intervention
+POST   /interventions/:id/details         Créer/mettre à jour les détails
+PUT    /interventions/:id                 Modifier une intervention
+DELETE /interventions/:id                 Supprimer une intervention
+DELETE /interventions/:id/details         Supprimer les détails
 
-Commercial
-  GET    /clients
-  GET    /clients/:id
-  GET    /clients/stats
-  POST   /clients
-  PUT    /clients/:id
-  DELETE /clients/:id
-  GET    /ventes
-  GET    /ventes/:id
-  POST   /ventes
-  PUT    /ventes/:id
-  DELETE /ventes/:id
-  GET    /commandes
-  GET    /commandes/:id
-  POST   /commandes
-  PUT    /commandes/:id
-  DELETE /commandes/:id
-  PUT    /commandes/:id/statut
+# Commercial
+GET    /clients                           Lister les clients
+GET    /clients/:id                       Détail d'un client
+POST   /clients                           Créer un client
+PUT    /clients/:id                       Modifier un client
+DELETE /clients/:id                       Supprimer un client
+GET    /clients/:id/ventes                Ventes d'un client
 
-Stock
-  GET    /stock
-  GET    /stock/global
+GET    /ventes                            Lister les ventes
+GET    /ventes/:id                        Détail d'une vente
+POST   /ventes                            Créer une vente
+PUT    /ventes/:id                        Modifier une vente
+DELETE /ventes/:id                        Supprimer une vente
 
-Dashboard & Stats
-  GET    /dashboard/full
-  GET    /stats/dashboard        (legacy)
-  GET    /stats/recoltes-annuelles
-  GET    /stats/recoltes-mensuelles
+GET    /commandes                         Lister les commandes
+GET    /commandes/:id                     Détail d'une commande
+POST   /commandes                         Créer une commande
+PUT    /commandes/:id                     Modifier une commande
+DELETE /commandes/:id                     Supprimer une commande
+POST   /commandes/:id/generer-vente       Générer une vente depuis une commande
 
-Historique
-  GET    /historique
-  GET    /historique/stats
-  DELETE /historique/purge       (admin)
+# Stock
+GET    /stock                             Stock global (récoltes − ventes)
+GET    /stock/par-qualite                 Stock par qualité
 
-Paramètres & Préférences
-  GET    /parametres
-  GET    /parametres/:cle
-  PUT    /parametres/:cle
-  GET    /preferences
-  PUT    /preferences
+# Dashboard & Statistiques
+GET    /dashboard/full                    Dashboard consolidé temps réel
+GET    /stats/dashboard                   Statistiques legacy (compatibilité)
+GET    /stats/recoltes-annuelles          Récoltes agrégées par année
+GET    /stats/recoltes-mensuelles         Récoltes agrégées par mois
 
-Référentiels
-  GET/POST/PUT/DELETE  /types-intervention
-  GET/POST/PUT/DELETE  /caveurs
-  GET/POST/PUT/DELETE  /chiens
-  GET/POST/PUT/DELETE  /especes
-  GET/POST/PUT/DELETE  /produits-phyto
-  GET/POST/PUT/DELETE  /amendements-ref
+# Historique (Audit trail)
+GET    /historique                        Lister l'historique avec filtres
+GET    /historique/stats                  Statistiques de l'historique
+DELETE /historique/purge                  Purger l'historique (admin)
 
-System
-  GET    /health
+# Paramètres & Préférences
+GET    /parametres                        Paramètres de l'application
+PUT    /parametres                        Mettre à jour les paramètres
+GET    /preferences                       Préférences de l'utilisateur connecté
+PUT    /preferences                       Mettre à jour les préférences
+DELETE /preferences                       Réinitialiser les préférences
+
+# Référentiels
+GET    /types-intervention                Types d'intervention disponibles
+GET    /especes                           Espèces d'arbres
+GET    /caveurs                           Caveurs
+GET    /chiens                            Chiens de cavage
+GET    /produits-phyto                    Produits phytosanitaires
+GET    /amendements-ref                   Référentiel amendements
+
+# Utilisateurs (admin)
+GET    /auth/users                        Lister les utilisateurs
+POST   /auth/users                        Créer un utilisateur
+PUT    /auth/users/:id                    Modifier un utilisateur
+DELETE /auth/users/:id                    Supprimer un utilisateur
+PUT    /auth/users/:id/role               Changer le rôle
+POST   /auth/users/:id/unlock             Déverrouiller un compte
+
+# Système
+GET    /health                            Health check
 ```
 
 ---
@@ -297,7 +311,7 @@ Content-Type: application/json
 }
 ```
 
-**Réponse 200**
+**Réponse 200 :**
 
 ```json
 {
@@ -308,17 +322,21 @@ Content-Type: application/json
     "prenom": "Truffiere",
     "role": "admin"
   },
-  "accessToken": "<jwt_15min>",
-  "refreshToken": "<jwt_7j>"
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900
 }
 ```
 
-**Erreurs**
+> `expiresIn` = 900 secondes (15 minutes)
 
-```json
-{ "error": "Email ou mot de passe incorrect", "code": "INVALID_CREDENTIALS" }
-{ "error": "Compte verrouillé", "code": "ACCOUNT_LOCKED", "lockedUntil": "2026-05-14T15:30:00Z" }
-```
+**Erreurs :**
+
+| Code HTTP | Code erreur | Cause |
+|-----------|------------|-------|
+| 400 | `MISSING_CREDENTIALS` | Email ou mot de passe absent |
+| 401 | `INVALID_CREDENTIALS` | Email/mot de passe incorrect |
+| 423 | `ACCOUNT_LOCKED` | 5 tentatives échouées — inclut `lockedUntil` |
 
 ---
 
@@ -328,16 +346,20 @@ Content-Type: application/json
 POST /api/auth/refresh
 Content-Type: application/json
 
-{ "refreshToken": "<token>" }
+{ "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
 ```
 
-**Réponse 200**
+**Réponse 200 :**
 
 ```json
-{ "accessToken": "<nouveau_jwt_15min>", "refreshToken": "<nouveau_refresh>" }
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900
+}
 ```
 
-> Le refresh token est **rotatif** : l'ancien est invalidé immédiatement. Toute réutilisation déclenche `REFRESH_TOKEN_REUSED` et révoque toutes les sessions.
+> Le refresh token est **rotatif** : un nouveau token est émis à chaque appel. La réutilisation d'un ancien token invalide toute la session.
 
 ---
 
@@ -345,13 +367,17 @@ Content-Type: application/json
 
 ```http
 POST /api/auth/logout
-Authorization: Bearer <token>
+Authorization: Bearer <accessToken>
 Content-Type: application/json
 
-{ "refreshToken": "<token>" }
+{ "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
 ```
 
-**Réponse 200** : `{ "message": "Déconnexion réussie", "code": "LOGOUT_SUCCESS" }`
+**Réponse 200 :**
+
+```json
+{ "message": "Déconnexion réussie", "code": "LOGOUT_SUCCESS" }
+```
 
 ---
 
@@ -359,16 +385,14 @@ Content-Type: application/json
 
 ```http
 POST /api/auth/change-password
-Authorization: Bearer <token>
+Authorization: Bearer <accessToken>
 Content-Type: application/json
 
 {
   "currentPassword": "admin123",
-  "newPassword": "MonMotDePasseForce!2026"
+  "newPassword": "NouveauMotDePasse!2026"
 }
 ```
-
-**Réponse 200** : `{ "message": "Mot de passe modifié", "code": "PASSWORD_CHANGED" }`
 
 ---
 
@@ -381,20 +405,21 @@ GET /api/parcelles
 Authorization: Bearer <token>
 ```
 
-**Réponse 200** — tableau des parcelles actives (soft delete)
+**Réponse 200 :**
 
 ```json
 [
   {
     "id": 1,
-    "nom": "Parcelle Nord",
+    "nom": "Parcelle A",
     "surface_ha": 2.5,
-    "localisation": "Secteur A",
-    "latitude": 47.3456,
-    "longitude": -1.6789,
+    "localisation": "Lieu-dit Les Pins",
+    "latitude": 47.2941,
+    "longitude": -1.5840,
     "notes": "",
-    "created_at": "2025-09-01T08:00:00Z",
-    "updated_at": "2026-03-15T14:30:00Z"
+    "created_at": "2025-03-01T10:00:00Z",
+    "updated_at": "2026-01-15T14:00:00Z",
+    "deleted_at": null
   }
 ]
 ```
@@ -409,39 +434,22 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "nom": "Parcelle Sud",
+  "nom": "Parcelle B",
   "surface_ha": 1.8,
-  "localisation": "Secteur B",
-  "latitude": 47.3200,
-  "longitude": -1.6500,
-  "notes": "Terrain argileux"
+  "localisation": "Route de la Forêt",
+  "latitude": 47.3012,
+  "longitude": -1.5721,
+  "notes": "Plantation 2022 — Tuber melanosporum"
 }
 ```
 
-**Réponse 201** : objet parcelle créé  
-**Erreur 409** : `{ "code": "DUPLICATE_NOM" }` si nom déjà existant
+**Réponse 201 :** objet parcelle créé.
 
 ---
 
-### GET /parcelles/:id/arbres
+### DELETE /parcelles/:id
 
-```http
-GET /api/parcelles/1/arbres
-Authorization: Bearer <token>
-```
-
-Retourne les arbres actifs de la parcelle (sans soft-deleted).
-
----
-
-### PUT /parcelles/:id/restore
-
-Restaure une parcelle depuis la corbeille.
-
-```http
-PUT /api/parcelles/1/restore
-Authorization: Bearer <token>
-```
+Suppression **soft delete** — la parcelle passe en corbeille (`deleted_at` renseigné), elle n'est pas physiquement supprimée. Restauration possible via `PUT /parcelles/:id/restaurer`.
 
 ---
 
@@ -454,26 +462,27 @@ GET /api/arbres
 Authorization: Bearer <token>
 ```
 
-**Réponse 200** — arbres actifs avec jointures parcelle + espèce
+**Réponse 200 :**
 
 ```json
 [
   {
-    "id": 42,
-    "numero": "A-042",
+    "id": 1,
     "parcelle_id": 1,
-    "parcelle_nom": "Parcelle Nord",
+    "numero": "A-001",
     "espece_id": 2,
-    "espece_nom": "Quercus pubescens",
-    "date_plantation": "2020-03-10",
-    "etat_sanitaire": "Sain",
-    "latitude": 47.3460,
-    "longitude": -1.6795,
+    "variete": "Périgord Noir",
+    "date_plantation": "2020-03-15",
+    "etat_sanitaire": "Bon",
+    "latitude": 47.2941,
+    "longitude": -1.5840,
     "notes": "",
     "deleted_at": null
   }
 ]
 ```
+
+**Valeurs `etat_sanitaire` :** `Bon` | `Moyen` | `Mauvais` | `Mort`
 
 ---
 
@@ -485,18 +494,16 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "numero": "A-043",
   "parcelle_id": 1,
+  "numero": "A-002",
   "espece_id": 2,
-  "date_plantation": "2022-03-15",
-  "etat_sanitaire": "Sain",
-  "latitude": 47.3461,
-  "longitude": -1.6796,
-  "notes": ""
+  "variete": "Périgord Noir",
+  "date_plantation": "2021-04-10",
+  "etat_sanitaire": "Bon",
+  "latitude": 47.2942,
+  "longitude": -1.5841
 }
 ```
-
-**Réponse 201** : objet arbre créé
 
 ---
 
@@ -509,28 +516,28 @@ GET /api/recoltes
 Authorization: Bearer <token>
 ```
 
-**Réponse 200**
+**Réponse 200 :**
 
 ```json
 [
   {
-    "id": 10,
-    "date_recolte": "2025-11-18",
+    "id": 1,
+    "parcelle_id": 1,
+    "arbre_id": null,
+    "date_recolte": "2025-11-20",
     "poids_grammes": 850,
     "qualite": "Extra",
-    "prix_kg": 900.00,
-    "parcelle_id": 1,
-    "parcelle_nom": "Parcelle Nord",
-    "arbre_id": 42,
-    "arbre_numero": "A-042",
     "caveur_id": 1,
-    "caveur_nom": "Martin",
     "chien_id": 2,
-    "chien_nom": "Rex",
-    "notes": ""
+    "notes": "Bonne saison",
+    "created_at": "2025-11-20T16:00:00Z"
   }
 ]
 ```
+
+**Valeurs `qualite` :** `Extra` | `1er choix` | `2ème choix` | `Confection`
+
+---
 
 ### POST /recoltes
 
@@ -540,21 +547,18 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "date_recolte": "2026-01-10",
+  "parcelle_id": 1,
+  "arbre_id": null,
+  "date_recolte": "2025-12-05",
   "poids_grammes": 1200,
   "qualite": "Extra",
-  "prix_kg": 950.00,
-  "parcelle_id": 1,
-  "arbre_id": 42,
   "caveur_id": 1,
   "chien_id": 2,
-  "notes": "Très belle récolte matinale"
+  "notes": ""
 }
 ```
 
-**Qualités acceptées** : `Extra`, `1ère catégorie`, `2ème catégorie`, `Confection`
-
-**Réponse 201** : objet récolte créé
+> **Note** : le champ est `poids_grammes` (entier, grammes) — pas `quantite_kg`.
 
 ---
 
@@ -562,80 +566,43 @@ Content-Type: application/json
 
 ### GET /interventions
 
-Retourne toutes les interventions avec jointures type, parcelle, arbre.
-
 ```http
 GET /api/interventions
 Authorization: Bearer <token>
 ```
 
-### GET /interventions/stats
-
-Statistiques par type d'intervention, filtres optionnels.
-
-```http
-GET /api/interventions/stats?date_debut=2025-09-01&date_fin=2026-03-31&parcelle_id=1
-Authorization: Bearer <token>
-```
-
-**Réponse 200**
-
-```json
-{
-  "par_type": [
-    {
-      "type_intervention": "Irrigation",
-      "couleur": "#3498db",
-      "nombre": 12,
-      "cout_total": 0,
-      "duree_moyenne": 45.5
-    }
-  ],
-  "totaux": {
-    "total_interventions": 28,
-    "cout_total": 1250.00,
-    "duree_totale_minutes": 1890
-  }
-}
-```
-
-### GET /interventions/stats/eau
-
-Consommation d'eau par parcelle (irrigations uniquement).
-
-### GET /interventions/stats/traitements
-
-Registre de traçabilité phytosanitaire — conforme au cahier d'épandage.
+**Réponse 200 :**
 
 ```json
 [
   {
-    "id": 5,
-    "date_realisee": "2025-10-15",
-    "parcelle": "Parcelle Nord",
-    "arbre": "A-042",
-    "nom_commercial": "Produit X",
-    "matiere_active": "Cuivre",
-    "numero_amm": "2060123",
-    "dose_produit_ha": 2.5,
-    "surface_traitee_ha": 1.2,
-    "delai_avant_recolte_jours": 14,
-    "personnel": "Jean Dupont"
+    "id": 1,
+    "type_intervention_id": 3,
+    "type_nom": "Traitement",
+    "parcelle_id": 1,
+    "parcelle_nom": "Parcelle A",
+    "arbre_id": null,
+    "arbre_numero": null,
+    "date_prevue": "2026-02-10",
+    "date_realisee": "2026-02-10",
+    "duree_minutes": 90,
+    "personnel": "Jean Dupont",
+    "description": "Traitement préventif",
+    "cout": 45.50,
+    "statut": "Réalisé",
+    "meteo": "Ensoleillé",
+    "notes": ""
   }
 ]
 ```
 
-### GET /interventions/check-doublon
+**Valeurs `statut` :** `Planifié` | `En cours` | `Réalisé` | `Annulé`
 
-```http
-GET /api/interventions/check-doublon?arbre_id=42&type_intervention_id=3&date_prevue=2026-02-10
-```
-
-**Réponse** : `{ "exists": true }`
+---
 
 ### POST /interventions
 
-Création avec détails optionnels (irrigation ou traitement phyto) en transaction unique.
+Création transactionnelle : si des champs de détail (irrigation ou traitement phyto) sont fournis, un enregistrement `intervention_details` est créé dans la même transaction.
 
 ```http
 POST /api/interventions
@@ -645,31 +612,54 @@ Content-Type: application/json
 {
   "type_intervention_id": 3,
   "parcelle_id": 1,
-  "arbre_id": 42,
-  "date_prevue": "2026-02-15",
-  "date_realisee": "2026-02-15",
+  "arbre_id": null,
+  "date_prevue": "2026-03-15",
+  "date_realisee": null,
   "duree_minutes": 60,
   "personnel": "Jean Dupont",
-  "description": "Taille hivernale",
-  "cout": 50.00,
-  "statut": "Réalisée",
-  "meteo": "Ensoleillé",
+  "description": "Traitement insecticide préventif",
+  "cout": 55.00,
+  "statut": "Planifié",
+  "meteo": null,
   "notes": "",
 
-  "volume_eau_m3": 0.5,
-  "methode_irrigation": "Goutte-à-goutte"
+  "nom_commercial": "Kaolin WP",
+  "matiere_active": "kaolin",
+  "numero_amm": "2010001",
+  "dose_produit_ha": 20,
+  "surface_traitee_ha": 2.5,
+  "volume_bouillie_l": 300,
+  "methode_application": "Pulvérisateur",
+  "cible_traitement": "Mouche de la truffe",
+  "delai_avant_recolte_jours": 7
 }
 ```
 
-**Réponse 201** : objet intervention créé. Les champs de détails sont insérés en transaction dans `intervention_details`.
+---
 
-### GET /interventions/:id/details
+### GET /interventions/stats/traitements
 
-Détails spécifiques (irrigation ou traitement phyto) pour une intervention.
+Retourne le journal de traçabilité phytosanitaire complet, compatible avec les exigences réglementaires.
+
+```http
+GET /api/interventions/stats/traitements?date_debut=2025-09-01&date_fin=2026-03-31
+Authorization: Bearer <token>
+```
 
 ---
 
-## Commercial — Clients, Ventes, Commandes
+### GET /interventions/check-doublon
+
+```http
+GET /api/interventions/check-doublon?arbre_id=5&type_intervention_id=3&date_prevue=2026-03-15
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :** `{ "exists": false }`
+
+---
+
+## Clients
 
 ### GET /clients
 
@@ -678,27 +668,53 @@ GET /api/clients
 Authorization: Bearer <token>
 ```
 
-### GET /clients/stats
+**Réponse 200 :**
 
-Statistiques par type de client (Particulier, Restaurateur, Grossiste…).
+```json
+[
+  {
+    "id": 1,
+    "nom": "Dupont",
+    "prenom": "Marie",
+    "email": "marie.dupont@example.com",
+    "telephone": "0612345678",
+    "adresse": "12 rue des Chênes",
+    "ville": "Nantes",
+    "code_postal": "44000",
+    "type_client": "Particulier",
+    "notes": "",
+    "created_at": "2025-10-01T10:00:00Z"
+  }
+]
+```
+
+**Valeurs `type_client` :** `Particulier` | `Restaurant` | `Grossiste` | `Autre`
+
+---
 
 ### POST /clients
 
 ```http
 POST /api/clients
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "nom": "Restaurant Le Périgord",
-  "type_client": "Restaurateur",
-  "email": "contact@le-perigord.fr",
-  "telephone": "0240123456",
-  "adresse": "12 rue de la Truffe, 44000 Nantes",
-  "notes": ""
+  "nom": "Martin",
+  "prenom": "Paul",
+  "email": "paul.martin@restaurant.fr",
+  "telephone": "0298765432",
+  "adresse": "5 place du Marché",
+  "ville": "Rennes",
+  "code_postal": "35000",
+  "type_client": "Restaurant",
+  "notes": "Client fidèle depuis 2023"
 }
 ```
 
 ---
+
+## Ventes
 
 ### GET /ventes
 
@@ -707,32 +723,47 @@ GET /api/ventes
 Authorization: Bearer <token>
 ```
 
-Retourne les ventes avec jointures client + lignes de vente.
+**Réponse 200 :**
+
+```json
+[
+  {
+    "id": 1,
+    "client_id": 1,
+    "client_nom": "Dupont Marie",
+    "date_vente": "2025-12-01",
+    "poids_grammes": 500,
+    "qualite": "Extra",
+    "prix_unitaire_kg": 900,
+    "montant_total": 450.00,
+    "notes": ""
+  }
+]
+```
+
+---
 
 ### POST /ventes
 
 ```http
 POST /api/ventes
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "client_id": 3,
-  "date_vente": "2026-01-20",
-  "montant_total": 855.00,
-  "notes": "Livraison comprise",
-  "lignes": [
-    {
-      "qualite": "Extra",
-      "poids_grammes": 950,
-      "prix_kg": 900.00
-    }
-  ]
+  "client_id": 1,
+  "date_vente": "2025-12-15",
+  "poids_grammes": 300,
+  "qualite": "Extra",
+  "prix_unitaire_kg": 950,
+  "montant_total": 285.00,
+  "notes": ""
 }
 ```
 
-> La création d'une vente décrémente automatiquement le stock calculé.
-
 ---
+
+## Commandes
 
 ### GET /commandes
 
@@ -741,42 +772,46 @@ GET /api/commandes
 Authorization: Bearer <token>
 ```
 
-### POST /commandes
+**Réponse 200 :**
 
-```http
-POST /api/commandes
-Content-Type: application/json
-
-{
-  "client_id": 3,
-  "date_commande": "2026-01-18",
-  "date_livraison_prevue": "2026-01-22",
-  "quantite_grammes": 1000,
-  "qualite_souhaitee": "Extra",
-  "prix_kg_negocie": 880.00,
-  "statut": "En attente",
-  "notes": ""
-}
+```json
+[
+  {
+    "id": 1,
+    "client_id": 1,
+    "client_nom": "Dupont Marie",
+    "date_commande": "2025-11-25",
+    "date_livraison_souhaitee": "2025-12-05",
+    "poids_grammes": 600,
+    "qualite": "1er choix",
+    "prix_unitaire_kg": 850,
+    "montant_total": 510.00,
+    "statut": "En attente",
+    "notes": ""
+  }
+]
 ```
 
-### PUT /commandes/:id/statut
+**Valeurs `statut` :** `En attente` | `Confirmée` | `En préparation` | `Livrée` | `Annulée`
 
-Changement rapide de statut sans modifier le reste de la commande.
+---
+
+### POST /commandes/:id/generer-vente
+
+Génère automatiquement une vente à partir d'une commande confirmée.
 
 ```http
-PUT /api/commandes/5/statut
-Content-Type: application/json
-
-{ "statut": "Confirmée" }
+POST /api/commandes/1/generer-vente
+Authorization: Bearer <token>
 ```
 
-**Statuts valides** : `En attente`, `Confirmée`, `En préparation`, `Expédiée`, `Livrée`, `Annulée`
+**Réponse 201 :** objet vente créé avec les données de la commande.
 
 ---
 
 ## Stock
 
-Le stock est calculé dynamiquement : `récoltes − ventes`, par qualité et saison.
+Le stock est **calculé dynamiquement** : `total_recoltes − total_ventes`, par qualité et par saison.
 
 ### GET /stock
 
@@ -785,121 +820,144 @@ GET /api/stock
 Authorization: Bearer <token>
 ```
 
-**Réponse 200**
+**Réponse 200 :**
 
 ```json
-[
-  {
-    "qualite": "Extra",
-    "total_recolte_grammes": 12500,
-    "total_vendu_grammes": 9800,
-    "stock_disponible_grammes": 2700
-  },
-  {
-    "qualite": "1ère catégorie",
-    "total_recolte_grammes": 5000,
-    "total_vendu_grammes": 3200,
-    "stock_disponible_grammes": 1800
-  }
-]
+{
+  "stock_global_grammes": 3500,
+  "par_qualite": [
+    { "qualite": "Extra", "stock_grammes": 1200 },
+    { "qualite": "1er choix", "stock_grammes": 1800 },
+    { "qualite": "2ème choix", "stock_grammes": 500 }
+  ]
+}
 ```
-
-### GET /stock/global
-
-Stock agrégé toutes qualités confondues.
 
 ---
 
-## Dashboard & Statistiques
+## Dashboard
 
 ### GET /dashboard/full
 
-Endpoint principal du dashboard — toutes les données en une seule requête (14 requêtes parallèles via `Promise.all`).
+Endpoint consolidé — toutes les données du dashboard en une seule requête (Promise.all sur 14 requêtes parallèles).
 
 ```http
 GET /api/dashboard/full
 Authorization: Bearer <token>
 ```
 
-**Réponse 200** (structure simplifiée)
+**Réponse 200 :**
 
 ```json
 {
-  "parcelles": { "count": 5, "surface": 12.3 },
-  "arbres": { "count": 320, "parEtat": [...] },
-  "recoltesSaison": { "total_grammes": 18500, "count": 42 },
-  "ventesMois": { "chiffre_affaires": 4750.00, "count": 8 },
+  "parcelles": { "count": 4, "surface": 8.2 },
+  "arbres": {
+    "count": 320,
+    "parEtat": [
+      { "etat_sanitaire": "Bon", "count": 290 },
+      { "etat_sanitaire": "Moyen", "count": 25 },
+      { "etat_sanitaire": "Mauvais", "count": 5 }
+    ]
+  },
+  "recoltesSaison": { "totalGrammes": 12500, "count": 18 },
+  "ventesMois": { "chiffreAffaires": 4750.00, "count": 7 },
   "interventionsAVenir": { "count": 3 },
   "commandesEnCours": { "count": 2 },
   "commandesEnAttente": { "count": 1 },
-  "ventesEnAttente": { "count": 0 },
-  "dernieresRecoltes": [...],
-  "prochainesInterventions": [...],
-  "commandesRecentes": [...],
-  "productionMensuelle": [...],
-  "productionParParcelle": [...]
+  "ventesEnAttente": [],
+  "dernieresRecoltes": [ ... ],
+  "prochainesInterventions": [ ... ],
+  "commandesRecentes": [ ... ],
+  "productionMensuelle": [ ... ],
+  "productionParParcelle": [ ... ]
 }
 ```
 
+---
+
+## Statistiques
+
 ### GET /stats/recoltes-annuelles
 
-Agrégat annuel des récoltes (10 dernières années).
+```http
+GET /api/stats/recoltes-annuelles
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
 
 ```json
 [
-  { "annee": 2026, "total_grammes": 18500, "nombre_recoltes": 42 },
-  { "annee": 2025, "total_grammes": 21300, "nombre_recoltes": 51 }
+  { "annee": 2025, "total_grammes": 18400, "nombre_recoltes": 24 },
+  { "annee": 2024, "total_grammes": 15200, "nombre_recoltes": 19 }
 ]
 ```
 
+---
+
 ### GET /stats/recoltes-mensuelles
 
-Agrégat mensuel toutes années confondues.
+```http
+GET /api/stats/recoltes-mensuelles
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  { "mois": "2025-11", "total_grammes": 4200, "nombre_recoltes": 6 },
+  { "mois": "2025-12", "total_grammes": 7800, "nombre_recoltes": 10 },
+  { "mois": "2026-01", "total_grammes": 6400, "nombre_recoltes": 8 }
+]
+```
 
 ---
 
-## Historique (Audit Trail)
+## Historique
+
+Audit trail complet de toutes les actions créer/modifier/supprimer, connexions, changements de mot de passe et actions admin.
 
 ### GET /historique
 
 ```http
-GET /api/historique?table_name=interventions&start_date=2026-01-01&end_date=2026-05-14&action=create&limit=100
+GET /api/historique?table_name=recoltes&start_date=2025-11-01&end_date=2026-01-31&action=create&limit=100
 Authorization: Bearer <token>
 ```
 
-**Paramètres** (tous optionnels)
+**Paramètres de filtre :**
 
-| Paramètre | Type | Description |
-|---|---|---|
-| `table_name` | string | `parcelles`, `arbres`, `recoltes`, `interventions`, `clients`, `ventes`, `commandes`… ou `all` |
-| `start_date` | date | Filtre depuis (Europe/Paris) |
-| `end_date` | date | Filtre jusqu'à (inclus) |
-| `action` | string | `create`, `update`, `delete`, `login`, `logout` |
-| `limit` | number | Max résultats (défaut 500) |
+| Paramètre | Type | Valeurs |
+|-----------|------|---------|
+| `table_name` | string | `parcelles` \| `arbres` \| `recoltes` \| `interventions` \| `clients` \| `ventes` \| `commandes` \| `all` |
+| `action` | string | `create` \| `update` \| `delete` \| `all` |
+| `start_date` | date | `YYYY-MM-DD` (fuseau Europe/Paris) |
+| `end_date` | date | `YYYY-MM-DD` (fuseau Europe/Paris) |
+| `limit` | number | défaut 500 |
 
-**Réponse 200**
+**Réponse 200 :**
 
 ```json
 [
   {
-    "id": 1024,
-    "table_name": "interventions",
+    "id": 1042,
+    "table_name": "recoltes",
     "action": "create",
-    "record_id": 87,
+    "record_id": 48,
+    "user_id": 1,
+    "timestamp": "2025-12-05T16:32:00Z",
     "old_data": null,
-    "new_data": { "type_intervention_id": 3, "statut": "Planifié", "...": "..." },
-    "metadata": { "ip": "192.168.1.10" },
-    "timestamp": "2026-05-14T10:22:00Z",
-    "item_name": "Taille hivernale"
+    "new_data": { "poids_grammes": 850, "qualite": "Extra", ... },
+    "item_name": "ID: 48"
   }
 ]
 ```
 
-### GET /historique/stats
+---
 
-Comptage par `table_name` + `action` avec total et date du premier enregistrement.
+### DELETE /historique/purge
 
-### DELETE /historique/purge *(admin)*
+Admin uniquement.
 
 ```http
 DELETE /api/historique/purge
@@ -912,128 +970,229 @@ Content-Type: application/json
 }
 ```
 
-**Valeurs `period`** : `month`, `6months`, `year`, `custom` (+ `custom_date`)
+**Valeurs `period` :** `month` | `6months` | `year` | `custom` (avec `custom_date`)
 
-**Réponse 200** : `{ "code": "HISTORIQUE_PURGED", "deleted_count": 1247 }`
-
----
-
-## Paramètres & Préférences
-
-### GET /parametres
-
-Liste de toutes les clés de configuration de l'application.
-
-### GET /parametres/:cle
-
-```http
-GET /api/parametres/theme_couleur
-Authorization: Bearer <token>
-```
-
-### PUT /parametres/:cle
-
-```http
-PUT /api/parametres/theme_couleur
-Content-Type: application/json
-
-{ "valeur": "dark" }
-```
-
-### GET /preferences / PUT /preferences
-
-Préférences par utilisateur (colonnes visibles, ordre, filtres sauvegardés).
-
----
-
-## Référentiels
-
-Tous les référentiels exposent un CRUD standard : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`.
-
-| Endpoint | Description |
-|---|---|
-| `/types-intervention` | Types d'interventions (Taille, Irrigation, Traitement…) avec couleur |
-| `/caveurs` | Caveurs enregistrés |
-| `/chiens` | Chiens de cavage |
-| `/especes` | Espèces d'arbres (Quercus pubescens, Quercus ilex…) |
-| `/produits-phyto` | Référentiel produits phytosanitaires |
-| `/amendements-ref` | Référentiel amendements |
-
----
-
-## Import / Export
-
-### POST /import/csv
-
-Import en masse via fichier CSV. Voir documentation détaillée dans l'interface Paramètres → Import CSV.
-
-### GET /export/pdf
-
-Génération de rapport PDF. Paramètres disponibles selon le module.
-
----
-
-## Rate Limiting
-
-| Scope | Limite |
-|---|---|
-| Global | 1 000 requêtes / 15 minutes par IP |
-| Auth (`/auth/login`, `/auth/refresh`) | 10 requêtes / 15 minutes par IP |
-
-**Réponse 429**
+**Réponse 200 :**
 
 ```json
 {
-  "error": "Trop de requêtes",
-  "code": "RATE_LIMIT_EXCEEDED"
+  "message": "Purge de l'historique effectuée",
+  "code": "HISTORIQUE_PURGED",
+  "deleted_count": 1284
 }
 ```
 
 ---
 
-## Health Check
+## Paramètres & Préférences
+
+### GET /preferences
+
+Préférences de l'utilisateur connecté (colonnes visibles, tri par défaut, mode d'affichage).
+
+```http
+GET /api/preferences
+Authorization: Bearer <token>
+```
+
+---
+
+### PUT /preferences
+
+```http
+PUT /api/preferences
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "colonnes_parcelles": ["nom", "surface_ha", "localisation"],
+  "theme": "light",
+  "langue": "fr"
+}
+```
+
+---
+
+## Référentiels
+
+### GET /types-intervention
+
+```http
+GET /api/types-intervention
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  { "id": 1, "nom": "Taille", "couleur": "#27ae60" },
+  { "id": 2, "nom": "Irrigation", "couleur": "#2980b9" },
+  { "id": 3, "nom": "Traitement", "couleur": "#e74c3c" },
+  { "id": 4, "nom": "Amendement", "couleur": "#f39c12" }
+]
+```
+
+---
+
+### GET /caveurs
+
+```http
+GET /api/caveurs
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  { "id": 1, "nom": "Dupont", "prenom": "Jean", "actif": true }
+]
+```
+
+---
+
+### GET /chiens
+
+```http
+GET /api/chiens
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  { "id": 1, "nom": "Truffe", "race": "Labrador", "caveur_id": 1, "actif": true }
+]
+```
+
+---
+
+## Utilisateurs
+
+Endpoints de gestion des utilisateurs — réservés au rôle `admin`.
+
+### GET /auth/users
+
+```http
+GET /api/auth/users
+Authorization: Bearer <admin_token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  {
+    "id": 1,
+    "email": "admin@truffiere.local",
+    "nom": "Admin",
+    "prenom": "Truffiere",
+    "role": "admin",
+    "is_active": true,
+    "failed_login_attempts": 0,
+    "locked_until": null,
+    "last_login": "2026-05-14T14:00:00Z",
+    "created_at": "2025-01-15T10:00:00Z"
+  }
+]
+```
+
+---
+
+### POST /auth/users
+
+```http
+POST /api/auth/users
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "email": "collaborateur@truffiere.local",
+  "password": "MotDePasseTemporaire!1",
+  "nom": "Martin",
+  "prenom": "Sophie",
+  "role": "user"
+}
+```
+
+---
+
+### POST /auth/users/:id/unlock
+
+Déverrouille un compte bloqué après 5 tentatives échouées.
+
+```http
+POST /api/auth/users/2/unlock
+Authorization: Bearer <admin_token>
+```
+
+---
+
+## Système
+
+### GET /health
 
 ```http
 GET /api/health
 ```
 
-**Réponse 200** : `{ "status": "ok" }`
+**Réponse 200 :**
 
-Aucune authentification requise — utilisé par Docker healthcheck et monitoring.
-
----
-
-## Exemples cURL
-
-```bash
-# Login
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@truffiere.local","password":"admin123"}'
-
-# Lister les parcelles
-curl http://localhost:5000/api/parcelles \
-  -H "Authorization: Bearer <token>"
-
-# Dashboard complet
-curl http://localhost:5000/api/dashboard/full \
-  -H "Authorization: Bearer <token>"
-
-# Créer une récolte
-curl -X POST http://localhost:5000/api/recoltes \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"date_recolte":"2026-01-10","poids_grammes":1200,"qualite":"Extra","prix_kg":950,"parcelle_id":1}'
-
-# Consulter le stock
-curl http://localhost:5000/api/stock \
-  -H "Authorization: Bearer <token>"
-
-# Audit trail des 7 derniers jours
-curl "http://localhost:5000/api/historique?start_date=2026-05-07&limit=200" \
-  -H "Authorization: Bearer <token>"
+```json
+{ "status": "ok" }
 ```
 
 ---
 
-*Dernière mise à jour : mai 2026 — V8 (2.0.2)*
+## Bonnes pratiques client
+
+### Intercepteur Axios recommandé
+
+```javascript
+// services/api.js
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+  timeout: 30000,
+});
+
+// Attacher le token à chaque requête
+api.interceptors.request.use(config => {
+  const token = getAccessToken();
+  if (token) config.headers['Authorization'] = `Bearer ${token}`;
+  return config;
+});
+
+// Refresh automatique
+api.interceptors.response.use(
+  res => res,
+  async err => {
+    if (err.response?.status === 401 && !err.config._retry) {
+      err.config._retry = true;
+      try {
+        const { data } = await axios.post(
+          `${process.env.REACT_APP_API_URL}/auth/refresh`,
+          { refreshToken: getRefreshToken() }
+        );
+        setAccessToken(data.accessToken);
+        setRefreshToken(data.refreshToken); // rotation
+        err.config.headers['Authorization'] = `Bearer ${data.accessToken}`;
+        return api(err.config);
+      } catch {
+        logout();
+      }
+    }
+    return Promise.reject(err);
+  }
+);
+
+export default api;
+```
+
+---
+
+*Dernière mise à jour : mai 2026 — V8 (v2.0.2)*  
+*Voir [`CHANGELOG.md`](CHANGELOG.md) pour l'historique complet des modifications.*
