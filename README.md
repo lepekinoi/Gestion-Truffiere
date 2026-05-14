@@ -254,10 +254,10 @@ git checkout V8
 
 # 2. Configurer l'environnement
 cp .env.exemple backend/.env
-# Éditer backend/.env avec vos paramètres
+# Éditer backend/.env avec vos paramètres (JWT_SECRET, DATABASE_PASSWORD…)
 
 # 3. Lancer
-docker-compose up -d
+docker compose up -d --build
 
 # 4. Accès
 # Frontend : http://localhost:3000
@@ -281,14 +281,14 @@ npm install
 npm start        # http://localhost:3000
 ```
 
-→ Voir [SETUP.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/SETUP.md) pour l'installation détaillée.
+→ Voir [SETUP.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/SETUP.md) pour l'installation détaillée (PostgreSQL, variables d'environnement, systemd).
 
 ---
 
 ## 🔐 Identifiants par défaut
 
 ```
-Email    : admin@truffiere.local
+Email        : admin@truffiere.local
 Mot de passe : admin123
 ```
 
@@ -365,12 +365,12 @@ Gestion-Truffiere/                    (branche V8)
 ├── .env.exemple
 │
 ├── README.md                         # Ce fichier
-├── QUICKSTART.md                     # 🆕 Démarrage rapide V8
+├── QUICKSTART.md                     # Démarrage rapide V8 (Docker, 4 étapes)
 ├── API.md                            # Documentation API complète
 ├── ARCHITECTURE.md                   # Architecture technique
 ├── CHANGELOG.md                      # Historique versions (Keep a Changelog)
 ├── DOCKER.md                         # Guide Docker
-├── SETUP.md                          # Guide installation
+├── SETUP.md                          # Guide installation sans Docker
 └── backup-db.sh                      # Script backup PostgreSQL
 ```
 
@@ -391,21 +391,21 @@ Gestion-Truffiere/                    (branche V8)
 | [HOISTING] `Cannot access 'sortedClients' before initialization` | Bloc filtrage déplacé avant bloc STATISTIQUES dans `Commercial.js` |
 | [JSX] Fragment orphelin ligne 847 dans `Commercial.js` | Suppression bloc dupliqué `PaginationControls` |
 
-### 🟡 À améliorer (moyen terme)
+### 🟡 À améliorer
 
-| Problème | Impact | Priorité |
-|---|---|---|
-| Tests automatisés absents | Qualité, régressions | 🔴 Haute |
-| Vue Saisonnière non intégrée dans Dashboard/Stats | Feature incomplète | 🔴 Haute |
-| UX mobile non optimisée | Terrain, usabilité | 🟡 Moyenne |
-| Pas de documentation Swagger/OpenAPI | Onboarding devs | 🟡 Moyenne |
-| Rapports PDF basiques | Livrables clients | 🟢 Basse |
+| Problème | Impact | Priorité | Roadmap |
+|---|---|---|---|
+| Tests automatisés absents | Qualité, régressions | 🔴 Haute | v8.1 |
+| Vue Saisonnière non intégrée dans Dashboard/Stats | Feature incomplète | 🔴 Haute | v8.1 |
+| UX mobile non optimisée | Terrain, usabilité | 🟡 Moyenne | v8.5 |
+| Pas de documentation Swagger/OpenAPI | Onboarding devs | 🟡 Moyenne | v8.1 |
+| Rapports PDF basiques | Livrables clients | 🟢 Basse | v8.5 |
 
 ---
 
 ## 💡 Roadmap
 
-### v8.1 — Q1/Q2 2026 (En cours)
+### v8.1 — Q2/Q3 2026
 
 - [ ] **Vue Saisonnière** — Intégration complète dans `Dashboard.js` et `Statistiques.js`
   - [ ] Toggle *Année civile* ↔ *Saison truffière* (persisté localStorage)
@@ -419,7 +419,7 @@ Gestion-Truffiere/                    (branche V8)
 - [ ] PWA & mode offline (Service Worker, sync)
 - [ ] Documentation Swagger/OpenAPI auto-générée
 
-### v8.5 — Q3 2026
+### v8.5 — Q4 2026
 
 - [ ] Système d'alertes intelligentes (maladies, météo, rappels)
 - [ ] Rapports PDF professionnels (graphiques, traçabilité)
@@ -461,7 +461,7 @@ git commit -m "feat(module): description claire"
 - **Owner** : lepekinoi
 
 Avant d'ouvrir une issue :
-1. Consulter les logs : `tail -f logs/app.log`
+1. Consulter les logs : `docker compose logs -f backend` ou `tail -f logs/app.log`
 2. Vérifier [API_ERROR_CODES.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/backend/docs/API_ERROR_CODES.md)
 3. Tester le health check : `GET /api/health`
 
