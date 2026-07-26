@@ -168,8 +168,8 @@ Créez un fichier `.env` à la racine de `backend/` :
 # Base de données PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=gestion_truffiere
-DB_USER=postgres
+DB_NAME=truffiere_db
+DB_USER=unstuffed1004
 DB_PASSWORD=votre_mot_de_passe
 
 # JWT
@@ -279,7 +279,7 @@ echo "JWT_SECRET=votre_secret_genere" >> .env
 1. Vérifier que PostgreSQL est démarré : `docker ps`
 2. Vérifier les credentials dans `.env`
 3. Vérifier le port : `5432` par défaut
-4. Tester manuellement : `psql -h localhost -U postgres -d gestion_truffiere`
+4. Tester manuellement : `psql -h localhost -U unstuffed1004 -d truffiere_db`
 
 ### Erreur : "Variables d'environnement manquantes"
 
