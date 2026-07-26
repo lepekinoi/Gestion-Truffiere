@@ -66,28 +66,28 @@ Variables **obligatoires** avant tout démarrage :
 
 ```env
 # PostgreSQL — pas MySQL
-DATABASE_HOST=db
-DATABASE_PORT=5432
-DATABASE_NAME=gestion_truffiere
-DATABASE_USER=truffiere
-DATABASE_PASSWORD=<mot_de_passe_fort>
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=truffiere_db
+DB_USER=unstuffed1004               # voir database/README.md, section "Prérequis important"
+DB_PASSWORD=<mot_de_passe_fort>
 
 # JWT — valeurs IMMUABLES (politique sécurité V8)
 JWT_SECRET=<64_octets_hex>          # node -e "require('crypto').randomBytes(64).toString('hex')"
-JWT_REFRESH_SECRET=<64_octets_hex>
-JWT_EXPIRATION=15m                  # NE PAS CHANGER — access token 15 min
-JWT_REFRESH_EXPIRATION=7d
+JWT_EXPIRES_IN=15m                  # NE PAS CHANGER — access token 15 min
+REFRESH_TOKEN_EXPIRES_DAYS=7
 
 # CORS
-CORS_ORIGIN=http://localhost:3000   # ou https://votre-domaine.com en prod
+CORS_ORIGINS=http://localhost:3000  # ou https://votre-domaine.com en prod (virgules si plusieurs)
 
 # Serveur
-PORT=5000
+PORT=3001
 NODE_ENV=production
 ```
 
-> ⚠️ `JWT_EXPIRATION=15m` est intentionnel et ne doit jamais être augmenté.  
+> ⚠️ `JWT_EXPIRES_IN=15m` est intentionnel et ne doit jamais être augmenté.  
 > La sécurité V8 repose sur des access tokens courts + refresh tokens avec rotation.
+> Ces noms de variables (`DB_*`, `JWT_*`) doivent correspondre exactement à ceux lus par `docker-compose.yml` et `backend/config/`, sous peine de démarrage silencieusement cassé (variable vide).
 
 ---
 
@@ -106,7 +106,7 @@ docker compose up -d
 docker compose ps
 
 # Santé de l'API
-curl http://localhost:5000/api/health
+curl http://localhost:3002/api/health
 ```
 
 ### Arrêt
@@ -139,7 +139,7 @@ docker compose restart backend
 
 # Exécuter une commande dans un conteneur
 docker compose exec backend sh
-docker compose exec db psql -U truffiere -d gestion_truffiere
+docker compose exec db psql -U unstuffed1004 -d truffiere_db
 
 # Supprimer les images inutilisées
 docker image prune -f
@@ -165,7 +165,7 @@ docker compose up -d --build
 
 # Vérifier
 docker compose ps
-curl http://localhost:5000/api/health   # {"status":"ok"}
+curl http://localhost:3002/api/health   # {"status":"ok"}
 # Frontend : http://localhost:3000
 ```
 
@@ -184,14 +184,14 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB:       ${DATABASE_NAME}
-      POSTGRES_USER:     ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./database/init_database.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -202,18 +202,17 @@ services:
     environment:
       NODE_ENV:              production
       PORT:                  5000
-      DATABASE_HOST:         db
-      DATABASE_PORT:         5432
-      DATABASE_NAME:         ${DATABASE_NAME}
-      DATABASE_USER:         ${DATABASE_USER}
-      DATABASE_PASSWORD:     ${DATABASE_PASSWORD}
+      DB_HOST:               db
+      DB_PORT:               5432
+      DB_NAME:               ${DB_NAME}
+      DB_USER:               ${DB_USER}
+      DB_PASSWORD:           ${DB_PASSWORD}
       JWT_SECRET:            ${JWT_SECRET}
-      JWT_REFRESH_SECRET:    ${JWT_REFRESH_SECRET}
-      JWT_EXPIRATION:        15m
-      JWT_REFRESH_EXPIRATION: 7d
-      CORS_ORIGIN:           ${FRONTEND_URL}
+      JWT_EXPIRES_IN:        15m
+      REFRESH_TOKEN_EXPIRES_DAYS: 7
+      CORS_ORIGINS:          ${FRONTEND_URL}
     ports:
-      - "5000:5000"
+      - "3002:3001"
     depends_on:
       db:
         condition: service_healthy
@@ -252,7 +251,7 @@ server {
 
     # API
     location /api/ {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:3002;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -275,10 +274,10 @@ server {
 
 ```bash
 # Console psql dans le conteneur db
-docker compose exec db psql -U truffiere -d gestion_truffiere
+docker compose exec db psql -U unstuffed1004 -d truffiere_db
 
 # Depuis l'hôte (si port 5432 exposé)
-psql -h localhost -p 5432 -U truffiere -d gestion_truffiere
+psql -h localhost -p 5432 -U unstuffed1004 -d truffiere_db
 
 # Commandes psql utiles
 \dt          # lister les tables
@@ -290,13 +289,13 @@ psql -h localhost -p 5432 -U truffiere -d gestion_truffiere
 
 ```bash
 # Backup manuel
-docker compose exec db pg_dump -U truffiere gestion_truffiere > backup_$(date +%Y%m%d).sql
+docker compose exec db pg_dump -U unstuffed1004 truffiere_db > backup_$(date +%Y%m%d).sql
 
 # Backup automatique (script intégré)
 bash backup-db.sh
 
 # Restaurer une sauvegarde
-docker compose exec -T db psql -U truffiere -d gestion_truffiere < backup_20260514.sql
+docker compose exec -T db psql -U unstuffed1004 -d truffiere_db < backup_20260514.sql
 ```
 
 ### Réinitialiser la base (⚠️ développement uniquement)
@@ -328,11 +327,11 @@ docker compose logs --tail=100 backend
 docker stats
 
 # Santé de l'API
-curl http://localhost:5000/api/health
+curl http://localhost:3002/api/health
 # Réponse : {"status":"ok","timestamp":"..."}
 
 # Audit trail (dernières actions)
-docker compose exec db psql -U truffiere -d gestion_truffiere \
+docker compose exec db psql -U unstuffed1004 -d truffiere_db \
   -c "SELECT user_id, action, table_name, timestamp FROM audit_trail ORDER BY timestamp DESC LIMIT 20;"
 ```
 
@@ -361,8 +360,8 @@ docker compose ps
 # Tester la connexion depuis le backend
 docker compose exec backend node -e "
   const { Pool } = require('pg');
-  const p = new Pool({ host: 'db', user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD, database: process.env.DATABASE_NAME });
+  const p = new Pool({ host: 'db', user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD, database: process.env.DB_NAME });
   p.query('SELECT 1').then(() => console.log('OK')).catch(console.error);
 "
 
@@ -375,7 +374,7 @@ docker compose up -d db
 
 ```bash
 # Identifier le processus
-lsof -i :5000
+lsof -i :3002
 lsof -i :3000
 
 # Arrêter l'occupant ou changer le port dans .env
@@ -385,8 +384,8 @@ lsof -i :3000
 ### Frontend blanc / erreur CORS
 
 ```bash
-# Vérifier CORS_ORIGIN dans backend/.env
-grep CORS_ORIGIN backend/.env
+# Vérifier CORS_ORIGINS dans backend/.env
+grep CORS_ORIGINS backend/.env
 # Doit correspondre exactement à l'URL du frontend
 
 # Vérifier l'URL API dans le frontend
