@@ -351,7 +351,8 @@ Gestion-Truffiere/                    (branche V8)
 │
 ├── frontend/                         # Application React
 │   └── src/
-│       ├── components/               # 18 composants (Dashboard, Parcelles, Arbres…)
+│       ├── components/               # 16 composants (structure historique)
+│       ├── features/                 # 🆕 arbres/, recoltes/ — migration en cours (voir ARCHITECTURE.md)
 │       ├── services/                 # api.js (Axios), axiosConfig.js
 │       ├── context/                  # AuthContext.js
 │       └── utils/

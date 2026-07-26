@@ -158,11 +158,10 @@ Gestion-Truffiere/          ← racine
 │   │   └── manifest.json
 │   └── src/
 │       ├── App.js
-│       ├── components/     ← 18 composants React
+│       ├── components/     ← 16 composants React (structure historique)
 │       │   ├── Dashboard.js
 │       │   ├── Parcelles.js
-│       │   ├── Arbres.js
-│       │   ├── Recoltes.js
+│       │   ├── Recoltes.js  ⚠️ stub de compatibilité, redirige vers features/recoltes/
 │       │   ├── Interventions.js
 │       │   ├── Commercial.js
 │       │   ├── Statistiques.js
@@ -176,6 +175,14 @@ Gestion-Truffiere/          ← racine
 │       │   ├── WeatherWidget.js
 │       │   ├── Previsions.js
 │       │   └── CSVImportModal.js
+│       ├── features/        ← 🆕 nouvelle structure feature-based (migration en cours, voir ci-dessous)
+│       │   ├── arbres/
+│       │   │   ├── pages/ (ArbresPage.jsx)
+│       │   │   ├── components/, hooks/, services/, constants/, utils/
+│       │   └── recoltes/
+│       │       ├── pages/ (RecoltesPage.jsx)
+│       │       └── components/, hooks/, services/, constants/, utils/
+│       ├── pages/           ← pages autonomes hors features/ (ex. AchatsFournisseursPage.jsx)
 │       ├── context/
 │       │   ├── AuthContext.js
 │       │   └── ThemeContext.js
@@ -212,13 +219,38 @@ Gestion-Truffiere/          ← racine
 > ⚠️ Il n'existe **pas** de dossiers `controllers/`, `services/`, `models/` ni `migrations/`  
 > dans V8. Ces dossiers ont été supprimés lors du refactoring backend (voir [CHANGELOG.md](CHANGELOG.md)).
 
+### 🔄 Migration frontend en cours : `components/` → `features/`
+
+Le frontend est en transition progressive d'une structure plate (`components/`, un fichier par domaine) vers un pattern **feature-based** (`features/<domaine>/{pages,components,hooks,services,constants,utils}`), inspiré des architectures React modernes à grande échelle.
+
+**État actuel (mai 2026) :**
+
+| Module | Structure | Statut |
+|---|---|---|
+| Arbres | `features/arbres/` | ✅ Migré — `App.js` route vers `ArbresPage.jsx` |
+| Récoltes | `features/recoltes/` | ✅ Migré — `App.js` route vers `RecoltesPage.jsx`. `components/Recoltes.js` conservé comme stub de compatibilité (ré-export simple) |
+| Dashboard, Parcelles, Interventions, Commercial, Statistiques, Carte, Historique, Parametres, Login, UserManagement, ChangePassword, GlobalSearch, WeatherWidget, Previsions, CSVImportModal | `components/` | ⏳ Non migrés (structure historique, 14 modules) |
+
+**Ce n'est pas un chantier abandonné** : la migration continuera sur d'autres modules dans une prochaine itération. Tant qu'un module n'a pas été explicitement migré vers `features/`, il reste dans `components/` selon le pattern d'origine — les deux structures coexistent normalement pendant la transition, ce n'est pas une incohérence à corriger dans l'immédiat.
+
+**Pattern de référence** pour migrer un nouveau module (établi lors de la migration `arbres`/`recoltes`) :
+```
+features/<domaine>/
+├── pages/<Domaine>Page.jsx       # Composant principal (ex-composant components/)
+├── components/                    # Sous-composants réutilisables du domaine
+├── hooks/use<Domaine>.js          # Logique data-fetching extraite
+├── services/<domaine>Service.js   # Appels API isolés
+├── constants/<domaine>Constants.js
+└── utils/<domaine>Validation.js, <domaine>Formatters.js
+```
+
 ---
 
 ## Couches applicatives
 
 ### 1. Présentation — React (frontend)
 
-- 18 composants fonctionnels React
+- 16 composants dans `components/` (structure historique) + 2 modules migrés vers `features/` (`arbres`, `recoltes`) — voir [Structure du projet](#structure-du-projet)
 - Gestion d'état via Context API (`AuthContext`, `ThemeContext`)
 - Axios pour les appels API avec intercepteurs JWT
 - Leaflet pour la cartographie
