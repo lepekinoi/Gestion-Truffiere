@@ -22,14 +22,15 @@
 10. [Commercial — Clients](#clients)
 11. [Commercial — Ventes](#ventes)
 12. [Commercial — Commandes](#commandes)
-13. [Stock](#stock)
-14. [Dashboard](#dashboard)
-15. [Statistiques](#statistiques)
-16. [Historique (Audit trail)](#historique)
-17. [Paramètres & Préférences](#paramètres--préférences)
-18. [Référentiels](#référentiels)
-19. [Utilisateurs (Admin)](#utilisateurs)
-20. [Système](#système)
+13. [Fournisseurs & Achats](#fournisseurs--achats)
+14. [Stock](#stock)
+15. [Dashboard](#dashboard)
+16. [Statistiques](#statistiques)
+17. [Historique (Audit trail)](#historique)
+18. [Paramètres & Préférences](#paramètres--préférences)
+19. [Référentiels](#référentiels)
+20. [Utilisateurs (Admin)](#utilisateurs)
+21. [Système](#système)
 
 ---
 
@@ -252,6 +253,37 @@ POST   /commandes                         Créer une commande
 PUT    /commandes/:id                     Modifier une commande
 DELETE /commandes/:id                     Supprimer une commande
 POST   /commandes/:id/generer-vente       Générer une vente depuis une commande
+
+# Fournisseurs & Achats
+GET    /fournisseurs                      Lister les fournisseurs
+GET    /fournisseurs/:id                  Détail d'un fournisseur
+GET    /fournisseurs/:id/statistiques     Statistiques d'un fournisseur
+POST   /fournisseurs                      Créer un fournisseur
+PUT    /fournisseurs/:id                  Modifier un fournisseur
+DELETE /fournisseurs/:id                  Supprimer (soft delete)
+POST   /fournisseurs/:id/evaluations      Créer une évaluation fournisseur
+GET    /fournisseurs/:id/evaluations      Évaluations d'un fournisseur
+
+GET    /commandes-achats                  Lister les commandes d'achat
+GET    /commandes-achats/:id              Détail d'une commande d'achat
+GET    /commandes-achats/:id/lignes       Lignes d'une commande d'achat
+POST   /commandes-achats                  Créer une commande d'achat
+PUT    /commandes-achats/:id              Modifier une commande d'achat
+PUT    /commandes-achats/:id/statut       Changer le statut d'une commande
+POST   /commandes-achats/:id/reception    Réceptionner une commande (crée le stock)
+DELETE /commandes-achats/:id              Supprimer une commande d'achat
+
+GET    /factures-achats                   Lister les factures d'achat
+POST   /factures-achats                   Créer une facture d'achat
+PUT    /factures-achats/:id/paiement      Enregistrer un paiement
+
+GET    /stock-disponible                  Stock de truffes achetées disponible
+GET    /stock-disponible/details          Détails complets du stock
+GET    /stock-disponible/alertes          Alertes stock bas / dates limites
+
+GET    /historique-prix                   Évolution des prix d'achat
+GET    /marge-globale                     Analyse des marges achat/vente
+GET    /marge-globale/details             Détail des marges par transaction
 
 # Stock
 GET    /stock                             Stock global (récoltes − ventes)
@@ -806,6 +838,374 @@ Authorization: Bearer <token>
 ```
 
 **Réponse 201 :** objet vente créé avec les données de la commande.
+
+---
+
+## Fournisseurs & Achats
+
+> ⚠️ Implémentation active : `backend/routes/achats-fournisseurs.routes.js`, montée directement sous `/api`.
+> Un second fichier `backend/routes/fournisseurs.js` existe dans le dépôt mais **n'est pas monté dans `server.js`** — il s'agit de code mort (ancienne version, table `fournisseurstruffes` en camelCase) à ne pas utiliser ni documenter comme référence.
+
+### GET /fournisseurs
+
+```http
+GET /api/fournisseurs
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  {
+    "id": 1,
+    "nom": "Truffes du Périgord",
+    "raison_sociale": "SARL Truffes du Périgord",
+    "email": "contact@example.com",
+    "telephone": "0553000000",
+    "adresse": "12 route des Chênes",
+    "code_postal": "24000",
+    "ville": "Périgueux",
+    "pays": "France",
+    "zone_production": "Périgord",
+    "certifications": "Bio",
+    "statut": "Actif",
+    "contact_principal": "Jean Dupont",
+    "telephone_contact": "0600000000",
+    "delai_livraison_jours": 3,
+    "conditions_paiement": "30 jours",
+    "notes": "",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  }
+]
+```
+
+**Valeurs `statut` :** `Actif` | `Inactif`
+
+---
+
+### GET /fournisseurs/:id
+
+Détails d'un fournisseur.
+
+```http
+GET /api/fournisseurs/1
+Authorization: Bearer <token>
+```
+
+---
+
+### GET /fournisseurs/:id/statistiques
+
+Statistiques agrégées d'un fournisseur (commandes, montants, note moyenne).
+
+```http
+GET /api/fournisseurs/1/statistiques
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+{
+  "nombre_commandes": 12,
+  "montant_total_achats": 4580.00,
+  "montant_moyen_commande": 381.66,
+  "note_moyenne": 4.2,
+  "nombre_evaluations": 5,
+  "derniere_commande": "2026-04-10"
+}
+```
+
+---
+
+### POST /fournisseurs
+
+```http
+POST /api/fournisseurs
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "nom": "Truffes du Périgord",
+  "raison_sociale": "SARL Truffes du Périgord",
+  "email": "contact@example.com",
+  "telephone": "0553000000",
+  "adresse": "12 route des Chênes",
+  "code_postal": "24000",
+  "ville": "Périgueux",
+  "pays": "France",
+  "zone_production": "Périgord",
+  "certifications": "Bio",
+  "statut": "Actif",
+  "contact_principal": "Jean Dupont",
+  "telephone_contact": "0600000000",
+  "delai_livraison_jours": 3,
+  "conditions_paiement": "30 jours",
+  "notes": ""
+}
+```
+
+**Réponse 201 :** objet fournisseur créé.
+
+---
+
+### PUT /fournisseurs/:id
+
+Modification complète d'un fournisseur (mêmes champs que POST).
+
+---
+
+### DELETE /fournisseurs/:id
+
+Suppression logique (soft delete, `deleted_at`).
+
+---
+
+### POST /fournisseurs/:id/evaluations
+
+Créer une évaluation fournisseur (qualité, délai, prix, service).
+
+```http
+POST /api/fournisseurs/1/evaluations
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "note_qualite": 4,
+  "note_delai": 5,
+  "note_prix": 3,
+  "note_service": 4,
+  "commentaires": "Livraison rapide, bonne qualité"
+}
+```
+
+---
+
+### GET /fournisseurs/:id/evaluations
+
+Liste des évaluations d'un fournisseur, triées par date décroissante.
+
+---
+
+### GET /commandes-achats
+
+Liste des commandes d'achat auprès des fournisseurs, avec nombre de lignes et quantité totale agrégés.
+
+```http
+GET /api/commandes-achats
+Authorization: Bearer <token>
+```
+
+---
+
+### GET /commandes-achats/:id
+
+Détails d'une commande d'achat avec ses lignes.
+
+---
+
+### GET /commandes-achats/:id/lignes
+
+Lignes d'une commande d'achat uniquement.
+
+---
+
+### POST /commandes-achats
+
+Créer une commande d'achat (fournisseur + lignes : calibre, qualité, maturité, quantité, prix).
+
+```http
+POST /api/commandes-achats
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fournisseur_id": 1,
+  "date_commande": "2026-05-01",
+  "date_livraison_prevue": "2026-05-05",
+  "lignes": [
+    {
+      "calibre_mm": 30,
+      "qualite": "1er choix",
+      "maturite": "Mature",
+      "quantite_kg": 2.5,
+      "prix_achat_kg": 450
+    }
+  ],
+  "notes": ""
+}
+```
+
+**Réponse 201 :**
+
+```json
+{
+  "commande": { "id": 5, "numero_commande": "ACH-1746000000000", "statut": "En attente", "...": "..." },
+  "message": "Commande créée avec succès. 1 ligne(s) ajoutée(s).",
+  "numeroCommande": "ACH-1746000000000"
+}
+```
+
+> Un tableau `lignes` vide est autorisé (création de brouillon).
+
+---
+
+### PUT /commandes-achats/:id
+
+Modification complète d'une commande d'achat (remplace toutes les lignes).
+
+⚠️ Si la commande est au statut `Réceptionnée` ou `Livrée`, la modification est bloquée par défaut :
+
+```json
+{
+  "error": "confirmation_required",
+  "message": "Cette commande est Réceptionnée. Une confirmation est requise pour la modifier.",
+  "statut": "Réceptionnée"
+}
+```
+→ Statut HTTP `409`. Renvoyer `"force_modify": true` dans le body pour forcer la modification.
+
+---
+
+### PUT /commandes-achats/:id/statut
+
+Changer uniquement le statut d'une commande (et éventuellement la date de livraison réelle).
+
+```http
+PUT /api/commandes-achats/1/statut
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "statut": "Livrée",
+  "date_livraison_reelle": "2026-05-06"
+}
+```
+
+---
+
+### POST /commandes-achats/:id/reception
+
+Réceptionner une commande : crée les entrées de stock (`stocks_truffes_achetees`) pour chaque ligne reçue et passe la commande au statut `Réceptionnée`.
+
+```http
+POST /api/commandes-achats/1/reception
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "date_reception": "2026-05-06",
+  "lignes_recues": [
+    {
+      "ligne_id": 12,
+      "quantite_recue": 2.5,
+      "date_limite_consommation": "2026-05-13"
+    }
+  ],
+  "conservation": "Frais",
+  "localisation_storage": "Chambre froide A"
+}
+```
+
+---
+
+### DELETE /commandes-achats/:id
+
+Suppression d'une commande d'achat (et de ses lignes en cascade).
+
+⚠️ Même logique de confirmation que `PUT` si statut `Réceptionnée`/`Livrée` : renvoyer `?force_delete=true` (query) ou `"force_delete": true` (body) pour forcer.
+
+---
+
+### GET /factures-achats
+
+Liste des factures d'achat, jointes au fournisseur et à la commande.
+
+---
+
+### POST /factures-achats
+
+Créer une facture liée à une commande d'achat (calcule automatiquement la TVA et le TTC).
+
+```http
+POST /api/factures-achats
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "commande_id": 5,
+  "numero_facture": "FAC-2026-0012",
+  "date_facture": "2026-05-06",
+  "date_echeance": "2026-06-05",
+  "montant_ht": 1125.00,
+  "taux_tva": 20,
+  "notes": ""
+}
+```
+
+---
+
+### PUT /factures-achats/:id/paiement
+
+Enregistrer le paiement d'une facture (passe `statut_paiement` à `Payée`).
+
+```http
+PUT /api/factures-achats/1/paiement
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "date_paiement": "2026-06-01",
+  "mode_paiement": "Virement",
+  "reference_paiement": "VIR-2026-0456"
+}
+```
+
+---
+
+### GET /stock-disponible
+
+Stock de truffes achetées disponible (vue `vstocktruffesdisponible`), trié par calibre décroissant.
+
+---
+
+### GET /stock-disponible/details
+
+Détails complets du stock disponible (jointure commande + fournisseur), excluant les lots périmés.
+
+---
+
+### GET /stock-disponible/alertes
+
+Alertes stock : lots sous 5 kg (`stock_bas`) et lots à date limite de consommation ≤ 7 jours (`dates_limites`).
+
+```json
+{
+  "stock_bas": [ "..." ],
+  "dates_limites": [ "..." ],
+  "total_alertes": 3
+}
+```
+
+---
+
+### GET /historique-prix
+
+Évolution des prix d'achat, filtrable par `calibre_mm`, `qualite`, `maturite`, `date_debut`, `date_fin` (query params).
+
+---
+
+### GET /marge-globale
+
+Analyse des marges achat/vente, globale et par calibre (vue `vanalysemargeparcalibre` + table `analyse_marge_truffes`).
+
+---
+
+### GET /marge-globale/details
+
+Détail des marges par transaction individuelle.
 
 ---
 
