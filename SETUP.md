@@ -36,15 +36,15 @@ git checkout V8
 
 ```sql
 -- En tant que superutilisateur PostgreSQL
-CREATE USER truffiere_user WITH PASSWORD 'mot_de_passe_fort';
-CREATE DATABASE truffiere_db OWNER truffiere_user;
-GRANT ALL PRIVILEGES ON DATABASE truffiere_db TO truffiere_user;
+CREATE USER unstuffed1004 WITH PASSWORD 'mot_de_passe_fort';
+CREATE DATABASE truffiere_db OWNER unstuffed1004;
+GRANT ALL PRIVILEGES ON DATABASE truffiere_db TO unstuffed1004;
 ```
 
 ### 2.2 Initialiser le schéma
 
 ```bash
-psql -U truffiere_user -d truffiere_db -f database/init_database.sql
+psql -U unstuffed1004 -d truffiere_db -f database/init_database.sql
 ```
 
 Le script `database/init_database.sql` est idempotent (équivalent à `CREATE TABLE IF NOT EXISTS`) — il peut être rejoué sans risque.
@@ -66,7 +66,7 @@ cp .env.exemple backend/.env
 # APPLICATION
 # ———————————————————————————
 NODE_ENV=development
-PORT=5000
+PORT=3001
 
 # ———————————————————————————
 # POSTGRESQL
@@ -74,24 +74,23 @@ PORT=5000
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=truffiere_db
-DB_USER=truffiere_user
+DB_USER=unstuffed1004
 DB_PASSWORD=mot_de_passe_fort
 
 # ———————————————————————————
-# JWT — SECRETS (générer avec la commande ci-dessous)
+# JWT — SECRET (générer avec la commande ci-dessous)
 # node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 # ———————————————————————————
 JWT_SECRET=<64_octets_hex>
-JWT_REFRESH_SECRET=<64_octets_hex_different>
-JWT_EXPIRATION=15m          # ne pas modifier — politique sécurité V8
-JWT_REFRESH_EXPIRATION=7d
+JWT_EXPIRES_IN=15m                    # ne pas modifier — politique sécurité V8
+REFRESH_TOKEN_EXPIRES_DAYS=7
 
 # ———————————————————————————
 # FRONTEND
 # ———————————————————————————
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000
 REACT_APP_VERSION=8.0.0
-REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_API_URL=http://localhost:3001/api
 ```
 
 > ⚠️ Ne jamais committer `backend/.env` — il est listé dans `.gitignore`.
@@ -121,7 +120,7 @@ cd ..
 ```bash
 cd backend
 npm run dev
-# Serveur Express sur http://localhost:5000
+# Serveur Express sur http://localhost:3001
 # Rechargement automatique avec nodemon
 ```
 
@@ -140,11 +139,11 @@ npm start
 
 ```bash
 # Health check API
-curl http://localhost:5000/api/health
+curl http://localhost:3001/api/health
 # Attend : {"status":"ok"}
 
 # Test login (identifiants développement)
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@truffiere.local","password":"admin123"}'
 ```
@@ -200,13 +199,13 @@ Le backend V8 inclut les mécanismes suivants — ne pas les désactiver en dév
 # Vérifier que le service est actif
 sudo systemctl status postgresql
 # ou
-pg_isready -h localhost -p 5432 -U truffiere_user
+pg_isready -h localhost -p 5432 -U unstuffed1004
 ```
 
 ### Erreur de port déjà utilisé
 
 ```bash
-lsof -i :5000
+lsof -i :3001
 lsof -i :3000
 ```
 
@@ -214,9 +213,9 @@ lsof -i :3000
 
 ```bash
 # Vérifier les droits
-psql -U truffiere_user -d truffiere_db -c "\dt"
+psql -U unstuffed1004 -d truffiere_db -c "\dt"
 # Si vide, relancer le script
-psql -U truffiere_user -d truffiere_db -f database/init_database.sql
+psql -U unstuffed1004 -d truffiere_db -f database/init_database.sql
 ```
 
 ### Modules Node.js corrompus
