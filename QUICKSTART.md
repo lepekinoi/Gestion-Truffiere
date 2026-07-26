@@ -37,16 +37,15 @@ cp .env.exemple backend/.env
 Éditer `backend/.env` — variables **obligatoires** :
 
 ```env
-DATABASE_PASSWORD=<mot_de_passe_fort>
+DB_PASSWORD=<mot_de_passe_fort>
 
-# Générer deux secrets distincts :
+# Générer un secret :
 # node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 JWT_SECRET=<64_octets_hex>
-JWT_REFRESH_SECRET=<64_octets_hex>
 
-JWT_EXPIRATION=15m          # ne pas modifier — politique sécurité V8
-JWT_REFRESH_EXPIRATION=7d
-CORS_ORIGIN=http://localhost:3000
+JWT_EXPIRES_IN=15m                    # ne pas modifier — politique sécurité V8
+REFRESH_TOKEN_EXPIRES_DAYS=7
+CORS_ORIGINS=http://localhost:3000
 ```
 
 ---
@@ -70,7 +69,7 @@ docker compose ps
 # Les trois services (db, backend, frontend) doivent être "Up"
 
 # Santé de l'API
-curl http://localhost:5000/api/health
+curl http://localhost:3002/api/health
 # Réponse attendue : {"status":"ok"}
 ```
 
@@ -112,7 +111,7 @@ docker compose logs -f frontend
 docker compose restart backend
 
 # Accès à la base PostgreSQL
-docker compose exec db psql -U truffiere -d gestion_truffiere
+docker compose exec db psql -U unstuffed1004 -d truffiere_db
 
 # Arrêter (données conservées)
 docker compose down
@@ -129,9 +128,9 @@ docker compose down -v
 |----------|--------------|
 | API ne répond pas | `docker compose logs backend` |
 | Erreur connexion DB | `docker compose ps` → db doit être `healthy` |
-| Erreur CORS | `CORS_ORIGIN` dans `backend/.env` doit correspondre à l'URL frontend |
+| Erreur CORS | `CORS_ORIGINS` dans `backend/.env` doit correspondre à l'URL frontend |
 | Frontend blanc | `docker compose logs frontend` + vérifier `REACT_APP_API_URL` |
-| Port occupé | `lsof -i :5000` ou `lsof -i :3000` |
+| Port occupé | `lsof -i :3001` ou `lsof -i :3000` |
 
 Pour un diagnostic approfondi → [DOCKER.md](DOCKER.md)  
 Pour les codes d'erreur API → [backend/docs/API_ERROR_CODES.md](backend/docs/API_ERROR_CODES.md)
