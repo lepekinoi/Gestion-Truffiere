@@ -347,6 +347,6 @@ CORS_ORIGINS=http://localhost:3000,https://votre-frontend.com
 
 ---
 
-**Dernière mise à jour** : 28 janvier 2026  
-**Version** : V7  
+**Dernière mise à jour** : 14 mai 2026  
+**Version** : V8 (2.0.3)  
 **Auteur** : lepekinoi
