@@ -1,6 +1,6 @@
-# 🏗️ Architecture Documentation — Gestion-Truffière v8
+# 🏗️ Architecture — Gestion-Truffière v8
 
-> **Guide technique complet couvrant le design système, les flux de données, la sécurité et le déploiement**
+> Documentation technique de référence : conception système, flux de données, sécurité, déploiement
 
 ---
 
@@ -8,16 +8,14 @@
 
 1. [Vue d'ensemble](#vue-densemble)
 2. [Stack technique](#stack-technique)
-3. [Couches système](#couches-système)
-4. [Structure des répertoires](#structure-des-répertoires)
+3. [Structure du projet](#structure-du-projet)
+4. [Couches applicatives](#couches-applicatives)
 5. [Flux de données](#flux-de-données)
-6. [Schéma de base de données](#schéma-de-base-de-données)
-7. [Sécurité & Authentification](#sécurité--authentification)
-8. [Performance & Optimisation](#performance--optimisation)
-9. [Déploiement & DevOps](#déploiement--devops)
-10. [Monitoring & Logging](#monitoring--logging)
-11. [Scalabilité](#scalabilité)
-12. [Troubleshooting](#troubleshooting)
+6. [Routes API](#routes-api)
+7. [Sécurité & authentification](#sécurité--authentification)
+8. [Base de données](#base-de-données)
+9. [Performance & optimisation](#performance--optimisation)
+10. [Déploiement & DevOps](#déploiement--devops)
 
 ---
 
@@ -26,72 +24,39 @@
 ### Diagramme haut niveau
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      CLIENT BROWSER                          │
-│                   (React.js + Leaflet)                       │
-│                    HTML/CSS/JavaScript                       │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-          ┌────────────┴─────────────┐
-          │   HTTPS (Port 443/80)    │
-          └────────────┬─────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│                   API GATEWAY                                │
-│            (Rate Limiting, CORS, Helmet)                     │
-└────────────────────┬─────────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                EXPRESS.JS SERVER                           │
-│                   (Node.js Runtime)                        │
-├────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐  │
-│  │  Auth Layer  │  │ 21 Routes    │  │ Middleware     │  │
-│  │  (JWT)       │  │ modulaires   │  │ (auth,         │  │
-│  └──────────────┘  └──────────────┘  │  validation,   │  │
-│                                      │  authorize)    │  │
-│  ┌──────────────┐  ┌──────────────┐  └────────────────┘  │
-│  │  utils/      │  │  config/     │                       │
-│  │  index.js    │  │  database.js │                       │
-│  │  (Factory)   │  │  (Pool PG)   │                       │
-│  └──────────────┘  └──────────────┘                       │
-└────────────────────┬─────────────────────────────────────┘
-                     │
-        ┌────────────┴──────────────┐
-        │                           │
-   ┌────▼──────┐              ┌─────▼───────┐
-   │ PostgreSQL │              │ CACHE LAYER │
-   │            │              │ Redis       │
-   │ - users    │              │ (optionnel) │
-   │ - parcelles│              │             │
-   │ - arbres   │              │ Sessions    │
-   │ - recoltes │              │ Queries     │
-   │ - ...      │              │ Tokens      │
-   └────────────┘              └─────────────┘
+┌─────────────────────────────────────────────────────┐
+│                   CLIENT BROWSER                    │
+│              React 18 + Leaflet + Chart.js          │
+└──────────────────────┬──────────────────────────────┘
+                       │ HTTPS
+┌──────────────────────▼──────────────────────────────┐
+│                 EXPRESS.JS SERVER                   │
+│                  Node.js ≥ 18 LTS                   │
+├─────────────────────────────────────────────────────┤
+│  middleware/auth.js    middleware/validation.js      │
+│  Rate limiting         Helmet + CORS                 │
+│  IP tracking           Account locking               │
+├─────────────────────────────────────────────────────┤
+│              routes/ (22 fichiers)                  │
+│  *.routes.js — pattern Factory unifié               │
+├─────────────────────────────────────────────────────┤
+│              utils/ (point d'entrée unique)         │
+│  tokenUtils  passwordUtils  errorCodes  helpers     │
+└──────────────────────┬──────────────────────────────┘
+                       │ node-postgres (pg)
+┌──────────────────────▼──────────────────────────────┐
+│                  POSTGRESQL ≥ 14                    │
+│   Transactions ACID · PLpgSQL · audit_trail         │
+└─────────────────────────────────────────────────────┘
 ```
 
 ### Pattern architectural
 
-**Pattern utilisé** : **Layered Architecture** (routes directement dans Express, sans couche controller/service séparée — pattern volontairement simplifié pour la taille du projet)
-
-```
-┌─────────────────────┐
-│  PRESENTATION LAYER │  ← React Components, Forms, UI
-│  (Frontend)         │
-├─────────────────────┤
-│  API LAYER          │  ← REST Endpoints, 21 fichiers routes
-│  (Express.js)       │
-├─────────────────────┤
-│  MIDDLEWARE LAYER   │  ← authenticate, authorize, validation
-│                     │
-├─────────────────────┤
-│  DATA ACCESS LAYER  │  ← SQL paramétré direct dans les routes
-│  (PostgreSQL pool)  │
-├─────────────────────┤
-│  DATA LAYER         │  ← PostgreSQL 12+
-│  (Storage)          │
-└─────────────────────┘
-```
+Architecture **en couches plate** (Flat Layered Architecture) sans controllers ni services dédiés :
+- Le routing et la logique métier sont colocalisés dans chaque fichier `routes/*.routes.js`
+- Le pattern **Factory** unifié assure la cohérence inter-routes
+- Les utilitaires transverses sont centralisés dans `utils/index.js`
+- Pas de dossiers `controllers/`, `services/`, `models/` — supprimés lors du refactoring V8
 
 ---
 
@@ -99,266 +64,101 @@
 
 ### Backend
 
-| Couche | Technologie | Version | Rôle |
-|---|---|---|---|
-| **Runtime** | Node.js | ≥14.x | JavaScript runtime |
-| **Framework** | Express.js | 4.x | HTTP server & routing |
-| **Langage** | JavaScript (ES6+) | — | Langage principal |
-| **Base de données** | PostgreSQL | 12+ | Persistance (PLpgSQL 10.8%) |
-| **Auth** | JWT (jsonwebtoken) | 8.x+ | Authentification stateless |
-| **Hashage** | bcryptjs | — | Mots de passe (12 rounds) |
-| **Sécurité** | Helmet | — | Headers HTTP sécurisés |
-| **Tests** | Jest | 27.x+ | Tests unitaires & intégration (roadmap) |
-| **API Docs** | Swagger/OpenAPI | 3.0 | Documentation API (roadmap) |
+| Composant | Technologie | Version | Rôle |
+|-----------|------------|---------|------|
+| Runtime | Node.js | ≥ 18 LTS | Environnement JavaScript |
+| Framework | Express.js | 4.x | Serveur HTTP & routing |
+| Base de données | **PostgreSQL** | ≥ 14 | Persistance des données |
+| Driver DB | node-postgres (`pg`) | 8.x | Connexion PostgreSQL |
+| Auth | JWT (`jsonwebtoken`) | 9.x | Tokens stateless |
+| Hachage | bcryptjs | — | Mots de passe (12 rounds) |
+| Sécurité | Helmet | — | Headers HTTP sécurisés |
+| Rate limiting | express-rate-limit | — | 1000 req/15min global, 10 req/15min auth |
+| Logging | morgan / winston | — | Logs requêtes & erreurs |
 
 ### Frontend
 
-| Couche | Technologie | Version | Rôle |
-|---|---|---|---|
-| **Library** | React | 18.x | UI library |
-| **Langage** | JavaScript (ES6+) | — | Langage principal |
-| **HTTP Client** | Axios | 0.27+ | Communication API |
-| **State Mgmt** | Context API | — | État global |
-| **Cartes** | Leaflet | 1.7+ | Cartographie interactive |
-| **Styles** | CSS3 | — | Styles composants |
-| **Build Tool** | Webpack (CRA) | — | Bundler |
-| **Graphiques** | Chart.js / Recharts | 3.x+ | Visualisations données |
+| Composant | Technologie | Version | Rôle |
+|-----------|------------|---------|------|
+| UI Library | React | 18.x | Interface utilisateur |
+| Cartes | Leaflet | 1.7+ | Cartographie interactive |
+| Graphiques | Chart.js | 3.x+ | Visualisations statistiques |
+| HTTP Client | Axios | — | Appels API |
+| State | Context API | — | État global |
+| Build | CRA / Webpack | — | Bundling |
 
 ### Infrastructure
 
 | Composant | Technologie | Rôle |
-|---|---|---|
-| **Containerisation** | Docker | Images conteneurs |
-| **Orchestration** | Docker Compose | Multi-conteneurs |
-| **Reverse Proxy** | Nginx | Proxy inverse, SSL |
-| **SSL/TLS** | Let's Encrypt | Certificats HTTPS |
-| **Versioning** | Git | Gestion source (branche V8) |
+|-----------|------------|------|
+| Conteneurisation | Docker | Images applicatives |
+| Orchestration | Docker Compose | Stack multi-conteneurs |
+| Reverse proxy | Nginx | Terminaison TLS, proxy |
+| TLS | Let's Encrypt | Certificats HTTPS |
+| Contrôle de version | Git | Gestion du code source |
 
 ---
 
-## Couches système
-
-### 1. Couche Présentation — Frontend React
-
-**Responsabilité** : Interface utilisateur et interactions
-
-#### Composants (18 fichiers)
+## Structure du projet
 
 ```
-frontend/src/components/
-├── Dashboard.js          // Dashboard temps réel
-├── Parcelles.js          // Gestion parcelles (CRUD + corbeille)
-├── Arbres.js             // Gestion arbres (CRUD + soft delete)
-├── Recoltes.js           // Saisie et suivi récoltes
-├── Interventions.js      // Log interventions (phyto, eau, coûts)
-├── Commercial.js         // Clients, ventes, commandes, stock
-├── Statistiques.js       // Analytics & graphiques saison
-├── Carte.js              // Cartographie Leaflet interactive
-├── Historique.js         // Audit trail + purge
-├── Parametres.js         // Configuration & colonnes
-├── Login.js              // Authentification
-├── UserManagement.js     // Gestion utilisateurs (admin)
-├── ChangePassword.js     // Changement mot de passe
-├── CSVImportModal.js     // Import CSV
-└── ...                   // Autres composants
-```
-
-#### Gestion d'état (Context API)
-
-```
-frontend/src/context/
-└── AuthContext.js        // État authentification + refresh token
-```
-
-#### Utilitaires
-
-```
-frontend/src/utils/
-└── seasonUtils.js        // 🆕 20 fonctions — gestion saisons truffières
-                          //    (getCurrentSeason, isOffSeason,
-                          //     compareSeasonsSamePeriod, ...)
-```
-
-#### Services
-
-```
-frontend/src/services/
-├── api.js                // Instance Axios configurée
-└── axiosConfig.js        // Interceptors, refresh token auto
-```
-
-### 2. Couche API — Express.js Routes (21 modules)
-
-**Responsabilité** : Traitement HTTP, application des middlewares, requêtes SQL
-
-#### Structure des routes
-
-```
-backend/routes/
-├── auth.js                      # 15 routes — login, logout, refresh, users
-├── arbres.routes.js             # 8 routes  — CRUD + corbeille
-├── parcelles.routes.js          # 7 routes  — CRUD + corbeille
-├── interventions.routes.js      # 14 routes — détails + stats phyto/eau
-├── commandes.routes.js          # 8 routes  — génération ventes auto
-├── clients.routes.js            # 6 routes  — CRUD + stats par type
-├── ventes.routes.js             # 4 routes  — filtres avancés
-├── recoltes.routes.js           # 4 routes
-├── stock.routes.js              # 2 routes  — calcul auto (récoltes − ventes)
-├── dashboard.routes.js          # 1 route   — consolidé temps réel
-├── stats.routes.js              # 3 routes  — agrégats annuels/mensuels
-├── historique.routes.js         # 3 routes  — audit trail + purge
-├── parametres.routes.js         # 7 routes  — config app
-├── preferences.routes.js        # 3 routes  — préférences utilisateur
-├── caveurs.routes.js            # 4 routes
-├── chiens.routes.js             # 4 routes
-├── especes.routes.js            # 4 routes
-├── types-intervention.routes.js # 1 route
-├── produits-phyto.routes.js     # 4 routes
-├── amendements-ref.routes.js    # 4 routes
-└── achats.routes.js             # CRUD achats/fournisseurs
-```
-
-#### Pattern d'un handler de route
-
-```js
-// Pattern Factory unifié — identique sur les 21 fichiers
-router.post('/parcelles',
-  authenticate,          // Vérification JWT
-  authorize(['admin', 'user']),  // Contrôle rôles
-  async (req, res) => {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const { rows } = await client.query(
-        'INSERT INTO parcelles (nom, ...) VALUES ($1, ...) RETURNING *',
-        [req.body.nom, ...]
-      );
-
-      // Audit trail
-      await client.query(
-        `INSERT INTO audit_trail (action, entity, new_data, user_id, ip)
-         VALUES ($1, $2, $3, $4, $5)`,
-        ['CREATE', 'parcelle', JSON.stringify(rows[0]), req.user.id, req.ip]
-      );
-
-      await client.query('COMMIT');
-      res.status(201).json(rows[0]);
-    } catch (err) {
-      await client.query('ROLLBACK');
-      res.status(500).json({ error: 'Erreur serveur', code: 'INTERNAL_ERROR' });
-    } finally {
-      client.release();
-    }
-  }
-);
-```
-
-### 3. Couche Middleware
-
-**Responsabilité** : Auth, autorisation, validation — appliqués avant chaque handler
-
-```
-backend/middleware/
-├── auth.js           # 🆕 Extraction et vérification JWT (séparé de server.js en V8)
-├── authenticate.js   # Middleware complet — decode token, attache req.user
-├── authorize.js      # Contrôle RBAC — vérifie le rôle requis
-└── validation.js     # 🆕 Validation centralisée des inputs
-```
-
-#### Gestion des rôles (RBAC)
-
-```js
-const ROLES = {
-  ADMIN:  ['read', 'write', 'delete', 'admin'],
-  USER:   ['read', 'write'],
-  VIEWER: ['read']
-};
-```
-
-### 4. Couche Utilitaires
-
-```
-backend/utils/
-├── index.js           # 🆕 Point d'entrée unique — pattern Factory
-│                      #    emptyToNull(), generateAccessToken(),
-│                      #    generateRefreshToken(), formatError(), ...
-└── tokenRotation.js   # Rotation refresh tokens + détection réutilisation
-```
-
-### 5. Couche Données — PostgreSQL
-
-```
-backend/config/
-└── database.js        # Pool de connexions PostgreSQL (pg)
-                       # waitForConnections, connectionLimit, ...
-
-backend/docs/
-└── API_ERROR_CODES.md # 🆕 85+ codes d'erreur standardisés
-                       #    format : { error, code, details }
-                       #    catégories : Auth, Validation, Métier, Système
-```
-
----
-
-## Structure des répertoires
-
-### Structure complète V8
-
-```
-Gestion-Truffiere/                    (branche V8)
+Gestion-Truffiere/          ← racine
 │
 ├── backend/
-│   ├── server.js                     # Orchestration (25.3 KB, ~900 lignes)
+│   ├── server.js           ← point d'entrée Express (~25 KB après refactoring)
 │   ├── package.json
+│   ├── Dockerfile
 │   │
-│   ├── routes/                       # 21 modules de routes
-│   │   ├── auth.js                   # Auth JWT (15 routes)
-│   │   ├── arbres.routes.js
+│   ├── config/
+│   │   ├── database.js     ← pool node-postgres
+│   │   └── security.js     ← CORS, Helmet
+│   │
+│   ├── middleware/
+│   │   ├── auth.js         ← vérification JWT
+│   │   └── validation.js   ← validation centralisée
+│   │
+│   ├── routes/             ← 22 fichiers, pattern Factory unifié
+│   │   ├── auth.js                         ← 15 routes
 │   │   ├── parcelles.routes.js
-│   │   ├── interventions.routes.js
+│   │   ├── arbres.routes.js
 │   │   ├── recoltes.routes.js
+│   │   ├── interventions.routes.js
 │   │   ├── clients.routes.js
 │   │   ├── ventes.routes.js
 │   │   ├── commandes.routes.js
+│   │   ├── fournisseurs.js
+│   │   ├── achats-fournisseurs.routes.js
 │   │   ├── stock.routes.js
 │   │   ├── dashboard.routes.js
 │   │   ├── stats.routes.js
 │   │   ├── historique.routes.js
 │   │   ├── parametres.routes.js
 │   │   ├── preferences.routes.js
+│   │   ├── especes.routes.js
 │   │   ├── caveurs.routes.js
 │   │   ├── chiens.routes.js
-│   │   ├── especes.routes.js
-│   │   ├── types-intervention.routes.js
 │   │   ├── produits-phyto.routes.js
 │   │   ├── amendements-ref.routes.js
-│   │   └── achats.routes.js
-│   │
-│   ├── middleware/
-│   │   ├── auth.js                   # 🆕 Vérification JWT
-│   │   ├── authenticate.js           # Middleware auth complet
-│   │   ├── authorize.js              # Contrôle rôles
-│   │   └── validation.js             # 🆕 Validation centralisée
+│   │   ├── types-intervention.routes.js
+│   │   └── zones-production.routes.js
 │   │
 │   ├── utils/
-│   │   ├── index.js                  # 🆕 Point d'entrée unique (Factory)
-│   │   └── tokenRotation.js          # Rotation refresh tokens
-│   │
-│   ├── config/
-│   │   └── database.js               # Pool connexions PostgreSQL
+│   │   └── index.js        ← point d'entrée unique (tokenUtils, passwordUtils,
+│   │                          errorCodes, helpers, emptyToNull...)
 │   │
 │   └── docs/
-│       └── API_ERROR_CODES.md        # 🆕 85+ codes d'erreur documentés
+│       └── API_ERROR_CODES.md  ← 85+ codes d'erreur standardisés
 │
 ├── frontend/
 │   ├── package.json
-│   │
+│   ├── Dockerfile
+│   ├── public/
+│   │   ├── index.html
+│   │   ├── favicon.ico
+│   │   └── manifest.json
 │   └── src/
-│       ├── index.js                  # Entrée React
-│       ├── App.js                    # Composant racine
-│       │
-│       ├── components/               # 18 composants React
+│       ├── App.js
+│       ├── components/     ← 18 composants React
 │       │   ├── Dashboard.js
 │       │   ├── Parcelles.js
 │       │   ├── Arbres.js
@@ -372,646 +172,475 @@ Gestion-Truffiere/                    (branche V8)
 │       │   ├── Login.js
 │       │   ├── UserManagement.js
 │       │   ├── ChangePassword.js
-│       │   ├── CSVImportModal.js
-│       │   └── ...
-│       │
-│       ├── services/
-│       │   ├── api.js                # Instance Axios
-│       │   └── axiosConfig.js        # Config HTTP + interceptors
-│       │
+│       │   ├── GlobalSearch.js
+│       │   ├── WeatherWidget.js
+│       │   ├── Previsions.js
+│       │   └── CSVImportModal.js
 │       ├── context/
-│       │   └── AuthContext.js        # État authentification
-│       │
+│       │   ├── AuthContext.js
+│       │   └── ThemeContext.js
+│       ├── hooks/
+│       │   ├── useAuth.js
+│       │   ├── useFetch.js
+│       │   ├── useColumnSettings.js
+│       │   └── useLocalStorage.js
+│       ├── services/
+│       │   ├── api.js
+│       │   └── axiosConfig.js
 │       └── utils/
-│           └── seasonUtils.js        # 🆕 20 fonctions saison truffière
+│           ├── csvImport.js
+│           ├── pdfExport.js
+│           ├── formatters.js
+│           └── helpers.js
 │
 ├── database/
-│   └── init_database.sql             # Schéma PostgreSQL + données initiales
+│   └── init_database.sql   ← schéma complet + seed data
 │
 ├── docker-compose.yml
-├── Dockerfile
-├── .env.exemple
-├── backup-db.sh                      # Script backup PostgreSQL
+├── .env.exemple            ← template variables d'environnement
+├── backup-db.sh
 │
 ├── README.md
-├── API.md
-├── ARCHITECTURE.md                   # Ce fichier
-├── CHANGELOG.md
+├── QUICKSTART.md
+├── SETUP.md
 ├── DOCKER.md
-└── SETUP.md
+├── API.md
+├── ARCHITECTURE.md         ← ce fichier
+└── CHANGELOG.md
 ```
 
-> **Note V8** : Le dossier `backend/controllers/` (3 fichiers TypeScript, 25.4 KB) a été supprimé en v2.0.1 — c'était du code mort issu d'une exploration antérieure. La logique est directement dans les handlers de routes.
+> ⚠️ Il n'existe **pas** de dossiers `controllers/`, `services/`, `models/` ni `migrations/`  
+> dans V8. Ces dossiers ont été supprimés lors du refactoring backend (voir [CHANGELOG.md](CHANGELOG.md)).
+
+---
+
+## Couches applicatives
+
+### 1. Présentation — React (frontend)
+
+- 18 composants fonctionnels React
+- Gestion d'état via Context API (`AuthContext`, `ThemeContext`)
+- Axios pour les appels API avec intercepteurs JWT
+- Leaflet pour la cartographie
+- Chart.js pour les statistiques visuelles
+- Export PDF natif via `utils/pdfExport.js`
+- Import CSV via `CSVImportModal.js`
+
+### 2. API — Express.js (routes)
+
+Chaque fichier `routes/*.routes.js` suit le **pattern Factory** :
+
+```javascript
+// Pattern unifié V8
+const createRouter = (db) => {
+  const router = express.Router();
+  const { authenticateToken, generateAccessToken, logAuditTrail } = require('../utils');
+
+  router.get('/', authenticateToken, async (req, res) => {
+    try {
+      const result = await db.query(
+        'SELECT * FROM parcelles WHERE user_id = $1 ORDER BY created_at DESC',
+        [req.user.id]
+      );
+      res.json({ status: 'success', data: result.rows });
+    } catch (err) {
+      res.status(500).json({ error: 'Erreur serveur', code: 'SERVER_ERROR' });
+    }
+  });
+
+  return router;
+};
+
+module.exports = createRouter;
+```
+
+### 3. Middleware
+
+```
+middleware/auth.js
+  └─ authenticateToken()     ← vérifie le JWT, injecte req.user
+
+middleware/validation.js
+  └─ validateBody(schema)    ← validation des entrées
+
+server.js (inline middlewares)
+  ├─ Helmet                  ← headers sécurisés
+  ├─ CORS configurable       ← via CORS_ORIGINS env
+  ├─ Rate limiting global    ← 1000 req / 15 min
+  ├─ Rate limiting auth      ← 10 req / 15 min
+  └─ Morgan logging          ← logs requêtes HTTP
+```
+
+### 4. Utilitaires centralisés (`utils/index.js`)
+
+```javascript
+module.exports = {
+  // Auth
+  authenticateToken,    // middleware JWT
+  generateAccessToken,  // génère un access token 15min
+  generateRefreshToken, // génère un refresh token 7j
+
+  // Sécurité
+  hashPassword,         // bcrypt 12 rounds
+  comparePassword,      // bcrypt compare
+  emptyToNull,          // normalise les champs vides
+
+  // Audit
+  logAuditTrail,        // écrit dans audit_trail
+
+  // Erreurs
+  ERROR_CODES,          // 85+ codes standardisés
+  sendError,            // helper réponse erreur uniforme
+};
+```
+
+### 5. Base de données — PostgreSQL
+
+- Requêtes paramétrées (`$1, $2, ...`) — pas de concaténation SQL
+- Transactions explicites avec `BEGIN / COMMIT / ROLLBACK`
+- Fonctions PLpgSQL pour la logique métier complexe
+- Table `audit_trail` pour la traçabilité complète
 
 ---
 
 ## Flux de données
 
-### Cycle Requête/Réponse
+### Cycle requête/réponse complet
 
 ```
-1. INTERACTION UTILISATEUR
-   └─ Clic bouton / soumission formulaire dans un composant React
+1. ACTION UTILISATEUR
+   └─ Clic / formulaire dans un composant React
 
-2. TRAITEMENT FRONTEND
-   └─ Handler déclenché
-   └─ Validation client (champs requis, formats)
-   └─ Appel service API : api.post('/parcelles', data)
+2. FRONTEND
+   └─ Handler → validation client → api.post('/parcelles', data)
+   └─ Axios injecte automatiquement : Authorization: Bearer <accessToken>
 
-3. REQUÊTE HTTP
-   ├─ Méthode : POST
-   ├─ URL : /api/parcelles
-   ├─ Headers : { Authorization: "Bearer <JWT>" }
-   └─ Body : { nom: "Parcelle 1", ... }
+3. HTTP REQUEST
+   POST /api/parcelles
+   Authorization: Bearer <JWT_15min>
+   Body: { nom, surface_hectares, localisation, ... }
 
-4. TRAITEMENT SERVEUR
-   ├─ Correspondance de route
-   ├─ Chaîne middleware :
-   │  ├─ authenticate   → Vérification JWT, attach req.user
-   │  ├─ authorize      → Vérification rôle
-   │  └─ validation     → Vérification body
-   └─ Handler :
-      ├─ pool.connect() → transaction PostgreSQL
-      ├─ INSERT paramétré
-      ├─ INSERT audit_trail (old_data, new_data, metadata)
-      ├─ COMMIT
-      └─ Retour JSON
+4. MIDDLEWARE CHAIN (server.js → route)
+   ├─ Helmet           ← headers sécurisés ajoutés
+   ├─ Rate limiter      ← compteur incrémenté
+   ├─ CORS             ← origine vérifiée
+   ├─ authenticateToken ← JWT décodé, req.user injecté
+   └─ validateBody     ← schéma vérifié
 
-5. RÉPONSE HTTP
-   ├─ Status : 201 Created
-   └─ Body : { id, nom, ... }
+5. HANDLER (dans routes/parcelles.routes.js)
+   ├─ Logique métier
+   ├─ db.query(parameterized SQL)
+   ├─ logAuditTrail({ action: 'CREATE', ... })
+   └─ res.status(201).json({ status: 'success', data: {...} })
 
-6. MISE À JOUR FRONTEND
-   ├─ Réception réponse Axios
-   ├─ Mise à jour state React
-   ├─ Re-render composant
-   └─ Notification toast succès
+6. RÉPONSE HTTP
+   201 Created
+   { status: 'success', data: { id, nom, ... }, timestamp }
+
+7. FRONTEND
+   └─ Mise à jour état React → re-render composant → notification
 ```
 
-### Diagramme flux de données
+### Refresh token flow
 
 ```
-┌──────────────────────┐
-│  React Component     │
-└──────┬───────────────┘
-       │ onChange/onClick
-       ▼
-┌──────────────────────┐
-│  api.js (Axios)      │
-│  POST /api/parcelles │
-│  + Bearer JWT        │
-└──────┬───────────────┘
-       │ HTTP
-       ▼
-┌──────────────────────────────────┐
-│  Express Route Handler           │
-│  parcelles.routes.js             │
-└──────┬───────────────────────────┘
-       ├──► middleware/authenticate  → vérifie JWT
-       ├──► middleware/authorize     → vérifie rôle
-       ├──► middleware/validation    → vérifie inputs
-       ▼
-┌──────────────────────────────────┐
-│  Handler async                   │
-│  pool.connect() → BEGIN          │
-│  INSERT INTO parcelles ...       │
-│  INSERT INTO audit_trail ...     │
-│  COMMIT                          │
-└──────┬───────────────────────────┘
-       ▼
-┌──────────────────────────────────┐
-│  PostgreSQL                      │
-│  INSERT + RETURNING *            │
-└──────┬───────────────────────────┘
-       ▼
-┌──────────────────────────────────┐
-│  Réponse 201                     │
-│  { id, nom, ... }                │
-└──────┬───────────────────────────┘
-       ▼
-┌──────────────────────────────────┐
-│  React — setState → re-render    │
-└──────────────────────────────────┘
+Access token expiré (15 min)
+  └─ Axios interceptor → POST /api/auth/refresh
+       ├─ Refresh token vérifié (7 jours)
+       ├─ Rotation : ancien refresh invalidé, nouveau généré
+       ├─ Nouveau access token retourné
+       └─ Requête originale relancée automatiquement
+
+Si refresh token expiré ou réutilisation détectée
+  └─ Déconnexion forcée → redirect /login
 ```
 
 ---
 
-## Schéma de base de données
+## Routes API
 
-### Diagramme Entité-Relation principal
+### Récapitulatif des 22 fichiers routes
 
-```
-┌─────────────┐
-│   USERS     │
-├─────────────┤
-│ id (PK)     │──┐
-│ email       │  │
-│ password_hash  │ 1
-│ nom         │  │
-│ prenom      │  │
-│ role        │  └────┐
-│ failed_login_attempts  N
-│ locked_until│       │
-│ created_at  │  ┌────▼──────────┐
-└─────────────┘  │  PARCELLES    │
-                 ├───────────────┤
-                 │ id (PK)       │────┐
-                 │ user_id (FK)  │    │ 1
-                 │ nom           │    │
-                 │ localisation  │    │ N
-                 │ surface_ha    │    │
-                 │ deleted_at    │    └──────────────┐
-                 └───────────────┘                   │
-                                           ┌─────────▼──────┐
-                                           │    ARBRES       │
-                                           ├────────────────┤
-                                           │ id (PK)        │────┐
-                                           │ parcelle_id(FK)│    │ 1
-                                           │ variete        │    │
-                                           │ date_plantation│    │ N
-                                           │ etat_sanitaire │    │
-                                           │ deleted_at     │    │
-                                           └────────────────┘    │
-                                                       ┌──────────┤
-                               ┌───────────────┐       │          │
-                               │   RECOLTES    │◄──────┘          │
-                               ├───────────────┤                  │
-                               │ id (PK)       │       ┌──────────▼──────┐
-                               │ parcelle_id   │       │  INTERVENTIONS  │
-                               │ date_recolte  │       ├─────────────────┤
-                               │ quantite_kg   │       │ id (PK)         │
-                               │ qualite       │       │ parcelle_id     │
-                               │ caveur_id     │       │ type            │
-                               │ chien_id      │       │ date_inter      │
-                               └───────────────┘       │ cout            │
-                                                       │ produit_phyto_id│
-                                                       └─────────────────┘
+| Fichier | Préfixe | Routes | Domaine |
+|---------|---------|--------|---------|
+| `auth.js` | `/api/auth` | 15 | Login, logout, refresh, profil, users |
+| `parcelles.routes.js` | `/api/parcelles` | ~8 | Gestion parcelles |
+| `arbres.routes.js` | `/api/arbres` | ~8 | Gestion arbres |
+| `interventions.routes.js` | `/api/interventions` | ~10 | Interventions |
+| `recoltes.routes.js` | `/api/recoltes` | ~6 | Récoltes |
+| `commandes.routes.js` | `/api/commandes` | ~8 | Commandes clients |
+| `clients.routes.js` | `/api/clients` | ~6 | Clients |
+| `ventes.routes.js` | `/api/ventes` | ~6 | Ventes |
+| `fournisseurs.js` | `/api/fournisseurs` | ~6 | Fournisseurs |
+| `achats-fournisseurs.routes.js` | `/api/achats-fournisseurs` | ~8 | Achats |
+| `stock.routes.js` | `/api/stock` | ~6 | Stock |
+| `dashboard.routes.js` | `/api/dashboard` | ~5 | Statistiques dashboard |
+| `stats.routes.js` | `/api/stats` | ~4 | Statistiques avancées |
+| `historique.routes.js` | `/api/historique` | ~4 | Audit trail |
+| `parametres.routes.js` | `/api/parametres` | ~6 | Paramètres app |
+| `preferences.routes.js` | `/api/preferences` | ~3 | Préférences utilisateur |
+| `especes.routes.js` | `/api/especes` | ~4 | Référentiel espèces |
+| `caveurs.routes.js` | `/api/caveurs` | ~4 | Caveurs |
+| `chiens.routes.js` | `/api/chiens` | ~4 | Chiens |
+| `produits-phyto.routes.js` | `/api/produits-phyto` | ~5 | Produits phytosanitaires |
+| `amendements-ref.routes.js` | `/api/amendements-ref` | ~5 | Référentiel amendements |
+| `types-intervention.routes.js` | `/api/types-intervention` | ~3 | Types d'intervention |
+| `zones-production.routes.js` | `/api/zones-production` | ~3 | Zones de production |
 
-┌──────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   CLIENTS    │     │   VENTES     │     │   COMMANDES      │
-├──────────────┤     ├──────────────┤     ├──────────────────┤
-│ id (PK)      │──┐  │ id (PK)      │  ┌──│ id (PK)          │
-│ nom          │  │  │ client_id(FK)│◄─┘  │ client_id (FK)   │
-│ type         │  └─►│ quantite_kg  │     │ quantite_kg      │
-│ email        │     │ prix_kg      │     │ statut           │
-│ telephone    │     │ qualite      │     │ date_commande    │
-└──────────────┘     │ date_vente   │     └──────────────────┘
-                     └──────────────┘
+**Total : ~150+ endpoints** — voir [API.md](API.md) pour la documentation complète.
 
-┌───────────────────────────────────────────────────────┐
-│                   AUDIT_TRAIL                         │
-├───────────────────────────────────────────────────────┤
-│ id (PK) | action | entity | entity_id                 │
-│ old_data (JSONB) | new_data (JSONB) | metadata (JSONB)│
-│ user_id (FK) | ip_address | created_at                │
-└───────────────────────────────────────────────────────┘
+### Format de réponse uniforme
+
+```javascript
+// Succès
+{ status: 'success', data: { ... }, timestamp: '2026-...' }
+
+// Erreur
+{ error: 'Message en français', code: 'ERROR_CODE', details: '...' }
+// 'details' affiché uniquement si NODE_ENV=development
 ```
 
-### Tables clés
+Codes d'erreur standardisés → voir [backend/docs/API_ERROR_CODES.md](backend/docs/API_ERROR_CODES.md)
 
-#### Table users
+---
 
-```sql
-CREATE TABLE users (
-  id                    SERIAL PRIMARY KEY,
-  email                 VARCHAR(255) UNIQUE NOT NULL,
-  password_hash         VARCHAR(255) NOT NULL,
-  nom                   VARCHAR(100) NOT NULL,
-  prenom                VARCHAR(100) NOT NULL,
-  role                  VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin','user','viewer')),
-  is_active             BOOLEAN DEFAULT TRUE,
-  failed_login_attempts INT DEFAULT 0,
-  locked_until          TIMESTAMP NULL,
-  last_login            TIMESTAMP NULL,
-  created_at            TIMESTAMP DEFAULT NOW(),
-  updated_at            TIMESTAMP DEFAULT NOW()
+## Sécurité & authentification
+
+### Flux JWT complet
+
+```
+POST /api/auth/login
+  ├─ Rate limiting auth : 10 req / 15 min par IP
+  ├─ Compte vérifié (account locking : 5 tentatives → 15 min de blocage)
+  ├─ bcrypt.compare() — 12 rounds
+  ├─ Access token  : JWT signé, exp = 15 minutes
+  └─ Refresh token : JWT signé, exp = 7 jours, stocké en DB
+
+Requêtes authentifiées
+  ├─ Authorization: Bearer <accessToken>
+  ├─ middleware/auth.js → jwt.verify() → req.user injecté
+  └─ Si expiré : 401 → client appelle POST /api/auth/refresh
+
+Rotation des refresh tokens
+  ├─ Chaque utilisation d'un refresh token en génère un nouveau
+  ├─ L'ancien est immédiatement invalidé en DB
+  └─ Réutilisation d'un token révoqué → déconnexion totale (détection de vol)
+```
+
+### Mesures de sécurité actives
+
+| Mesure | Détail |
+|--------|--------|
+| bcrypt | 12 salt rounds |
+| JWT access | Expiration 15 min |
+| JWT refresh | Expiration 7 jours + rotation |
+| Account locking | 5 tentatives échouées → blocage 15 min |
+| Rate limiting global | 1000 req / 15 min |
+| Rate limiting auth | 10 req / 15 min |
+| IP tracking | Sur login, logout, actions sensibles |
+| Helmet | Headers HTTP sécurisés |
+| CORS | Configurable via `CORS_ORIGINS` |
+| SQL injection | Requêtes 100% paramétrées (`$1, $2...`) |
+| Audit trail | Toutes actions Create/Update/Delete/Auth tracées |
+| Security events | Logging des événements suspects |
+
+### RBAC — Contrôle d'accès par rôle
+
+```javascript
+const ROLES = {
+  ADMIN: 'admin',       // accès complet
+  USER: 'user',         // lecture/écriture sur ses données
+  READONLY: 'readonly'  // lecture seule
+};
+
+// Exemple dans une route
+router.delete('/:id',
+  authenticateToken,
+  requireRole(['admin']),
+  async (req, res) => { /* ... */ }
 );
-CREATE INDEX idx_users_email ON users(email);
-```
-
-#### Table parcelles
-
-```sql
-CREATE TABLE parcelles (
-  id               SERIAL PRIMARY KEY,
-  user_id          INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  nom              VARCHAR(255) NOT NULL,
-  localisation     TEXT,
-  latitude         DECIMAL(10,8),
-  longitude        DECIMAL(11,8),
-  surface_hectares DECIMAL(6,2),
-  composition      TEXT,
-  created_at       TIMESTAMP DEFAULT NOW(),
-  updated_at       TIMESTAMP DEFAULT NOW(),
-  deleted_at       TIMESTAMP NULL
-);
-CREATE INDEX idx_parcelles_user ON parcelles(user_id);
-CREATE INDEX idx_parcelles_deleted ON parcelles(deleted_at);
-```
-
-#### Table audit_trail
-
-```sql
-CREATE TABLE audit_trail (
-  id         SERIAL PRIMARY KEY,
-  action     VARCHAR(50) NOT NULL,  -- CREATE, UPDATE, DELETE, LOGIN, ...
-  entity     VARCHAR(50) NOT NULL,  -- parcelle, arbre, user, ...
-  entity_id  INT,
-  old_data   JSONB,
-  new_data   JSONB,
-  metadata   JSONB,
-  user_id    INT REFERENCES users(id),
-  ip_address VARCHAR(45),
-  created_at TIMESTAMP DEFAULT NOW()
-);
-CREATE INDEX idx_audit_user ON audit_trail(user_id);
-CREATE INDEX idx_audit_entity ON audit_trail(entity, entity_id);
-CREATE INDEX idx_audit_created ON audit_trail(created_at);
 ```
 
 ---
 
-## Sécurité & Authentification
+## Base de données
 
-### Flux JWT
+### Schéma principal
 
 ```
-1. REQUÊTE LOGIN
-   POST /api/auth/login
-   { "email": "...", "password": "..." }
-
-2. TRAITEMENT SERVEUR
-   ├─ Vérification account locking (locked_until)
-   ├─ Recherche user par email
-   ├─ bcrypt.compare(password, hash) — 12 salt rounds
-   ├─ Si KO : incrémente failed_login_attempts
-   │          → 5 tentatives : locked_until = NOW() + 15min
-   └─ Si OK  : reset compteur, génère tokens
-
-3. TOKENS RETOURNÉS
-   ├─ Access Token  (exp: 15 min)
-   │  { userId, email, role, iat, exp }
-   └─ Refresh Token (exp: 7 jours, stocké en DB avec rotation)
-
-4. REQUÊTES SUIVANTES
-   Authorization: Bearer <accessToken>
-
-5. VÉRIFICATION SERVEUR (middleware/authenticate.js)
-   ├─ Extraction header Authorization
-   ├─ jwt.verify(token, JWT_SECRET)
-   ├─ Vérification expiration
-   └─ Si valide : req.user = payload
-
-6. REFRESH TOKEN
-   POST /api/auth/refresh
-   { "refreshToken": "..." }
-   → Détection réutilisation (tokenRotation.js)
-   → Nouveau access token + rotation refresh token
+users
+  └─┬── parcelles
+    │     └─┬── arbres
+    │       └─┬── recoltes
+    │         └── interventions
+    ├── clients
+    │     └── commandes → ventes
+    ├── fournisseurs
+    │     └── achats_fournisseurs
+    ├── stock
+    ├── especes          (référentiel)
+    ├── types_intervention (référentiel)
+    ├── amendements_ref  (référentiel)
+    ├── produits_phyto   (référentiel)
+    ├── caveurs
+    ├── chiens
+    ├── zones_production
+    ├── preferences_utilisateur
+    └── audit_trail      (traçabilité)
 ```
 
-### Couches de sécurité V8
+### Connexion PostgreSQL (node-postgres)
 
-| Couche | Implémentation | Détail |
-|---|---|---|
-| **Hashage** | bcrypt | 12 salt rounds |
-| **Tokens** | JWT | Access 15 min + refresh 7 jours avec rotation |
-| **Account locking** | PostgreSQL | 5 tentatives → verrouillage 15 min |
-| **Rate limiting** | express-rate-limit | Global : 1000 req/15 min, Auth : 10 req/15 min |
-| **IP tracking** | req.ip | Loggé sur toutes les actions sensibles |
-| **Headers** | Helmet | CSP, HSTS, X-Frame-Options, XSS... |
-| **CORS** | cors | Configurable via `CORS_ORIGIN` dans `.env` |
-| **Codes d'erreur** | 85+ codes | `details` masqués hors `NODE_ENV=development` |
-| **Audit trail** | PostgreSQL | old_data + new_data + metadata sur toutes mutations |
-| **Injections SQL** | pg paramétré | `$1, $2, ...` — jamais de concaténation |
-
-### À implémenter (roadmap)
-
-- [ ] OAuth2 / OpenID Connect
-- [ ] Double authentification (2FA)
-- [ ] Audit sécurité régulier
-- [ ] WAF (Web Application Firewall)
-
----
-
-## Performance & Optimisation
-
-### Optimisation base de données
-
-#### Index essentiels
-
-```sql
--- Colonnes fréquemment filtrées
-CREATE INDEX idx_arbres_parcelle   ON arbres(parcelle_id);
-CREATE INDEX idx_arbres_sante      ON arbres(etat_sanitaire);
-CREATE INDEX idx_recoltes_date     ON recoltes(date_recolte);
-CREATE INDEX idx_interventions_date ON interventions(date_intervention);
-CREATE INDEX idx_ventes_client     ON ventes(client_id);
-
--- Index partiels pour soft delete
-CREATE INDEX idx_parcelles_actives ON parcelles(user_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_arbres_actifs     ON arbres(parcelle_id) WHERE deleted_at IS NULL;
-```
-
-#### Pool de connexions PostgreSQL
-
-```js
+```javascript
 // backend/config/database.js
 const { Pool } = require('pg');
 
 const pool = new Pool({
   host:     process.env.DB_HOST,
+  port:     process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME,
   user:     process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port:     process.env.DB_PORT || 5432,
-  max:                10,   // Connexions max
-  idleTimeoutMillis:  30000,
+  max: 20,              // max connexions simultanées
+  idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
 module.exports = pool;
 ```
 
-#### Bonnes pratiques SQL dans les routes
+### Patterns SQL utilisés
 
-```js
-// ✅ Sélectionner uniquement les colonnes utiles
-const { rows } = await pool.query(
-  `SELECT id, nom, surface_hectares, latitude, longitude
-   FROM parcelles
-   WHERE user_id = $1 AND deleted_at IS NULL
-   ORDER BY nom`,
-  [req.user.id]
-);
+```sql
+-- Requêtes paramétrées (obligatoire)
+SELECT * FROM parcelles WHERE user_id = $1 AND deleted_at IS NULL;
 
-// ✅ Pagination systématique
-const { rows } = await pool.query(
-  `SELECT * FROM ventes
-   ORDER BY date_vente DESC
-   LIMIT $1 OFFSET $2`,
-  [limit, offset]
-);
+-- Transactions explicites
+BEGIN;
+  INSERT INTO recoltes (...) VALUES ($1, $2, $3);
+  UPDATE arbres SET derniere_recolte = NOW() WHERE id = $4;
+COMMIT;
 
-// ✅ Transactions explicites pour mutations multi-tables
-const client = await pool.connect();
-try {
-  await client.query('BEGIN');
-  // ... opérations
-  await client.query('COMMIT');
-} catch (e) {
-  await client.query('ROLLBACK');
-  throw e;
-} finally {
-  client.release();
-}
+-- Soft delete
+UPDATE parcelles SET deleted_at = NOW() WHERE id = $1;
+
+-- Audit trail
+INSERT INTO audit_trail (user_id, action, table_name, record_id, old_data, new_data, metadata, ip_address)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8);
+
+-- Erreur PostgreSQL spécifique
+-- Code 23505 = UNIQUE_VIOLATION → message métier en français
 ```
 
-### Optimisation frontend
+### Initialisation
 
-#### Memoization React
-
-```js
-// Eviter les recalculs sur les listes larges
-const parcellesFiltrees = useMemo(
-  () => parcelles.filter(p => p.etat === filtre),
-  [parcelles, filtre]
-);
-
-// Eviter les re-renders inutiles
-const ParcelleRow = React.memo(({ parcelle, onEdit }) => (
-  <tr>...</tr>
-));
+```bash
+# Importer le schéma complet
+psql -U unstuffed1004 -d truffiere_db -f database/init_database.sql
 ```
 
-#### Chargement paresseux des composants
+---
 
-```js
-const Statistiques = React.lazy(() => import('./Statistiques'));
-const Cartographie  = React.lazy(() => import('./Carte'));
+## Performance & optimisation
 
-<Suspense fallback={<Spinner />}>
-  <Statistiques />
-</Suspense>
+### Index clés
+
+```sql
+-- Relations fréquentes
+CREATE INDEX idx_parcelle_user    ON parcelles(user_id);
+CREATE INDEX idx_arbre_parcelle   ON arbres(parcelle_id);
+CREATE INDEX idx_recolte_date     ON recoltes(date_recolte);
+CREATE INDEX idx_intervention_date ON interventions(date_intervention);
+CREATE INDEX idx_audit_user_date  ON audit_trail(user_id, timestamp);
+```
+
+### Pool de connexions
+
+Max 20 connexions simultanées — adapté à une exploitation truffière mono-utilisateur  
+à multi-utilisateurs restreints. Ajuster `max` si charge plus importante.
+
+### Frontend
+
+```javascript
+// Lazy loading des composants lourds
+const Statistiques = React.lazy(() => import('./components/Statistiques'));
+const Carte        = React.lazy(() => import('./components/Carte'));
+
+// Memoïsation
+const ParcelleCard = React.memo(({ parcelle }) => { /* ... */ });
 ```
 
 ---
 
 ## Déploiement & DevOps
 
-### Docker
-
-#### Backend Dockerfile
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 5000
-CMD ["npm", "start"]
-```
-
-#### docker-compose.yml (production)
+### Docker Compose (stack complète)
 
 ```yaml
-version: '3.8'
-
 services:
   db:
-    image: postgres:14-alpine
+    image: postgres:16-alpine       # PostgreSQL — pas MySQL
     environment:
-      POSTGRES_DB:       gestion_truffiere
+      POSTGRES_DB:       ${DB_NAME}
       POSTGRES_USER:     ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./database/init_database.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
 
   backend:
     build: ./backend
     environment:
-      NODE_ENV:    production
-      DB_HOST:     db
-      DB_USER:     ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME:     gestion_truffiere
-      JWT_SECRET:  ${JWT_SECRET}
-    ports:
-      - "5000:5000"
+      NODE_ENV:          production
+      DB_HOST:           db
+      JWT_SECRET:        ${JWT_SECRET}
+      JWT_EXPIRES_IN:    15m           # immuable — politique sécurité V8
+      CORS_ORIGINS:      ${FRONTEND_URL}
     depends_on:
-      - db
-    restart: unless-stopped
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL}
-    ports:
-      - "3000:3000"
+      REACT_APP_API_URL: ${BACKEND_URL}/api
     depends_on:
       - backend
-    restart: unless-stopped
-
-volumes:
-  db_data:
 ```
 
-### Stratégies de déploiement
+Guide complet → [DOCKER.md](DOCKER.md)
+
+### Checklist production
 
 ```bash
-# Développement
-docker-compose up
+# Vérifier les variables critiques
+grep -E 'JWT_SECRET|DB_PASSWORD|CORS_ORIGINS' .env
 
-# Production — rebuild + restart sans downtime
-docker-compose pull
-docker-compose up -d --build
+# Santé de l'API
+curl https://m-a-truffes.sytes.net/api/health
 
-# Backup BDD avant déploiement
-./backup-db.sh
+# Logs temps réel
+docker compose logs -f backend
+
+# Audit trail récent
+psql -U unstuffed1004 -d truffiere_db \
+  -c "SELECT user_id, action, table_name, timestamp FROM audit_trail ORDER BY timestamp DESC LIMIT 20;"
 ```
 
 ---
 
-## Monitoring & Logging
+## Roadmap technique
 
-### Logging actuel
-
-Les routes Express loggent les erreurs dans les blocs `catch` via `console.error`. En production, rediriger vers un fichier :
-
-```bash
-node server.js >> logs/app.log 2>&1
-# ou via PM2 :
-pm2 start server.js --log logs/app.log
-```
-
-### Audit trail (natif)
-
-L'audit trail PostgreSQL constitue le principal mécanisme de traçabilité :
-
-```sql
--- Dernières actions
-SELECT action, entity, user_id, ip_address, created_at
-FROM audit_trail
-ORDER BY created_at DESC
-LIMIT 50;
-
--- Actions d'un utilisateur
-SELECT * FROM audit_trail
-WHERE user_id = $1
-ORDER BY created_at DESC;
-
--- Historique d'une entité
-SELECT old_data, new_data, metadata, created_at
-FROM audit_trail
-WHERE entity = 'parcelle' AND entity_id = $1;
-```
-
-### Métriques à surveiller
-
-```
-├─ Temps de réponse API         → GET /api/health
-├─ Taux d'erreur 5xx            → logs/app.log
-├─ Tentatives de connexion      → audit_trail (action = 'LOGIN_FAILED')
-├─ Pool PostgreSQL              → pg pool events
-└─ Utilisation disque           → df -h (backups BDD)
-```
-
-### Roadmap monitoring (v8.5)
-
-- [ ] Winston / Pino pour logging structuré JSON
-- [ ] Dashboard métriques (Grafana ou équivalent léger)
-- [ ] Alertes automatiques (maladies, seuils stock, météo)
-- [ ] WebSockets pour notifications temps réel
+| Priorité | Item | Statut |
+|----------|------|--------|
+| 🔴 Haute | Tests Jest + React Testing Library | Non démarré |
+| 🔴 Haute | Swagger/OpenAPI auto-généré | Non démarré |
+| 🟡 Moyenne | PWA offline (Service Worker) | Non démarré |
+| 🟡 Moyenne | Alertes intelligentes (seuils récolte) | Non démarré |
+| 🟢 Basse | PDF avancés (graphiques embarqués) | Non démarré |
+| 🟢 Basse | GitHub Actions CI/CD | Non démarré |
 
 ---
 
-## Scalabilité
-
-### Scaling horizontal (si nécessaire)
-
-```
-            ┌─────────┐
-            │ Client  │
-            └────┬────┘
-                 │
-            ┌────▼────┐
-            │Nginx LB │
-            └────┬────┘
-       ┌─────────┼──────────┐
-       │         │          │
-  ┌────▼───┐ ┌───▼────┐ ┌──▼─────┐
-  │Node  1 │ │Node  2 │ │Node  N │
-  └────┬───┘ └───┬────┘ └──┬─────┘
-       └─────────┼──────────┘
-                 │
-          ┌──────▼──────┐
-          │ PostgreSQL  │
-          └─────────────┘
-```
-
-> Le backend Express est stateless (JWT) — le scaling horizontal ne nécessite pas de session partagée.
-
----
-
-## Troubleshooting
-
-### Problèmes fréquents
-
-#### Connexion base de données impossible
-
-```
-Error: connect ECONNREFUSED 127.0.0.1:5432
-
-Solutions :
-1. Vérifier que PostgreSQL tourne : docker ps | grep postgres
-2. Vérifier les credentials dans backend/.env
-3. Vérifier DB_HOST (si Docker : nom du service, pas localhost)
-4. Tester : psql -h $DB_HOST -U $DB_USER -d $DB_NAME
-```
-
-#### JWT expiré
-
-```
-TokenExpiredError: jwt expired
-
-Solutions :
-1. Utiliser POST /api/auth/refresh avec le refresh token
-2. Si refresh expiré → re-login obligatoire
-3. Vérifier que l'horloge serveur est synchronisée (NTP)
-```
-
-#### CORS bloqué
-
-```
-Access to XMLHttpRequest blocked by CORS policy
-
-Solutions :
-1. Vérifier CORS_ORIGIN dans backend/.env
-2. L'origine doit correspondre exactement (http vs https, port inclus)
-3. Vérifier credentials: true si cookies utilisés
-```
-
-#### Account verrouillé
-
-```
-{ error: "Compte verrouillé", code: "ACCOUNT_LOCKED" }
-
-Solutions :
-1. Attendre 15 minutes (expiration automatique)
-2. Admin : UPDATE users SET locked_until = NULL,
-           failed_login_attempts = 0 WHERE email = '...'
-```
-
-#### Consulter les codes d'erreur
-
-Tous les codes `{ error, code, details }` sont documentés dans :
-→ [`backend/docs/API_ERROR_CODES.md`](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/backend/docs/API_ERROR_CODES.md)
-
----
-
-**Dernière mise à jour : mai 2026**  
-**Statut : Production Ready**  
-**Maintenu par : lepekinoi**  
-**Branche : V8 — version 2.0.1**
+*Dernière mise à jour : mai 2026 — V8*  
+*Voir [CHANGELOG.md](CHANGELOG.md) pour l'historique des modifications*
