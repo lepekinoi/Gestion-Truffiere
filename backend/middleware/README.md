@@ -445,4 +445,5 @@ router.delete('/critical',
 ---
 
 **Documentation générée le** : 28 janvier 2026  
-**Version** : 2.0.0 (Phase 2 - Refactoring)
+**Dernière mise à jour** : 14 mai 2026  
+**Version** : V8 (2.0.3)
