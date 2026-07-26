@@ -79,7 +79,7 @@
 | **🔧 Interventions** | Log complet, coûts, traçabilité phyto, irrigation | ✅ Production |
 | **💼 Commercial** | Clients, ventes, commandes, analytics | ✅ Production |
 | **📊 Stock** | Calcul automatique (récoltes − ventes), par qualité/saison | ✅ Production |
-| **👥 Auth & Rôles** | JWT, multi-utilisateurs, admin/user/viewer | ✅ Production |
+| **👥 Auth & Rôles** | JWT, multi-utilisateurs, admin/user/readonly | ✅ Production |
 | **📤 Import/Export** | CSV import, PDF export, rapports | ✅ Production |
 | **🔍 Recherche** | Filtres multi-modules, tri colonnes | ✅ Production |
 | **⚙️ Paramètres** | Colonnes configurables, préférences utilisateur | ✅ Production |
@@ -254,14 +254,14 @@ git checkout V8
 
 # 2. Configurer l'environnement
 cp .env.exemple backend/.env
-# Éditer backend/.env avec vos paramètres (JWT_SECRET, DATABASE_PASSWORD…)
+# Éditer backend/.env avec vos paramètres (JWT_SECRET, DB_PASSWORD…)
 
 # 3. Lancer
 docker compose up -d --build
 
 # 4. Accès
 # Frontend : http://localhost:3000
-# API      : http://localhost:5000
+# API      : http://localhost:3002
 ```
 
 → Voir [QUICKSTART.md](https://github.com/lepekinoi/Gestion-Truffiere/blob/V8/QUICKSTART.md) pour un démarrage en 4 étapes.  
@@ -273,7 +273,7 @@ docker compose up -d --build
 # Backend
 cd backend
 npm install
-npm start        # http://localhost:5000
+npm start        # http://localhost:3001
 
 # Frontend (nouveau terminal)
 cd frontend
