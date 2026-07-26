@@ -303,9 +303,9 @@ DELETE /historique/purge                  Purger l'historique (admin)
 # Paramètres & Préférences
 GET    /parametres                        Paramètres de l'application
 PUT    /parametres                        Mettre à jour les paramètres
-GET    /preferences                       Préférences de l'utilisateur connecté
-PUT    /preferences                       Mettre à jour les préférences
-DELETE /preferences                       Réinitialiser les préférences
+GET    /preferences-utilisateur           Préférences de l'utilisateur connecté
+PUT    /preferences-utilisateur           Mettre à jour les préférences
+POST   /preferences-utilisateur/reset     Réinitialiser les préférences
 
 # Référentiels
 GET    /types-intervention                Types d'intervention disponibles
@@ -314,6 +314,8 @@ GET    /caveurs                           Caveurs
 GET    /chiens                            Chiens de cavage
 GET    /produits-phyto                    Produits phytosanitaires
 GET    /amendements-ref                   Référentiel amendements
+GET    /zones-production                  Zones de production actives
+GET    /zones-production/par-region       Zones groupées par région
 
 # Utilisateurs (admin)
 GET    /auth/users                        Lister les utilisateurs
@@ -1386,29 +1388,51 @@ Content-Type: application/json
 
 ## Paramètres & Préférences
 
-### GET /preferences
+### GET /preferences-utilisateur
 
-Préférences de l'utilisateur connecté (colonnes visibles, tri par défaut, mode d'affichage).
+Préférences de l'utilisateur connecté (colonnes affichées/exportées). Crée automatiquement une entrée par défaut si aucune n'existe encore pour l'utilisateur.
 
 ```http
-GET /api/preferences
+GET /api/preferences-utilisateur
 Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+{
+  "user_id": "12",
+  "colonnes_affichees": { "parcelles": ["nom", "surface_ha"], "arbres": ["numero", "espece"] },
+  "colonnes_export": {}
+}
 ```
 
 ---
 
-### PUT /preferences
+### PUT /preferences-utilisateur
 
 ```http
-PUT /api/preferences
+PUT /api/preferences-utilisateur
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "colonnes_parcelles": ["nom", "surface_ha", "localisation"],
-  "theme": "light",
-  "langue": "fr"
+  "colonnes_affichees": { "parcelles": ["nom", "surface_ha", "localisation"] },
+  "colonnes_export": { "parcelles": ["nom", "surface_ha"] }
 }
+```
+
+**Réponse 200 :** objet préférences mis à jour (upsert — `ON CONFLICT ... DO UPDATE`).
+
+---
+
+### POST /preferences-utilisateur/reset
+
+Réinitialise les préférences de l'utilisateur connecté (`colonnes_affichees`/`colonnes_export` remis à `{}`).
+
+```http
+POST /api/preferences-utilisateur/reset
+Authorization: Bearer <token>
 ```
 
 ---
@@ -1464,6 +1488,49 @@ Authorization: Bearer <token>
 ```json
 [
   { "id": 1, "nom": "Truffe", "race": "Labrador", "caveur_id": 1, "actif": true }
+]
+```
+
+---
+
+### GET /zones-production
+
+Liste des zones de production actives (référentiel utilisé notamment par le module Fournisseurs, champ `zone_production`).
+
+```http
+GET /api/zones-production
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  { "id": 1, "code": "PER", "nom": "Périgord", "departement": "24", "actif": true, "ordre_affichage": 1 }
+]
+```
+
+---
+
+### GET /zones-production/par-region
+
+Zones groupées par région (agrégation JSON côté PostgreSQL).
+
+```http
+GET /api/zones-production/par-region
+Authorization: Bearer <token>
+```
+
+**Réponse 200 :**
+
+```json
+[
+  {
+    "region": "Nouvelle-Aquitaine",
+    "zones": [
+      { "id": 1, "code": "PER", "nom": "Périgord", "departement": "24", "departements": ["24"] }
+    ]
+  }
 ]
 ```
 
